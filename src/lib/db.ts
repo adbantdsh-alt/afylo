@@ -23,6 +23,20 @@ export async function getMyProfile(): Promise<Profile | null> {
   return data;
 }
 
+export type ProfileInput = {
+  display_name?: string;
+  handle?: string;
+  bio?: string;
+  avatar_url?: string | null;
+  website?: string | null;
+};
+
+export async function updateMyProfile(patch: ProfileInput): Promise<void> {
+  const id = await requireUserId();
+  const { error } = await supabase.from('profiles').update(patch).eq('id', id);
+  if (error) throw error;
+}
+
 // ---- Produits ----
 export type ProductInput = {
   title: string;

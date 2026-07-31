@@ -58,6 +58,7 @@ function RootNavigator() {
       <Stack.Screen name="studio" />
       <Stack.Screen name="product-new" options={{ presentation: 'modal' }} />
       <Stack.Screen name="post-new" options={{ presentation: 'modal' }} />
+      <Stack.Screen name="edit-profile" options={{ presentation: 'modal' }} />
     </Stack>
   );
 }

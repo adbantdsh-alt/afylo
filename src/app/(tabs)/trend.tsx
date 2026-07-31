@@ -157,6 +157,6 @@ const styles = StyleSheet.create({
   },
   buyTitle: { color: '#fff', fontSize: 13, fontWeight: '700', flex: 1 },
   buyPrice: { color: Afylo.gold, fontSize: 13, fontWeight: '800' },
-  buyCta: { backgroundColor: Afylo.gold, paddingHorizontal: 14, paddingVertical: 8, borderRadius: Radius.pill },
-  buyCtaText: { color: Afylo.ink, fontSize: 13, fontWeight: '800' },
+  buyCta: { backgroundColor: Afylo.violet, paddingHorizontal: 14, paddingVertical: 8, borderRadius: Radius.pill },
+  buyCtaText: { color: '#fff', fontSize: 13, fontWeight: '800' },
 });

@@ -232,8 +232,8 @@ const styles = StyleSheet.create({
   buyIcon: { width: 38, height: 38, borderRadius: 10, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center' },
   buyTitle: { color: Afylo.ink, fontSize: 13, fontWeight: '700' },
   buyPrice: { color: Afylo.violet, fontSize: 14, fontWeight: '800', marginTop: 1 },
-  buyCta: { backgroundColor: Afylo.gold, paddingHorizontal: 16, paddingVertical: 10, borderRadius: Radius.pill },
-  buyCtaText: { color: Afylo.ink, fontWeight: '800', fontSize: 13 },
+  buyCta: { backgroundColor: Afylo.violet, paddingHorizontal: 16, paddingVertical: 10, borderRadius: Radius.pill },
+  buyCtaText: { color: '#fff', fontWeight: '800', fontSize: 13 },
 
   stats: { flexDirection: 'row', alignItems: 'center', gap: 18, marginTop: 12 },
   stat: { flexDirection: 'row', alignItems: 'center', gap: 5 },

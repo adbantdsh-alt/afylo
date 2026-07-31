@@ -1,15 +1,17 @@
 import { Ionicons } from '@expo/vector-icons';
+import { BlurView } from 'expo-blur';
 import { Image } from 'expo-image';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, Share, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Avatar, Badge, PillButton } from '@/components/ui-kit';
 import { Afylo, Radius } from '@/constants/brand';
 import { useAuth } from '@/lib/auth';
-import { deleteProduct, listMyProducts } from '@/lib/db';
+import { deleteProduct, getMyProfile, listMyProducts } from '@/lib/db';
 import { myLives, myPosts, myProducts, myProfile, photo, type MyLive } from '@/lib/mock';
+import type { Profile } from '@/types/db';
 
 /** Forme d'affichage commune (produit réel ou démo). */
 type DisplayProduct = { id: string; title: string; price: string; stock: number; sold: number; image: string; active: boolean; real: boolean };
@@ -18,10 +20,34 @@ type Section = 'posts' | 'boutique' | 'lives';
 
 export default function Profil() {
   const router = useRouter();
-  const { signOut } = useAuth();
+  const { signOut, session } = useAuth();
   const [section, setSection] = useState<Section>('posts');
   const [isOwner, setIsOwner] = useState(true);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [dbProfile, setDbProfile] = useState<Profile | null>(null);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (session) getMyProfile().then(setDbProfile);
+    }, [session]),
+  );
+
+  // Profil réel si connecté, sinon démo
+  const p =
+    session && dbProfile
+      ? {
+          name: dbProfile.display_name || myProfile.name,
+          handle: dbProfile.handle ? `@${dbProfile.handle}` : myProfile.handle,
+          avatar: dbProfile.avatar_url || myProfile.avatar,
+          bio: dbProfile.bio || 'Ajoute une bio depuis « Modifier le profil ».',
+        }
+      : myProfile;
+
+  const share = async () => {
+    try {
+      await Share.share({ message: `Découvre ${p.name} sur Afylo — ${p.handle}` });
+    } catch {}
+  };
 
   return (
     <View style={styles.root}>
@@ -39,7 +65,7 @@ export default function Profil() {
         </View>
 
         <View style={styles.topbar}>
-          <Text style={styles.handle}>{myProfile.handle}</Text>
+          <Text style={styles.handle}>{p.handle}</Text>
           <View style={{ flexDirection: 'row', gap: 4 }}>
             {isOwner && (
               <Pressable onPress={() => router.push('/studio')} style={styles.iconTop}>
@@ -56,7 +82,7 @@ export default function Profil() {
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 110 }}>
         {/* En-tête profil */}
         <View style={styles.head}>
-          <Avatar uri={myProfile.avatar} size={88} ring />
+          <Avatar uri={p.avatar} size={88} ring />
           <View style={styles.statsRow}>
             <Stat value={myProfile.followers} label="Abonnés" />
             <Stat value={myProfile.sales} label="Ventes" />
@@ -65,26 +91,17 @@ export default function Profil() {
         </View>
 
         <View style={styles.nameRow}>
-          <Text style={styles.name}>{myProfile.name}</Text>
+          <Text style={styles.name}>{p.name}</Text>
           <Badge label="créateur" color={Afylo.violet} />
         </View>
-        <Text style={styles.bio}>{myProfile.bio}</Text>
-
-        {isOwner && (
-          <Pressable onPress={() => router.push('/studio')} style={styles.earnPill}>
-            <Ionicons name="wallet" size={16} color={Afylo.gold} />
-            <Text style={styles.earnText}>Gains totaux : </Text>
-            <Text style={styles.earnValue}>{myProfile.earnings} FCFA</Text>
-            <Ionicons name="chevron-forward" size={14} color={Afylo.textFaint} />
-          </Pressable>
-        )}
+        <Text style={styles.bio}>{p.bio}</Text>
 
         {/* Actions selon le rôle */}
         <View style={styles.actions}>
           {isOwner ? (
             <>
-              <PillButton label="Modifier le profil" variant="light" style={{ flex: 1, height: 46 }} />
-              <PillButton label="Studio" icon="stats-chart" onPress={() => router.push('/studio')} style={{ flex: 1, height: 46 }} />
+              <PillButton label="Modifier le profil" variant="light" onPress={() => router.push('/edit-profile')} style={{ flex: 1, height: 46 }} />
+              <PillButton label="Partager" variant="ghost" icon="share-social-outline" onPress={share} style={{ flex: 1, height: 46 }} />
             </>
           ) : (
             <>
@@ -110,6 +127,7 @@ export default function Profil() {
       {menuOpen && (
         <Pressable style={styles.overlay} onPress={() => setMenuOpen(false)}>
           <SafeAreaView edges={['top']} style={styles.menu}>
+            <BlurView intensity={30} tint="light" style={StyleSheet.absoluteFill} />
             <View style={styles.menuHandle} />
             {isOwner && <MenuItem icon="stats-chart" label="Studio & statistiques" onPress={() => { setMenuOpen(false); router.push('/studio'); }} />}
             {isOwner && <MenuItem icon="wallet-outline" label="Portefeuille & retraits" />}
@@ -375,7 +393,7 @@ const styles = StyleSheet.create({
   liveRevenueText: { color: Afylo.green, fontSize: 12, fontWeight: '700' },
 
   overlay: { ...StyleSheet.absoluteFillObject, backgroundColor: '#000000AA', justifyContent: 'flex-start' },
-  menu: { backgroundColor: Afylo.surface, borderBottomLeftRadius: 24, borderBottomRightRadius: 24, paddingBottom: 16, paddingHorizontal: 8 },
+  menu: { backgroundColor: Afylo.glass, borderBottomLeftRadius: 24, borderBottomRightRadius: 24, paddingBottom: 16, paddingHorizontal: 8, overflow: 'hidden', borderBottomWidth: 1, borderColor: Afylo.glassBorder },
   menuHandle: { width: 40, height: 4, borderRadius: 2, backgroundColor: Afylo.surfaceAlt, alignSelf: 'center', marginVertical: 10 },
   menuItem: { flexDirection: 'row', alignItems: 'center', gap: 16, paddingVertical: 14, paddingHorizontal: 14, borderRadius: Radius.md },
   menuLabel: { color: Afylo.text, fontSize: 15, fontWeight: '600' },

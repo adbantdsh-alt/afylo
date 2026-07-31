@@ -22,7 +22,7 @@ export function Avatar({
   if (ring || live) {
     return (
       <LinearGradient
-        colors={live ? [Afylo.live, '#FF7A00'] : [Afylo.violet, Afylo.violet2]}
+        colors={live ? [Afylo.live, '#FF4E6A'] : [Afylo.violet, Afylo.violet2]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={{ width: size, height: size, borderRadius: size / 2, padding: border, alignItems: 'center', justifyContent: 'center' }}>
