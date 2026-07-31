@@ -1,0 +1,318 @@
+import { Ionicons } from '@expo/vector-icons';
+import { Image } from 'expo-image';
+import { useRouter } from 'expo-router';
+import { useState } from 'react';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+
+import { Avatar, Badge, PillButton } from '@/components/ui-kit';
+import { Afylo, Radius } from '@/constants/brand';
+import { useAuth } from '@/lib/auth';
+import { myLives, myPosts, myProducts, myProfile, type MyLive, type MyProduct } from '@/lib/mock';
+
+type Section = 'posts' | 'boutique' | 'lives';
+
+export default function Profil() {
+  const router = useRouter();
+  const { signOut } = useAuth();
+  const [section, setSection] = useState<Section>('posts');
+  const [isOwner, setIsOwner] = useState(true);
+  const [menuOpen, setMenuOpen] = useState(false);
+
+  return (
+    <View style={styles.root}>
+      {/* Bascule d'aperçu propriétaire / visiteur (dev — sera l'auth plus tard) */}
+      <SafeAreaView edges={['top']} style={{ backgroundColor: Afylo.bg }}>
+        <View style={styles.previewToggle}>
+          <Ionicons name="eye-outline" size={14} color={Afylo.textFaint} />
+          <Text style={styles.previewText}>Aperçu :</Text>
+          <Pressable onPress={() => setIsOwner(true)} style={[styles.previewChip, isOwner && styles.previewChipOn]}>
+            <Text style={[styles.previewChipText, isOwner && styles.previewChipTextOn]}>Propriétaire</Text>
+          </Pressable>
+          <Pressable onPress={() => setIsOwner(false)} style={[styles.previewChip, !isOwner && styles.previewChipOn]}>
+            <Text style={[styles.previewChipText, !isOwner && styles.previewChipTextOn]}>Visiteur</Text>
+          </Pressable>
+        </View>
+
+        <View style={styles.topbar}>
+          <Text style={styles.handle}>{myProfile.handle}</Text>
+          <View style={{ flexDirection: 'row', gap: 4 }}>
+            {isOwner && (
+              <Pressable onPress={() => router.push('/studio')} style={styles.iconTop}>
+                <Ionicons name="stats-chart" size={20} color={Afylo.gold} />
+              </Pressable>
+            )}
+            <Pressable onPress={() => setMenuOpen(true)} style={styles.iconTop}>
+              <Ionicons name="menu" size={24} color={Afylo.text} />
+            </Pressable>
+          </View>
+        </View>
+      </SafeAreaView>
+
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 110 }}>
+        {/* En-tête profil */}
+        <View style={styles.head}>
+          <Avatar uri={myProfile.avatar} size={88} ring />
+          <View style={styles.statsRow}>
+            <Stat value={myProfile.followers} label="Abonnés" />
+            <Stat value={myProfile.sales} label="Ventes" />
+            <Stat value={myProfile.views} label="Vues" />
+          </View>
+        </View>
+
+        <View style={styles.nameRow}>
+          <Text style={styles.name}>{myProfile.name}</Text>
+          <Badge label="créateur" color={Afylo.violet} />
+        </View>
+        <Text style={styles.bio}>{myProfile.bio}</Text>
+
+        {isOwner && (
+          <Pressable onPress={() => router.push('/studio')} style={styles.earnPill}>
+            <Ionicons name="wallet" size={16} color={Afylo.gold} />
+            <Text style={styles.earnText}>Gains totaux : </Text>
+            <Text style={styles.earnValue}>{myProfile.earnings} FCFA</Text>
+            <Ionicons name="chevron-forward" size={14} color={Afylo.textFaint} />
+          </Pressable>
+        )}
+
+        {/* Actions selon le rôle */}
+        <View style={styles.actions}>
+          {isOwner ? (
+            <>
+              <PillButton label="Modifier le profil" variant="light" style={{ flex: 1, height: 46 }} />
+              <PillButton label="Studio" icon="stats-chart" onPress={() => router.push('/studio')} style={{ flex: 1, height: 46 }} />
+            </>
+          ) : (
+            <>
+              <PillButton label="Suivre" style={{ flex: 1, height: 46 }} />
+              <PillButton label="Message" variant="ghost" icon="chatbubble-outline" style={{ flex: 1, height: 46 }} />
+            </>
+          )}
+        </View>
+
+        {/* Onglets de section */}
+        <View style={styles.tabs}>
+          <SectionTab icon="grid" active={section === 'posts'} onPress={() => setSection('posts')} />
+          <SectionTab icon="bag-handle" active={section === 'boutique'} onPress={() => setSection('boutique')} />
+          <SectionTab icon="radio" active={section === 'lives'} onPress={() => setSection('lives')} />
+        </View>
+
+        {section === 'posts' && <PostsGrid />}
+        {section === 'boutique' && <BoutiqueList isOwner={isOwner} />}
+        {section === 'lives' && <LivesList isOwner={isOwner} />}
+      </ScrollView>
+
+      {/* Menu hamburger */}
+      {menuOpen && (
+        <Pressable style={styles.overlay} onPress={() => setMenuOpen(false)}>
+          <SafeAreaView edges={['top']} style={styles.menu}>
+            <View style={styles.menuHandle} />
+            {isOwner && <MenuItem icon="stats-chart" label="Studio & statistiques" onPress={() => { setMenuOpen(false); router.push('/studio'); }} />}
+            {isOwner && <MenuItem icon="wallet-outline" label="Portefeuille & retraits" />}
+            {isOwner && <MenuItem icon="bag-add-outline" label="Gérer ma boutique" onPress={() => { setMenuOpen(false); setSection('boutique'); }} />}
+            <MenuItem icon="share-social-outline" label="Partager le profil" />
+            <MenuItem icon="bookmark-outline" label="Enregistrements" />
+            <MenuItem icon="settings-outline" label="Paramètres" />
+            <MenuItem icon="help-circle-outline" label="Aide" />
+            {isOwner && <MenuItem icon="log-out-outline" label="Déconnexion" danger onPress={async () => { setMenuOpen(false); await signOut(); }} />}
+          </SafeAreaView>
+        </Pressable>
+      )}
+    </View>
+  );
+}
+
+function Stat({ value, label }: { value: string; label: string }) {
+  return (
+    <View style={{ alignItems: 'center' }}>
+      <Text style={styles.statValue}>{value}</Text>
+      <Text style={styles.statLabel}>{label}</Text>
+    </View>
+  );
+}
+
+function SectionTab({ icon, active, onPress }: { icon: keyof typeof Ionicons.glyphMap; active: boolean; onPress: () => void }) {
+  return (
+    <Pressable onPress={onPress} style={[styles.tab, active && styles.tabActive]}>
+      <Ionicons name={icon} size={22} color={active ? Afylo.text : Afylo.textFaint} />
+    </Pressable>
+  );
+}
+
+function PostsGrid() {
+  return (
+    <View style={styles.mediaGrid}>
+      {myPosts.map((p) => (
+        <View key={p.id} style={styles.cell}>
+          <Image source={{ uri: p.image }} style={StyleSheet.absoluteFill} contentFit="cover" transition={200} />
+          {p.video && (
+            <View style={styles.cellTag}>
+              <Ionicons name="play" size={11} color="#fff" />
+              <Text style={styles.cellTagText}>{p.views}</Text>
+            </View>
+          )}
+        </View>
+      ))}
+    </View>
+  );
+}
+
+function BoutiqueList({ isOwner }: { isOwner: boolean }) {
+  return (
+    <View style={{ paddingHorizontal: 12, paddingTop: 12 }}>
+      {isOwner && (
+        <Pressable style={styles.createBtn}>
+          <Ionicons name="add-circle" size={22} color={Afylo.violet} />
+          <Text style={styles.createText}>Créer un produit</Text>
+        </Pressable>
+      )}
+      <View style={styles.prodGrid}>
+        {myProducts.map((p) => (
+          <ProductCard key={p.id} p={p} isOwner={isOwner} />
+        ))}
+      </View>
+    </View>
+  );
+}
+
+function ProductCard({ p, isOwner }: { p: MyProduct; isOwner: boolean }) {
+  return (
+    <View style={styles.prodCard}>
+      <View style={styles.prodImg}>
+        <Image source={{ uri: p.image }} style={StyleSheet.absoluteFill} contentFit="cover" transition={200} />
+        {!p.active && (
+          <View style={styles.inactive}>
+            <Text style={styles.inactiveText}>Épuisé</Text>
+          </View>
+        )}
+      </View>
+      <Text style={styles.prodTitle} numberOfLines={1}>{p.title}</Text>
+      <Text style={styles.prodPrice}>{p.price} F</Text>
+      {isOwner ? (
+        <View style={styles.prodMeta}>
+          <Text style={styles.prodStat}>{p.sold} vendus · {p.stock} en stock</Text>
+          <View style={styles.prodActions}>
+            <Pressable style={styles.prodAction}><Ionicons name="create-outline" size={17} color={Afylo.textDim} /></Pressable>
+            <Pressable style={styles.prodAction}><Ionicons name="trash-outline" size={17} color={Afylo.live} /></Pressable>
+          </View>
+        </View>
+      ) : (
+        <Pressable style={styles.buyBtn}><Text style={styles.buyBtnText}>Acheter</Text></Pressable>
+      )}
+    </View>
+  );
+}
+
+function LivesList({ isOwner }: { isOwner: boolean }) {
+  return (
+    <View style={{ paddingHorizontal: 16, paddingTop: 12, gap: 12 }}>
+      {isOwner && (
+        <Pressable style={styles.createBtn}>
+          <Ionicons name="radio" size={20} color={Afylo.live} />
+          <Text style={[styles.createText, { color: Afylo.live }]}>Démarrer un live</Text>
+        </Pressable>
+      )}
+      {myLives.map((l) => (
+        <LiveRow key={l.id} l={l} isOwner={isOwner} />
+      ))}
+    </View>
+  );
+}
+
+function LiveRow({ l, isOwner }: { l: MyLive; isOwner: boolean }) {
+  return (
+    <View style={styles.liveRow}>
+      <View style={styles.liveThumb}>
+        <Image source={{ uri: l.thumb }} style={StyleSheet.absoluteFill} contentFit="cover" transition={200} />
+        <View style={styles.playCircle}><Ionicons name="play" size={16} color="#fff" /></View>
+        <Text style={styles.liveDuration}>{l.duration}</Text>
+      </View>
+      <View style={{ flex: 1 }}>
+        <Text style={styles.liveTitle} numberOfLines={1}>{l.title}</Text>
+        <Text style={styles.liveMeta}>{l.date} · {l.viewers} spectateurs</Text>
+        {isOwner && (
+          <View style={styles.liveRevenue}>
+            <Ionicons name="cash-outline" size={13} color={Afylo.green} />
+            <Text style={styles.liveRevenueText}>{l.revenue} F générés</Text>
+          </View>
+        )}
+      </View>
+      <Ionicons name="ellipsis-vertical" size={18} color={Afylo.textFaint} />
+    </View>
+  );
+}
+
+function MenuItem({ icon, label, onPress, danger }: { icon: keyof typeof Ionicons.glyphMap; label: string; onPress?: () => void; danger?: boolean }) {
+  return (
+    <Pressable onPress={onPress} style={({ pressed }) => [styles.menuItem, pressed && { backgroundColor: Afylo.surfaceAlt }]}>
+      <Ionicons name={icon} size={22} color={danger ? Afylo.live : Afylo.text} />
+      <Text style={[styles.menuLabel, danger && { color: Afylo.live }]}>{label}</Text>
+    </Pressable>
+  );
+}
+
+const styles = StyleSheet.create({
+  root: { flex: 1, backgroundColor: Afylo.bg },
+  previewToggle: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 16, paddingVertical: 6 },
+  previewText: { color: Afylo.textFaint, fontSize: 12 },
+  previewChip: { paddingHorizontal: 10, paddingVertical: 3, borderRadius: Radius.pill, backgroundColor: Afylo.surface },
+  previewChipOn: { backgroundColor: Afylo.violet },
+  previewChipText: { color: Afylo.textDim, fontSize: 11, fontWeight: '700' },
+  previewChipTextOn: { color: '#fff' },
+
+  topbar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 18, paddingVertical: 6 },
+  handle: { color: Afylo.text, fontSize: 18, fontWeight: '800' },
+  iconTop: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
+
+  head: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 18, marginTop: 8, gap: 18 },
+  statsRow: { flex: 1, flexDirection: 'row', justifyContent: 'space-around' },
+  statValue: { color: Afylo.text, fontSize: 19, fontWeight: '800' },
+  statLabel: { color: Afylo.textDim, fontSize: 12, marginTop: 2 },
+  nameRow: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 18, marginTop: 14 },
+  name: { color: Afylo.text, fontSize: 18, fontWeight: '800' },
+  bio: { color: Afylo.textDim, fontSize: 14, lineHeight: 20, paddingHorizontal: 18, marginTop: 6 },
+  earnPill: { flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start', marginHorizontal: 18, marginTop: 12, backgroundColor: '#FFB0201A', borderWidth: 1, borderColor: '#FFB02033', paddingHorizontal: 12, paddingVertical: 8, borderRadius: Radius.pill, gap: 2 },
+  earnText: { color: Afylo.textDim, fontSize: 13 },
+  earnValue: { color: Afylo.gold, fontSize: 13, fontWeight: '800' },
+  actions: { flexDirection: 'row', gap: 12, paddingHorizontal: 18, marginTop: 16 },
+
+  tabs: { flexDirection: 'row', marginTop: 22, borderBottomWidth: 1, borderBottomColor: Afylo.surfaceAlt },
+  tab: { flex: 1, alignItems: 'center', paddingVertical: 12, borderBottomWidth: 2, borderBottomColor: 'transparent' },
+  tabActive: { borderBottomColor: Afylo.text },
+
+  mediaGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 2, marginTop: 2 },
+  cell: { width: '33%', aspectRatio: 0.8, backgroundColor: Afylo.surfaceAlt, flexGrow: 1 },
+  cellTag: { position: 'absolute', bottom: 6, left: 6, flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: '#00000088', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 8 },
+  cellTagText: { color: '#fff', fontSize: 10, fontWeight: '700' },
+
+  createBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: Afylo.surface, borderRadius: Radius.md, paddingVertical: 13, marginBottom: 12, borderWidth: 1, borderColor: Afylo.surfaceAlt },
+  createText: { color: Afylo.violet, fontWeight: '700', fontSize: 14 },
+  prodGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
+  prodCard: { width: '46%', flexGrow: 1, backgroundColor: Afylo.surface, borderRadius: Radius.md, padding: 8 },
+  prodImg: { aspectRatio: 1, borderRadius: Radius.sm, overflow: 'hidden', backgroundColor: Afylo.surfaceAlt, marginBottom: 8 },
+  inactive: { ...StyleSheet.absoluteFillObject, backgroundColor: '#000000AA', alignItems: 'center', justifyContent: 'center' },
+  inactiveText: { color: '#fff', fontWeight: '800', fontSize: 13 },
+  prodTitle: { color: Afylo.text, fontSize: 14, fontWeight: '700', paddingHorizontal: 2 },
+  prodPrice: { color: Afylo.gold, fontSize: 15, fontWeight: '800', paddingHorizontal: 2, marginTop: 2 },
+  prodMeta: { marginTop: 8, paddingHorizontal: 2 },
+  prodStat: { color: Afylo.textDim, fontSize: 11 },
+  prodActions: { flexDirection: 'row', gap: 8, marginTop: 8 },
+  prodAction: { flex: 1, alignItems: 'center', paddingVertical: 7, backgroundColor: Afylo.surfaceAlt, borderRadius: 8 },
+  buyBtn: { backgroundColor: Afylo.violet, borderRadius: Radius.pill, paddingVertical: 9, alignItems: 'center', marginTop: 8 },
+  buyBtnText: { color: '#fff', fontWeight: '800', fontSize: 13 },
+
+  liveRow: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: Afylo.surface, borderRadius: Radius.md, padding: 8 },
+  liveThumb: { width: 96, height: 64, borderRadius: 10, overflow: 'hidden', backgroundColor: Afylo.surfaceAlt, alignItems: 'center', justifyContent: 'center' },
+  playCircle: { width: 30, height: 30, borderRadius: 15, backgroundColor: '#00000088', alignItems: 'center', justifyContent: 'center' },
+  liveDuration: { position: 'absolute', bottom: 4, right: 4, color: '#fff', fontSize: 10, fontWeight: '700', backgroundColor: '#000000AA', paddingHorizontal: 4, borderRadius: 4 },
+  liveTitle: { color: Afylo.text, fontSize: 14, fontWeight: '700' },
+  liveMeta: { color: Afylo.textDim, fontSize: 12, marginTop: 2 },
+  liveRevenue: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 4 },
+  liveRevenueText: { color: Afylo.green, fontSize: 12, fontWeight: '700' },
+
+  overlay: { ...StyleSheet.absoluteFillObject, backgroundColor: '#000000AA', justifyContent: 'flex-start' },
+  menu: { backgroundColor: Afylo.surface, borderBottomLeftRadius: 24, borderBottomRightRadius: 24, paddingBottom: 16, paddingHorizontal: 8 },
+  menuHandle: { width: 40, height: 4, borderRadius: 2, backgroundColor: Afylo.surfaceAlt, alignSelf: 'center', marginVertical: 10 },
+  menuItem: { flexDirection: 'row', alignItems: 'center', gap: 16, paddingVertical: 14, paddingHorizontal: 14, borderRadius: Radius.md },
+  menuLabel: { color: Afylo.text, fontSize: 15, fontWeight: '600' },
+});

@@ -1,98 +1,95 @@
-import * as Device from 'expo-device';
-import { Platform, StyleSheet } from 'react-native';
+import { Image } from 'expo-image';
+import { LinearGradient } from 'expo-linear-gradient';
+import { useRouter } from 'expo-router';
+import { StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { AnimatedIcon } from '@/components/animated-icon';
-import { HintRow } from '@/components/hint-row';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { WebBadge } from '@/components/web-badge';
-import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
+import { PillButton } from '@/components/ui-kit';
+import { Afylo } from '@/constants/brand';
+import { useAuth } from '@/lib/auth';
+import { avatar } from '@/lib/mock';
 
-function getDevMenuHint() {
-  if (Platform.OS === 'web') {
-    return <ThemedText type="small">use browser devtools</ThemedText>;
-  }
-  if (Device.isDevice) {
-    return (
-      <ThemedText type="small">
-        shake device or press <ThemedText type="code">m</ThemedText> in terminal
-      </ThemedText>
-    );
-  }
-  const shortcut = Platform.OS === 'android' ? 'cmd+m (or ctrl+m)' : 'cmd+d';
+export default function Onboarding() {
+  const router = useRouter();
+  const { enterGuest } = useAuth();
+
+  const explore = () => {
+    enterGuest();
+    router.replace('/accueil');
+  };
+
   return (
-    <ThemedText type="small">
-      press <ThemedText type="code">{shortcut}</ThemedText>
-    </ThemedText>
+    <View style={styles.root}>
+      <LinearGradient colors={['#1A1740', '#0B0B14', '#0B0B14']} style={StyleSheet.absoluteFill} />
+      <SafeAreaView style={styles.safe}>
+        <Text style={styles.brand}>
+          Afylo<Text style={{ color: Afylo.violet }}>.</Text>
+        </Text>
+
+        {/* Collage d'avatars créateurs */}
+        <View style={styles.collage}>
+          <Tile n={5} size={96} top={10} left={20} r={-6} />
+          <Tile n={9} size={120} top={0} left={130} r={4} />
+          <Tile n={20} size={104} top={110} left={0} r={5} />
+          <Tile n={15} size={128} top={120} left={120} r={-4} ring />
+          <Tile n={45} size={92} top={240} left={40} r={6} />
+          <Tile n={33} size={100} top={230} left={160} r={-5} ring />
+        </View>
+
+        <View style={styles.bottom}>
+          <Text style={styles.title}>Crée. Vends. Gagne.</Text>
+          <Text style={styles.sub}>
+            Le réseau social qui rémunère les créateurs africains. Publie tes vidéos, lance tes lives et vends
+            directement à ton audience.
+          </Text>
+          <PillButton label="Commencer" icon="arrow-forward" onPress={() => router.push('/login')} style={{ marginTop: 24 }} />
+          <PillButton label="Explorer sans compte" variant="ghost" onPress={explore} style={{ marginTop: 12 }} />
+          <Text style={styles.login} onPress={() => router.push('/login')}>
+            J'ai déjà un compte <Text style={{ color: Afylo.violet, fontWeight: '700' }}>Se connecter</Text>
+          </Text>
+        </View>
+      </SafeAreaView>
+    </View>
   );
 }
 
-export default function HomeScreen() {
+function Tile({
+  n,
+  size,
+  top,
+  left,
+  r,
+  ring,
+}: {
+  n: number;
+  size: number;
+  top: number;
+  left: number;
+  r: number;
+  ring?: boolean;
+}) {
   return (
-    <ThemedView style={styles.container}>
-      <SafeAreaView style={styles.safeArea}>
-        <ThemedView style={styles.heroSection}>
-          <AnimatedIcon />
-          <ThemedText type="title" style={styles.title}>
-            Welcome to&nbsp;Expo
-          </ThemedText>
-        </ThemedView>
-
-        <ThemedText type="code" style={styles.code}>
-          get started
-        </ThemedText>
-
-        <ThemedView type="backgroundElement" style={styles.stepContainer}>
-          <HintRow
-            title="Try editing"
-            hint={<ThemedText type="code">src/app/index.tsx</ThemedText>}
-          />
-          <HintRow title="Dev tools" hint={getDevMenuHint()} />
-          <HintRow
-            title="Fresh start"
-            hint={<ThemedText type="code">npm run reset-project</ThemedText>}
-          />
-        </ThemedView>
-
-        {Platform.OS === 'web' && <WebBadge />}
-      </SafeAreaView>
-    </ThemedView>
+    <View style={[styles.tile, { width: size, height: size * 1.15, top, left, transform: [{ rotate: `${r}deg` }] }]}>
+      {ring && <LinearGradient colors={[Afylo.violet, Afylo.live]} style={StyleSheet.absoluteFill} />}
+      <Image
+        source={{ uri: avatar(n) }}
+        style={[styles.tileImg, ring && { margin: 3, borderRadius: 26 }]}
+        contentFit="cover"
+        transition={300}
+      />
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    justifyContent: 'center',
-    flexDirection: 'row',
-  },
-  safeArea: {
-    flex: 1,
-    paddingHorizontal: Spacing.four,
-    alignItems: 'center',
-    gap: Spacing.three,
-    paddingBottom: BottomTabInset + Spacing.three,
-    maxWidth: MaxContentWidth,
-  },
-  heroSection: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    flex: 1,
-    paddingHorizontal: Spacing.four,
-    gap: Spacing.four,
-  },
-  title: {
-    textAlign: 'center',
-  },
-  code: {
-    textTransform: 'uppercase',
-  },
-  stepContainer: {
-    gap: Spacing.three,
-    alignSelf: 'stretch',
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.four,
-    borderRadius: Spacing.four,
-  },
+  root: { flex: 1, backgroundColor: Afylo.bg },
+  safe: { flex: 1, paddingHorizontal: 24 },
+  brand: { color: Afylo.text, fontSize: 26, fontWeight: '800', marginTop: 8, letterSpacing: -0.5 },
+  collage: { height: 360, marginTop: 12, alignSelf: 'center', width: 300 },
+  tile: { position: 'absolute', borderRadius: 28, overflow: 'hidden', backgroundColor: Afylo.surfaceAlt },
+  tileImg: { flex: 1, borderRadius: 28 },
+  bottom: { marginTop: 'auto', paddingBottom: 12 },
+  title: { color: Afylo.text, fontSize: 34, fontWeight: '800', letterSpacing: -1 },
+  sub: { color: Afylo.textDim, fontSize: 15, lineHeight: 22, marginTop: 12 },
+  login: { color: Afylo.textDim, textAlign: 'center', marginTop: 18, fontSize: 14 },
 });

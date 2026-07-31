@@ -1,0 +1,61 @@
+import type { Session } from '@supabase/supabase-js';
+import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
+
+import { supabase } from './supabase';
+
+type AuthState = {
+  session: Session | null;
+  guest: boolean;
+  loading: boolean;
+  signIn: (email: string, password: string) => Promise<{ error: string | null }>;
+  signUp: (email: string, password: string) => Promise<{ error: string | null; needsConfirm: boolean }>;
+  signOut: () => Promise<void>;
+  enterGuest: () => void;
+};
+
+const AuthContext = createContext<AuthState | undefined>(undefined);
+
+export function AuthProvider({ children }: { children: ReactNode }) {
+  const [session, setSession] = useState<Session | null>(null);
+  const [guest, setGuest] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => {
+      setSession(data.session);
+      setLoading(false);
+    });
+    const { data: sub } = supabase.auth.onAuthStateChange((_event, s) => setSession(s));
+    return () => sub.subscription.unsubscribe();
+  }, []);
+
+  const signIn: AuthState['signIn'] = async (email, password) => {
+    const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
+    return { error: error?.message ?? null };
+  };
+
+  const signUp: AuthState['signUp'] = async (email, password) => {
+    const { data, error } = await supabase.auth.signUp({ email: email.trim(), password });
+    // Si la confirmation email est requise, il n'y a pas encore de session.
+    return { error: error?.message ?? null, needsConfirm: !error && !data.session };
+  };
+
+  const signOut = async () => {
+    setGuest(false);
+    await supabase.auth.signOut();
+  };
+
+  const enterGuest = () => setGuest(true);
+
+  return (
+    <AuthContext.Provider value={{ session, guest, loading, signIn, signUp, signOut, enterGuest }}>
+      {children}
+    </AuthContext.Provider>
+  );
+}
+
+export function useAuth() {
+  const ctx = useContext(AuthContext);
+  if (!ctx) throw new Error('useAuth doit être utilisé dans <AuthProvider>');
+  return ctx;
+}
