@@ -24,6 +24,7 @@ export interface Profile {
   website: string | null;
   account_type: AccountType;
   is_verified: boolean;
+  is_active: boolean;
   created_at: string;
   updated_at: string;
 }

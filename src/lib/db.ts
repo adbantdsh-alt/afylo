@@ -37,6 +37,21 @@ export async function updateMyProfile(patch: ProfileInput): Promise<void> {
   if (error) throw error;
 }
 
+/** Désactive le compte (données conservées) puis déconnecte. */
+export async function deactivateAccount(): Promise<void> {
+  const id = await requireUserId();
+  await supabase.from('profiles').update({ is_active: false }).eq('id', id);
+  await supabase.auth.signOut();
+}
+
+/** Supprime définitivement le compte et ses données (RGPD) puis déconnecte. */
+export async function deleteAccount(): Promise<void> {
+  await requireUserId();
+  const { error } = await supabase.rpc('delete_user');
+  if (error) throw error;
+  await supabase.auth.signOut();
+}
+
 // ---- Upload d'image vers Supabase Storage ----
 /** Upload une image locale (uri) et renvoie son URL publique. */
 export async function uploadImage(bucket: 'avatars' | 'products' | 'media', uri: string): Promise<string> {

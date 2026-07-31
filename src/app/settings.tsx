@@ -1,11 +1,12 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
-import { Linking, Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Linking, Modal, Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Afylo, Font, Radius, Type } from '@/constants/brand';
 import { useAuth } from '@/lib/auth';
+import { deactivateAccount, deleteAccount } from '@/lib/db';
 
 type Row = {
   icon: keyof typeof Ionicons.glyphMap;
@@ -15,7 +16,7 @@ type Row = {
   url?: string;
   toggle?: 'private' | 'push' | 'likes' | 'comments' | 'sales' | 'twofa';
   danger?: boolean;
-  action?: 'logout';
+  action?: 'logout' | 'deactivate' | 'delete';
 };
 
 export default function Settings() {
@@ -25,6 +26,25 @@ export default function Settings() {
   const [sw, setSw] = useState<Record<string, boolean>>({
     private: false, push: true, likes: true, comments: true, sales: true, twofa: false,
   });
+  const [confirm, setConfirm] = useState<'deactivate' | 'delete' | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  const runAccountAction = async () => {
+    if (!confirm) return;
+    setBusy(true);
+    setErr(null);
+    try {
+      if (confirm === 'deactivate') await deactivateAccount();
+      else await deleteAccount();
+      setConfirm(null);
+      router.replace('/'); // retour à l'accueil public
+    } catch (e: any) {
+      setErr(e.message ?? 'Action impossible.');
+    } finally {
+      setBusy(false);
+    }
+  };
 
   const sections: { title: string; rows: Row[] }[] = [
     {
@@ -82,9 +102,16 @@ export default function Settings() {
       rows: [
         { icon: 'help-circle-outline', label: 'Aide', url: 'mailto:support@afylo.app' },
         { icon: 'flag-outline', label: 'Signaler un problème', url: 'mailto:support@afylo.app' },
-        { icon: 'document-text-outline', label: "Conditions d'utilisation" },
-        { icon: 'shield-outline', label: 'Politique de confidentialité' },
-        { icon: 'information-circle-outline', label: 'À propos d\'Afylo', sub: 'Version 1.0.0' },
+        { icon: 'document-text-outline', label: "Conditions d'utilisation", route: '/legal/terms' },
+        { icon: 'shield-outline', label: 'Politique de confidentialité', route: '/legal/privacy' },
+        { icon: 'information-circle-outline', label: 'À propos d\'Afylo', sub: 'Version 1.0.0', route: '/legal/about' },
+      ],
+    },
+    {
+      title: 'Zone de compte',
+      rows: [
+        { icon: 'pause-circle-outline', label: 'Désactiver le compte', sub: 'Masquer temporairement, données conservées', action: 'deactivate' },
+        { icon: 'trash-outline', label: 'Supprimer le compte', sub: 'Suppression définitive (RGPD)', danger: true, action: 'delete' },
       ],
     },
     {
@@ -95,6 +122,7 @@ export default function Settings() {
 
   const onRow = async (r: Row) => {
     if (r.action === 'logout') { await signOut(); return; }
+    if (r.action === 'deactivate' || r.action === 'delete') { setConfirm(r.action); return; }
     if (r.route) router.push(r.route as any);
     else if (r.url) Linking.openURL(r.url);
   };
@@ -151,6 +179,39 @@ export default function Settings() {
           );
         })}
       </ScrollView>
+
+      {/* Confirmation désactivation / suppression */}
+      <Modal visible={!!confirm} transparent animationType="fade" onRequestClose={() => setConfirm(null)}>
+        <View style={styles.confirmBackdrop}>
+          <View style={styles.confirmCard}>
+            <View style={[styles.confirmIcon, confirm === 'delete' && { backgroundColor: '#E11D481A' }]}>
+              <Ionicons name={confirm === 'delete' ? 'trash' : 'pause'} size={26} color={confirm === 'delete' ? Afylo.live : Afylo.violet} />
+            </View>
+            <Text style={styles.confirmTitle}>
+              {confirm === 'delete' ? 'Supprimer ton compte ?' : 'Désactiver ton compte ?'}
+            </Text>
+            <Text style={styles.confirmText}>
+              {confirm === 'delete'
+                ? 'Cette action est définitive : ton profil, tes produits, vidéos et données seront supprimés. Impossible de revenir en arrière.'
+                : 'Ton compte sera masqué et tu seras déconnecté. Reconnecte-toi quand tu veux pour le réactiver.'}
+            </Text>
+            {err && <Text style={styles.confirmErr}>{err}</Text>}
+            <Pressable
+              onPress={runAccountAction}
+              disabled={busy}
+              style={[styles.confirmBtn, { backgroundColor: confirm === 'delete' ? Afylo.live : Afylo.violet }]}>
+              {busy ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <Text style={styles.confirmBtnText}>{confirm === 'delete' ? 'Supprimer définitivement' : 'Désactiver'}</Text>
+              )}
+            </Pressable>
+            <Pressable onPress={() => setConfirm(null)} style={{ marginTop: 12 }} disabled={busy}>
+              <Text style={styles.confirmCancel}>Annuler</Text>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -169,4 +230,14 @@ const styles = StyleSheet.create({
   rowBorderBottom: { borderBottomWidth: 1, borderBottomColor: Afylo.bg },
   rowLabel: { ...Type.body, fontSize: 15, color: Afylo.text },
   rowSub: { ...Type.caption, color: Afylo.textDim, marginTop: 2 },
+
+  confirmBackdrop: { flex: 1, backgroundColor: '#00000077', alignItems: 'center', justifyContent: 'center', padding: 28 },
+  confirmCard: { backgroundColor: Afylo.bg, borderRadius: 24, padding: 24, alignItems: 'center', width: '100%', maxWidth: 380 },
+  confirmIcon: { width: 60, height: 60, borderRadius: 18, backgroundColor: '#3E5BFF1A', alignItems: 'center', justifyContent: 'center', marginBottom: 14 },
+  confirmTitle: { ...Type.title, fontSize: 20, color: Afylo.text, textAlign: 'center' },
+  confirmText: { ...Type.body, color: Afylo.textDim, textAlign: 'center', marginTop: 8 },
+  confirmErr: { ...Type.small, color: Afylo.live, marginTop: 12, textAlign: 'center' },
+  confirmBtn: { height: 52, borderRadius: Radius.pill, alignItems: 'center', justifyContent: 'center', alignSelf: 'stretch', marginTop: 18 },
+  confirmBtnText: { color: '#fff', fontFamily: Font.semibold, fontSize: 16 },
+  confirmCancel: { ...Type.body, fontFamily: Font.semibold, color: Afylo.textDim, textAlign: 'center' },
 });

@@ -8,6 +8,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { PillButton } from '@/components/ui-kit';
 import { Afylo, Radius } from '@/constants/brand';
 import { useAuth } from '@/lib/auth';
+import { supabase } from '@/lib/supabase';
 
 export default function Login() {
   const router = useRouter();
@@ -49,9 +50,21 @@ export default function Login() {
     }
   };
 
+  const forgotPassword = async () => {
+    setError(null);
+    setInfo(null);
+    if (!email.trim()) {
+      setError('Entre ton email d\'abord, puis touche « Mot de passe oublié ».');
+      return;
+    }
+    const { error } = await supabase.auth.resetPasswordForEmail(email.trim());
+    if (error) setError(traduire(error));
+    else setInfo('Email de réinitialisation envoyé. Vérifie ta boîte mail.');
+  };
+
   return (
     <View style={styles.root}>
-      <LinearGradient colors={['#FBE7D8', '#F4EFE6', '#F4EFE6']} style={StyleSheet.absoluteFill} />
+      <LinearGradient colors={['#E7ECFF', '#F4EFE6', '#F4EFE6']} style={StyleSheet.absoluteFill} />
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
         <SafeAreaView style={styles.safe}>
           <Pressable onPress={() => router.back()} style={styles.back}>
@@ -78,6 +91,11 @@ export default function Login() {
 
           <Field icon="mail-outline" placeholder="Email" value={email} onChange={setEmail} keyboardType="email-address" />
           <Field icon="lock-closed-outline" placeholder="Mot de passe" value={password} onChange={setPassword} secure />
+          {mode === 'signup' && <Text style={styles.hint}>Au moins 6 caractères.</Text>}
+
+          {mode === 'login' && (
+            <Text style={styles.forgot} onPress={forgotPassword}>Mot de passe oublié ?</Text>
+          )}
 
           {error && <Text style={styles.error}>{error}</Text>}
           {info && <Text style={styles.info}>{info}</Text>}
@@ -122,6 +140,7 @@ function Field({
   secure?: boolean;
   keyboardType?: 'email-address' | 'default';
 }) {
+  const [hidden, setHidden] = useState(true);
   return (
     <View style={styles.field}>
       <Ionicons name={icon} size={20} color={Afylo.textDim} />
@@ -131,11 +150,16 @@ function Field({
         placeholderTextColor={Afylo.textFaint}
         value={value}
         onChangeText={onChange}
-        secureTextEntry={secure}
+        secureTextEntry={secure && hidden}
         keyboardType={keyboardType}
         autoCapitalize="none"
         autoCorrect={false}
       />
+      {secure && (
+        <Pressable onPress={() => setHidden((v) => !v)} hitSlop={10}>
+          <Ionicons name={hidden ? 'eye-outline' : 'eye-off-outline'} size={22} color={Afylo.textDim} />
+        </Pressable>
+      )}
     </View>
   );
 }
@@ -175,6 +199,8 @@ const styles = StyleSheet.create({
     borderColor: Afylo.surfaceAlt,
   },
   input: { flex: 1, color: Afylo.text, fontSize: 16, height: '100%' },
+  hint: { color: Afylo.textDim, fontSize: 13, marginTop: 8, marginLeft: 4 },
+  forgot: { color: Afylo.violet, fontSize: 14, fontWeight: '700', textAlign: 'right', marginTop: 12 },
   error: { color: Afylo.live, fontSize: 14, marginTop: 14, fontWeight: '600' },
   info: { color: Afylo.green, fontSize: 14, marginTop: 14, fontWeight: '600', lineHeight: 20 },
   guest: { color: Afylo.textDim, fontSize: 15, fontWeight: '700', textAlign: 'center', marginTop: 22 },
