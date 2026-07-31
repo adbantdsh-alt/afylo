@@ -14,6 +14,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { Afylo } from '@/constants/brand';
 import '../global.css';
 import { AuthProvider, useAuth } from '@/lib/auth';
+import { AuthGateProvider } from '@/lib/auth-gate';
 
 // Routes accessibles sans être connecté
 const PUBLIC = ['index', 'login'];
@@ -88,7 +89,9 @@ export default function RootLayout() {
     <SafeAreaProvider>
       <StatusBar style="dark" />
       <AuthProvider>
-        <RootNavigator />
+        <AuthGateProvider>
+          <RootNavigator />
+        </AuthGateProvider>
       </AuthProvider>
     </SafeAreaProvider>
   );

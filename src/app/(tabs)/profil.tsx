@@ -49,6 +49,23 @@ export default function Profil() {
     } catch {}
   };
 
+  // Invité : pas d'accès au profil (publier/vendre/gérer) → invitation à s'inscrire
+  if (!session) {
+    return (
+      <View style={styles.root}>
+        <SafeAreaView edges={['top']} style={styles.guestWrap}>
+          <View style={styles.guestIcon}>
+            <Ionicons name="person" size={38} color={Afylo.violet} />
+          </View>
+          <Text style={styles.guestTitle}>Ton profil t'attend</Text>
+          <Text style={styles.guestSub}>Crée un compte pour publier tes vidéos, vendre tes produits, suivre des créateurs et gérer ta boutique.</Text>
+          <PillButton label="Créer un compte" onPress={() => router.push('/login?mode=signup')} style={{ marginTop: 26, alignSelf: 'stretch' }} />
+          <PillButton label="Se connecter" variant="ghost" onPress={() => router.push('/login')} style={{ marginTop: 12, alignSelf: 'stretch' }} />
+        </SafeAreaView>
+      </View>
+    );
+  }
+
   return (
     <View style={styles.root}>
       {/* Bascule d'aperçu propriétaire / visiteur (dev — sera l'auth plus tard) */}
@@ -326,6 +343,10 @@ function MenuItem({ icon, label, onPress, danger }: { icon: keyof typeof Ionicon
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: Afylo.bg },
+  guestWrap: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 32 },
+  guestIcon: { width: 76, height: 76, borderRadius: 24, backgroundColor: '#3E5BFF1A', alignItems: 'center', justifyContent: 'center', marginBottom: 20 },
+  guestTitle: { ...Type.title, color: Afylo.text, textAlign: 'center' },
+  guestSub: { ...Type.body, color: Afylo.textDim, textAlign: 'center', marginTop: 10 },
   previewToggle: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 16, paddingVertical: 6 },
   previewText: { color: Afylo.textFaint, fontSize: 12 },
   previewChip: { paddingHorizontal: 10, paddingVertical: 3, borderRadius: Radius.pill, backgroundColor: Afylo.surface },

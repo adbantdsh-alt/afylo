@@ -5,6 +5,7 @@ import { Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Afylo } from '@/constants/brand';
+import { useAuthGate } from '@/lib/auth-gate';
 
 const ICONS: Record<string, [keyof typeof Ionicons.glyphMap, keyof typeof Ionicons.glyphMap]> = {
   accueil: ['home', 'home-outline'],
@@ -15,6 +16,7 @@ const ICONS: Record<string, [keyof typeof Ionicons.glyphMap, keyof typeof Ionico
 
 export function AfyloTabBar({ state, navigation }: BottomTabBarProps) {
   const insets = useSafeAreaInsets();
+  const gate = useAuthGate();
 
   return (
     <View style={[styles.wrap, { paddingBottom: Math.max(insets.bottom, 12) }]} pointerEvents="box-none">
@@ -29,7 +31,7 @@ export function AfyloTabBar({ state, navigation }: BottomTabBarProps) {
 
           if (route.name === 'creer') {
             return (
-              <Pressable key={route.key} onPress={onPress} style={styles.fabWrap}>
+              <Pressable key={route.key} onPress={() => { if (gate('publier ou vendre')) onPress(); }} style={styles.fabWrap}>
                 <View style={styles.fab}>
                   <Ionicons name="add" size={30} color="#fff" />
                 </View>

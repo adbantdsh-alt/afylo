@@ -7,6 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Avatar, Badge, IconButton } from '@/components/ui-kit';
 import { Afylo, Font, Radius, Type } from '@/constants/brand';
+import { useAuthGate } from '@/lib/auth-gate';
 import { lives, me, posts, type Post } from '@/lib/mock';
 
 export default function Feed() {
@@ -62,10 +63,15 @@ export default function Feed() {
 
 function PostCard({ post }: { post: Post }) {
   const router = useRouter();
+  const gate = useAuthGate();
   const badgeColor = post.badge === 'boutique' ? Afylo.gold : Afylo.violet;
   const [followed, setFollowed] = useState(false);
   const [liked, setLiked] = useState(false);
   const [bought, setBought] = useState(false);
+
+  const toggleFollow = () => { if (gate('suivre ce créateur')) setFollowed((v) => !v); };
+  const toggleLike = () => { if (gate('aimer')) setLiked((v) => !v); };
+  const buy = () => { if (gate('acheter')) setBought(true); };
 
   const openProfile = () =>
     router.push({
@@ -87,13 +93,13 @@ function PostCard({ post }: { post: Post }) {
             <Text style={styles.time}>{post.time}</Text>
           </View>
         </Pressable>
-        <Pressable onPress={() => setFollowed((v) => !v)} style={[styles.followBtn, followed && styles.followBtnOn]}>
+        <Pressable onPress={toggleFollow} style={[styles.followBtn, followed && styles.followBtnOn]}>
           <Text style={[styles.followText, followed && styles.followTextOn]}>{followed ? 'Suivi' : 'Suivre'}</Text>
         </Pressable>
       </View>
 
       {/* Média */}
-      <Pressable style={styles.media} onPress={() => setLiked((v) => !v)}>
+      <Pressable style={styles.media} onPress={toggleLike}>
         <Image source={{ uri: post.image }} style={styles.mediaImg} contentFit="cover" transition={250} />
         <View style={styles.playBadge}>
           <Ionicons name="play" size={13} color="#fff" />
@@ -113,7 +119,7 @@ function PostCard({ post }: { post: Post }) {
             </Text>
             <Text style={styles.buyPrice}>{post.product.price}</Text>
           </View>
-          <Pressable onPress={() => setBought(true)} style={[styles.buyCta, bought && { backgroundColor: Afylo.green }]}>
+          <Pressable onPress={buy} style={[styles.buyCta, bought && { backgroundColor: Afylo.green }]}>
             <Text style={[styles.buyCtaText, bought && { color: '#fff' }]}>{bought ? 'Ajouté ✓' : 'Acheter'}</Text>
           </Pressable>
         </View>
@@ -121,7 +127,7 @@ function PostCard({ post }: { post: Post }) {
 
       {/* Stats */}
       <View style={styles.stats}>
-        <Pressable onPress={() => setLiked((v) => !v)}>
+        <Pressable onPress={toggleLike}>
           <Stat icon={liked ? 'heart' : 'heart-outline'} label={bumpLike(post.likes, liked)} color={liked ? Afylo.live : Afylo.inkDim} />
         </Pressable>
         <Stat icon="chatbubble-ellipses" label={post.comments} />
