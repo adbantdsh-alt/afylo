@@ -50,7 +50,7 @@ export default function Login() {
 
   return (
     <View style={styles.root}>
-      <LinearGradient colors={['#1A1740', '#0B0B14', '#0B0B14']} style={StyleSheet.absoluteFill} />
+      <LinearGradient colors={['#FBE7D8', '#F4EFE6', '#F4EFE6']} style={StyleSheet.absoluteFill} />
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
         <SafeAreaView style={styles.safe}>
           <Pressable onPress={() => router.back()} style={styles.back}>

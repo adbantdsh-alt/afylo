@@ -20,7 +20,7 @@ export default function Onboarding() {
 
   return (
     <View style={styles.root}>
-      <LinearGradient colors={['#1A1740', '#0B0B14', '#0B0B14']} style={StyleSheet.absoluteFill} />
+      <LinearGradient colors={['#FBE7D8', '#F4EFE6', '#F4EFE6']} style={StyleSheet.absoluteFill} />
       <SafeAreaView style={styles.safe}>
         <Text style={styles.brand}>
           Afylo<Text style={{ color: Afylo.violet }}>.</Text>

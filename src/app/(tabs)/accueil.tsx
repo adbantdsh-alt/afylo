@@ -1,6 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useState } from 'react';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Avatar, Badge, IconButton } from '@/components/ui-kit';
@@ -60,6 +61,10 @@ export default function Feed() {
 
 function PostCard({ post }: { post: Post }) {
   const badgeColor = post.badge === 'boutique' ? Afylo.gold : Afylo.violet;
+  const [followed, setFollowed] = useState(false);
+  const [liked, setLiked] = useState(false);
+  const [bought, setBought] = useState(false);
+
   return (
     <View style={styles.card}>
       {/* En-tête */}
@@ -72,19 +77,19 @@ function PostCard({ post }: { post: Post }) {
           </View>
           <Text style={styles.time}>{post.time}</Text>
         </View>
-        <View style={styles.followBtn}>
-          <Text style={styles.followText}>Suivre</Text>
-        </View>
+        <Pressable onPress={() => setFollowed((v) => !v)} style={[styles.followBtn, followed && styles.followBtnOn]}>
+          <Text style={[styles.followText, followed && styles.followTextOn]}>{followed ? 'Suivi' : 'Suivre'}</Text>
+        </Pressable>
       </View>
 
       {/* Média */}
-      <View style={styles.media}>
+      <Pressable style={styles.media} onPress={() => setLiked((v) => !v)}>
         <Image source={{ uri: post.image }} style={styles.mediaImg} contentFit="cover" transition={250} />
         <View style={styles.playBadge}>
           <Ionicons name="play" size={13} color="#fff" />
           <Text style={styles.playText}>0:24</Text>
         </View>
-      </View>
+      </Pressable>
 
       {/* Barre "Acheter" (live shopping) */}
       {post.product && (
@@ -98,15 +103,17 @@ function PostCard({ post }: { post: Post }) {
             </Text>
             <Text style={styles.buyPrice}>{post.product.price}</Text>
           </View>
-          <View style={styles.buyCta}>
-            <Text style={styles.buyCtaText}>Acheter</Text>
-          </View>
+          <Pressable onPress={() => setBought(true)} style={[styles.buyCta, bought && { backgroundColor: Afylo.green }]}>
+            <Text style={[styles.buyCtaText, bought && { color: '#fff' }]}>{bought ? 'Ajouté ✓' : 'Acheter'}</Text>
+          </Pressable>
         </View>
       )}
 
       {/* Stats */}
       <View style={styles.stats}>
-        <Stat icon="heart" label={post.likes} color={Afylo.live} />
+        <Pressable onPress={() => setLiked((v) => !v)}>
+          <Stat icon={liked ? 'heart' : 'heart-outline'} label={bumpLike(post.likes, liked)} color={liked ? Afylo.live : Afylo.inkDim} />
+        </Pressable>
         <Stat icon="chatbubble-ellipses" label={post.comments} />
         <Stat icon="eye" label={post.views} />
         <View style={{ flex: 1 }} />
@@ -116,6 +123,14 @@ function PostCard({ post }: { post: Post }) {
       <Text style={styles.caption}>{post.caption}</Text>
     </View>
   );
+}
+
+/** +1 visuel quand on like (les compteurs façon "7.2k" restent tels quels). */
+function bumpLike(base: string, liked: boolean): string {
+  if (!liked) return base;
+  if (base.includes('k') || base.includes('M')) return base;
+  const n = parseInt(base, 10);
+  return isNaN(n) ? base : String(n + 1);
 }
 
 function Stat({
@@ -185,7 +200,9 @@ const styles = StyleSheet.create({
   name: { color: Afylo.ink, fontSize: 15, fontWeight: '700' },
   time: { color: Afylo.inkDim, fontSize: 12, marginTop: 2 },
   followBtn: { backgroundColor: Afylo.violet, paddingHorizontal: 18, paddingVertical: 8, borderRadius: Radius.pill },
+  followBtnOn: { backgroundColor: 'transparent', borderWidth: 1.5, borderColor: Afylo.border, paddingHorizontal: 16 },
   followText: { color: '#fff', fontWeight: '700', fontSize: 13 },
+  followTextOn: { color: Afylo.text },
 
   media: { borderRadius: Radius.lg, overflow: 'hidden', aspectRatio: 1.05, backgroundColor: Afylo.surfaceAlt },
   mediaImg: { flex: 1 },
@@ -207,7 +224,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-    backgroundColor: '#F3F1FF',
+    backgroundColor: '#FBEBE0',
     borderRadius: Radius.md,
     padding: 8,
     marginTop: 10,

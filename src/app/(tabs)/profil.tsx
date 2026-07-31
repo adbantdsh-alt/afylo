@@ -1,14 +1,18 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
-import { useRouter } from 'expo-router';
-import { useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useFocusEffect, useRouter } from 'expo-router';
+import { useCallback, useState } from 'react';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Avatar, Badge, PillButton } from '@/components/ui-kit';
 import { Afylo, Radius } from '@/constants/brand';
 import { useAuth } from '@/lib/auth';
-import { myLives, myPosts, myProducts, myProfile, type MyLive, type MyProduct } from '@/lib/mock';
+import { deleteProduct, listMyProducts } from '@/lib/db';
+import { myLives, myPosts, myProducts, myProfile, photo, type MyLive } from '@/lib/mock';
+
+/** Forme d'affichage commune (produit réel ou démo). */
+type DisplayProduct = { id: string; title: string; price: string; stock: number; sold: number; image: string; active: boolean; real: boolean };
 
 type Section = 'posts' | 'boutique' | 'lives';
 
@@ -158,24 +162,80 @@ function PostsGrid() {
 }
 
 function BoutiqueList({ isOwner }: { isOwner: boolean }) {
+  const router = useRouter();
+  const { session } = useAuth();
+  const [products, setProducts] = useState<DisplayProduct[] | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  const load = useCallback(async () => {
+    if (!session) {
+      setProducts(null); // pas connecté → on montrera la démo
+      return;
+    }
+    setLoading(true);
+    try {
+      const rows = await listMyProducts();
+      setProducts(
+        rows.map((r) => ({
+          id: r.id,
+          title: r.title,
+          price: r.price_cfa.toLocaleString('fr-FR'),
+          stock: r.stock,
+          sold: r.sold_count,
+          image: r.image_url || photo(`prod-${r.id}`, 400, 400),
+          active: r.is_active,
+          real: true,
+        })),
+      );
+    } finally {
+      setLoading(false);
+    }
+  }, [session]);
+
+  useFocusEffect(
+    useCallback(() => {
+      load();
+    }, [load]),
+  );
+
+  const remove = async (id: string) => {
+    await deleteProduct(id);
+    load();
+  };
+
+  // Réels si connecté, sinon démo (mode invité / visiteur)
+  const demo: DisplayProduct[] = myProducts.map((p) => ({ ...p, real: false }));
+  const list = session && products ? products : demo;
+
   return (
     <View style={{ paddingHorizontal: 12, paddingTop: 12 }}>
       {isOwner && (
-        <Pressable style={styles.createBtn}>
+        <Pressable style={styles.createBtn} onPress={() => router.push('/product-new')}>
           <Ionicons name="add-circle" size={22} color={Afylo.violet} />
           <Text style={styles.createText}>Créer un produit</Text>
         </Pressable>
       )}
+
+      {loading && <ActivityIndicator color={Afylo.violet} style={{ marginVertical: 20 }} />}
+
+      {isOwner && session && list.length === 0 && !loading && (
+        <Text style={styles.emptyText}>Aucun produit pour l'instant. Crée ton premier article ci-dessus 👆</Text>
+      )}
+
+      {!session && isOwner && (
+        <Text style={styles.demoNote}>Aperçu démo — connecte-toi pour gérer ta vraie boutique.</Text>
+      )}
+
       <View style={styles.prodGrid}>
-        {myProducts.map((p) => (
-          <ProductCard key={p.id} p={p} isOwner={isOwner} />
+        {list.map((p) => (
+          <ProductCard key={p.id} p={p} isOwner={isOwner} onDelete={p.real ? () => remove(p.id) : undefined} />
         ))}
       </View>
     </View>
   );
 }
 
-function ProductCard({ p, isOwner }: { p: MyProduct; isOwner: boolean }) {
+function ProductCard({ p, isOwner, onDelete }: { p: DisplayProduct; isOwner: boolean; onDelete?: () => void }) {
   return (
     <View style={styles.prodCard}>
       <View style={styles.prodImg}>
@@ -193,7 +253,9 @@ function ProductCard({ p, isOwner }: { p: MyProduct; isOwner: boolean }) {
           <Text style={styles.prodStat}>{p.sold} vendus · {p.stock} en stock</Text>
           <View style={styles.prodActions}>
             <Pressable style={styles.prodAction}><Ionicons name="create-outline" size={17} color={Afylo.textDim} /></Pressable>
-            <Pressable style={styles.prodAction}><Ionicons name="trash-outline" size={17} color={Afylo.live} /></Pressable>
+            <Pressable style={styles.prodAction} onPress={onDelete} disabled={!onDelete}>
+              <Ionicons name="trash-outline" size={17} color={onDelete ? Afylo.live : Afylo.textFaint} />
+            </Pressable>
           </View>
         </View>
       ) : (
@@ -287,6 +349,8 @@ const styles = StyleSheet.create({
 
   createBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: Afylo.surface, borderRadius: Radius.md, paddingVertical: 13, marginBottom: 12, borderWidth: 1, borderColor: Afylo.surfaceAlt },
   createText: { color: Afylo.violet, fontWeight: '700', fontSize: 14 },
+  emptyText: { color: Afylo.textDim, fontSize: 14, textAlign: 'center', paddingVertical: 24, paddingHorizontal: 20, lineHeight: 20 },
+  demoNote: { color: Afylo.textFaint, fontSize: 12, textAlign: 'center', marginBottom: 12 },
   prodGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
   prodCard: { width: '46%', flexGrow: 1, backgroundColor: Afylo.surface, borderRadius: Radius.md, padding: 8 },
   prodImg: { aspectRatio: 1, borderRadius: Radius.sm, overflow: 'hidden', backgroundColor: Afylo.surfaceAlt, marginBottom: 8 },

@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
-import { LinearGradient } from 'expo-linear-gradient';
+import { BlurView } from 'expo-blur';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -17,8 +17,8 @@ export function AfyloTabBar({ state, navigation }: BottomTabBarProps) {
   const insets = useSafeAreaInsets();
 
   return (
-    <View style={[styles.wrap, { paddingBottom: Math.max(insets.bottom, 10) }]}>
-      <View style={styles.bar}>
+    <View style={[styles.wrap, { paddingBottom: Math.max(insets.bottom, 12) }]} pointerEvents="box-none">
+      <BlurView intensity={40} tint="light" style={styles.bar}>
         {state.routes.map((route, index) => {
           const focused = state.index === index;
 
@@ -27,17 +27,12 @@ export function AfyloTabBar({ state, navigation }: BottomTabBarProps) {
             if (!focused && !event.defaultPrevented) navigation.navigate(route.name);
           };
 
-          // Bouton central "Créer"
           if (route.name === 'creer') {
             return (
               <Pressable key={route.key} onPress={onPress} style={styles.fabWrap}>
-                <LinearGradient
-                  colors={[Afylo.violet, Afylo.violet2]}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                  style={styles.fab}>
+                <View style={styles.fab}>
                   <Ionicons name="add" size={30} color="#fff" />
-                </LinearGradient>
+                </View>
               </Pressable>
             );
           }
@@ -45,11 +40,12 @@ export function AfyloTabBar({ state, navigation }: BottomTabBarProps) {
           const [on, off] = ICONS[route.name] ?? ['ellipse', 'ellipse-outline'];
           return (
             <Pressable key={route.key} onPress={onPress} style={styles.tab}>
-              <Ionicons name={focused ? on : off} size={26} color={focused ? Afylo.text : Afylo.textFaint} />
+              <Ionicons name={focused ? on : off} size={25} color={focused ? Afylo.text : Afylo.textFaint} />
+              {focused && <View style={styles.dot} />}
             </Pressable>
           );
         })}
-      </View>
+      </BlurView>
     </View>
   );
 }
@@ -60,32 +56,38 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-around',
-    backgroundColor: '#101019',
-    borderRadius: 32,
-    height: 62,
-    marginHorizontal: 18,
-    paddingHorizontal: 10,
+    height: 64,
     width: '92%',
+    marginHorizontal: 16,
+    borderRadius: 34,
+    paddingHorizontal: 10,
+    overflow: 'hidden',
     borderWidth: 1,
-    borderColor: '#22222E',
-    shadowColor: '#000',
-    shadowOpacity: 0.4,
-    shadowRadius: 16,
-    shadowOffset: { width: 0, height: 8 },
+    borderColor: Afylo.glassBorder,
+    backgroundColor: Afylo.glass,
+    // ombre douce (liquid glass qui flotte)
+    shadowColor: Afylo.glassShadow,
+    shadowOpacity: 1,
+    shadowRadius: 24,
+    shadowOffset: { width: 0, height: 10 },
     elevation: 12,
   },
   tab: { flex: 1, alignItems: 'center', justifyContent: 'center', height: '100%' },
+  dot: { width: 5, height: 5, borderRadius: 3, backgroundColor: Afylo.violet, marginTop: 5 },
   fabWrap: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   fab: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
+    width: 54,
+    height: 54,
+    borderRadius: 27,
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: Afylo.violet,
+    borderWidth: 3,
+    borderColor: 'rgba(255,255,255,0.65)',
     shadowColor: Afylo.violet,
-    shadowOpacity: 0.6,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.45,
+    shadowRadius: 14,
+    shadowOffset: { width: 0, height: 6 },
     elevation: 10,
   },
 });

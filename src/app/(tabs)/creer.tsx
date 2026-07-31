@@ -7,10 +7,11 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Afylo, Radius } from '@/constants/brand';
 
 const OPTIONS = [
-  { icon: 'videocam', title: 'Vidéo courte', desc: 'Filme, monte et publie en quelques secondes', color: Afylo.violet },
-  { icon: 'radio', title: 'Démarrer un live', desc: 'Vends en direct avec le bouton Acheter', color: Afylo.live },
-  { icon: 'bag-add', title: 'Ajouter un produit', desc: 'Mets un article dans ta boutique', color: Afylo.gold },
-  { icon: 'repeat', title: 'Revendre (affiliation)', desc: 'Gagne une commission sans stock', color: Afylo.green },
+  { icon: 'videocam', title: 'Vidéo courte', desc: 'Filme, monte et publie en quelques secondes', color: Afylo.violet, route: '/post-new?kind=video' },
+  { icon: 'image', title: 'Photo / Story', desc: 'Publie une image et attache tes produits', color: Afylo.violet2, route: '/post-new?kind=image' },
+  { icon: 'radio', title: 'Démarrer un live', desc: 'Vends en direct avec le bouton Acheter', color: Afylo.live, route: '/post-new?kind=video' },
+  { icon: 'bag-add', title: 'Ajouter un produit', desc: 'Mets un article dans ta boutique', color: Afylo.gold, route: '/product-new' },
+  { icon: 'repeat', title: 'Revendre (affiliation)', desc: 'Gagne une commission sans stock', color: Afylo.green, route: '/feed' },
 ] as const;
 
 export default function Creer() {
@@ -28,7 +29,7 @@ export default function Creer() {
 
         <View style={{ gap: 14, marginTop: 20 }}>
           {OPTIONS.map((o) => (
-            <Pressable key={o.title} style={({ pressed }) => [styles.opt, { opacity: pressed ? 0.85 : 1 }]}>
+            <Pressable key={o.title} onPress={() => router.push(o.route as any)} style={({ pressed }) => [styles.opt, { opacity: pressed ? 0.85 : 1 }]}>
               <LinearGradient
                 colors={[o.color, o.color + 'AA']}
                 start={{ x: 0, y: 0 }}

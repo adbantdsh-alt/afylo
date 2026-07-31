@@ -57,8 +57,8 @@ export function PillButton({
         <ActivityIndicator color={variant === 'primary' ? '#fff' : Afylo.violet} />
       ) : (
         <>
-          {icon && <Ionicons name={icon} size={18} color={variant === 'light' ? Afylo.ink : '#fff'} />}
-          <Text style={[styles.pillText, variant === 'light' && { color: Afylo.ink }]}>{label}</Text>
+          {icon && <Ionicons name={icon} size={18} color={variant === 'primary' ? '#fff' : Afylo.ink} />}
+          <Text style={[styles.pillText, variant !== 'primary' && { color: Afylo.ink }]}>{label}</Text>
         </>
       )}
     </View>
@@ -119,7 +119,7 @@ export function IconButton({
 
 const styles = StyleSheet.create({
   pill: { height: 54, borderRadius: Radius.pill, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24 },
-  pillGhost: { backgroundColor: 'transparent', borderWidth: 1.5, borderColor: '#FFFFFF33' },
+  pillGhost: { backgroundColor: 'transparent', borderWidth: 1.5, borderColor: Afylo.border },
   pillLight: { backgroundColor: '#fff' },
   pillRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   pillText: { color: '#fff', fontSize: 16, fontWeight: '700' },

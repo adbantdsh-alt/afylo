@@ -1,3 +1,11 @@
+import {
+  BricolageGrotesque_400Regular,
+  BricolageGrotesque_500Medium,
+  BricolageGrotesque_600SemiBold,
+  BricolageGrotesque_700Bold,
+  BricolageGrotesque_800ExtraBold,
+  useFonts,
+} from '@expo-google-fonts/bricolage-grotesque';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
@@ -5,6 +13,7 @@ import { ActivityIndicator, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { Afylo } from '@/constants/brand';
+import '../global.css';
 import { AuthProvider, useAuth } from '@/lib/auth';
 
 // Routes accessibles sans être connecté
@@ -47,14 +56,33 @@ function RootNavigator() {
       <Stack.Screen name="login" />
       <Stack.Screen name="(tabs)" />
       <Stack.Screen name="studio" />
+      <Stack.Screen name="product-new" options={{ presentation: 'modal' }} />
+      <Stack.Screen name="post-new" options={{ presentation: 'modal' }} />
     </Stack>
   );
 }
 
 export default function RootLayout() {
+  const [fontsLoaded, fontError] = useFonts({
+    BricolageGrotesque_400Regular,
+    BricolageGrotesque_500Medium,
+    BricolageGrotesque_600SemiBold,
+    BricolageGrotesque_700Bold,
+    BricolageGrotesque_800ExtraBold,
+  });
+
+  // Ne jamais bloquer le site si une police échoue à charger.
+  if (!fontsLoaded && !fontError) {
+    return (
+      <View style={{ flex: 1, backgroundColor: Afylo.bg, alignItems: 'center', justifyContent: 'center' }}>
+        <ActivityIndicator color={Afylo.violet} size="large" />
+      </View>
+    );
+  }
+
   return (
     <SafeAreaProvider>
-      <StatusBar style="light" />
+      <StatusBar style="dark" />
       <AuthProvider>
         <RootNavigator />
       </AuthProvider>
