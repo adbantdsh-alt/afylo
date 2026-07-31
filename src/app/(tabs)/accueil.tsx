@@ -9,10 +9,13 @@ import { Avatar, IconButton } from '@/components/ui-kit';
 import { Afylo, Font, Radius, Type } from '@/constants/brand';
 import { useAuthGate } from '@/lib/auth-gate';
 import { useHideOnScroll } from '@/lib/tabbar';
-import { lives, me, posts, type Post } from '@/lib/mock';
+import { me, posts, type Post } from '@/lib/mock';
+import { useStories } from '@/lib/stories';
 
 export default function Feed() {
   const scroll = useHideOnScroll();
+  const router = useRouter();
+  const { stories, myStory } = useStories();
   return (
     <View style={styles.root}>
       <SafeAreaView edges={['top']} style={{ backgroundColor: Afylo.bg }}>
@@ -33,25 +36,34 @@ export default function Feed() {
           horizontal
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.livesRow}>
-          <View style={styles.liveItem}>
+          {/* Ta story */}
+          <Pressable
+            style={styles.liveItem}
+            onPress={() => (myStory ? router.push({ pathname: '/story/[uid]', params: { uid: myStory.id } }) : router.push('/creer'))}>
             <View>
-              <Avatar uri={me.avatar} size={64} />
-              <View style={styles.plusBadge}>
-                <Ionicons name="add" size={14} color="#fff" />
-              </View>
+              <Avatar uri={myStory?.avatar ?? me.avatar} size={64} ring={!!myStory} />
+              {!myStory && (
+                <View style={styles.plusBadge}>
+                  <Ionicons name="add" size={14} color="#fff" />
+                </View>
+              )}
             </View>
-            <Text style={styles.liveName}>Ton live</Text>
-          </View>
-          {lives.map((l) => (
-            <View key={l.id} style={styles.liveItem}>
-              <Avatar uri={l.avatar} size={64} live={l.live} ring={!l.live} />
-              {l.live && (
+            <Text style={styles.liveName}>Ta story</Text>
+          </Pressable>
+
+          {stories.filter((s) => !s.mine).map((s) => (
+            <Pressable
+              key={s.id}
+              style={styles.liveItem}
+              onPress={() => router.push({ pathname: '/story/[uid]', params: { uid: s.id } })}>
+              <Avatar uri={s.avatar} size={64} live={s.live} ring={!s.live} />
+              {s.live && (
                 <View style={styles.liveTag}>
                   <Text style={styles.liveTagText}>LIVE</Text>
                 </View>
               )}
-              <Text style={styles.liveName}>{l.name}</Text>
-            </View>
+              <Text style={styles.liveName} numberOfLines={1}>{s.name}</Text>
+            </Pressable>
           ))}
         </ScrollView>
 

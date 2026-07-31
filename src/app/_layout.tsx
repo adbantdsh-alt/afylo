@@ -15,6 +15,7 @@ import { Afylo } from '@/constants/brand';
 import '../global.css';
 import { AuthProvider, useAuth } from '@/lib/auth';
 import { AuthGateProvider } from '@/lib/auth-gate';
+import { StoriesProvider } from '@/lib/stories';
 
 // Routes accessibles sans être connecté
 const PUBLIC = ['index', 'login'];
@@ -65,6 +66,7 @@ function RootNavigator() {
       <Stack.Screen name="messages" />
       <Stack.Screen name="chat/[id]" />
       <Stack.Screen name="comments/[id]" />
+      <Stack.Screen name="story/[uid]" options={{ animation: 'fade', presentation: 'fullScreenModal' }} />
       <Stack.Screen name="legal/[doc]" />
     </Stack>
   );
@@ -92,7 +94,9 @@ export default function RootLayout() {
       <StatusBar style="dark" />
       <AuthProvider>
         <AuthGateProvider>
-          <RootNavigator />
+          <StoriesProvider>
+            <RootNavigator />
+          </StoriesProvider>
         </AuthGateProvider>
       </AuthProvider>
     </SafeAreaProvider>
