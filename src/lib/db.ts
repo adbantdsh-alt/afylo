@@ -66,9 +66,23 @@ export async function uploadImage(bucket: 'avatars' | 'products' | 'media', uri:
   return supabase.storage.from(bucket).getPublicUrl(path).data.publicUrl;
 }
 
+/** Upload un fichier (document/zip/pdf) — pour les produits digitaux. */
+export async function uploadFile(uri: string, name: string): Promise<string> {
+  const userId = await requireUserId();
+  const resp = await fetch(uri);
+  const arrayBuffer = await resp.arrayBuffer();
+  const contentType = resp.headers.get('content-type') || 'application/octet-stream';
+  const safe = name.replace(/[^a-zA-Z0-9._-]/g, '_');
+  const path = `${userId}/files/${Date.now()}-${safe}`;
+  const { error } = await supabase.storage.from('media').upload(path, arrayBuffer, { contentType, upsert: false });
+  if (error) throw error;
+  return supabase.storage.from('media').getPublicUrl(path).data.publicUrl;
+}
+
 // ---- Produits ----
 export type ProductInput = {
   title: string;
+  kind?: 'physical' | 'digital';
   price_cfa: number;
   promo_cfa?: number | null;
   stock: number;
@@ -76,6 +90,8 @@ export type ProductInput = {
   description?: string;
   image_url?: string | null;
   images?: string[];
+  digital_file_url?: string | null;
+  quantity_tiers?: { qty: number; price_cfa: number }[];
 };
 
 export async function listMyProducts(): Promise<Product[]> {

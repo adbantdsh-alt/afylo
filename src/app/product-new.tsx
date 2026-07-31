@@ -1,4 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
+import * as DocumentPicker from 'expo-document-picker';
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
@@ -8,9 +9,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Afylo, Font, Radius, Type } from '@/constants/brand';
 import { useAuthGate } from '@/lib/auth-gate';
-import { createProduct, uploadImage } from '@/lib/db';
+import { createProduct, uploadFile, uploadImage } from '@/lib/db';
 
-const MAX_IMAGES = 10;
 const MIN_COMMISSION = 15;
 const CONDITIONS = ['Neuf', 'Comme neuf', 'Occasion', 'Fait main'];
 
@@ -18,56 +18,77 @@ export default function ProductNew() {
   const router = useRouter();
   const gate = useAuthGate();
 
+  const [kind, setKind] = useState<'physical' | 'digital'>('physical');
   const [images, setImages] = useState<string[]>([]);
+  const [file, setFile] = useState<{ uri: string; name: string } | null>(null);
   const [title, setTitle] = useState('');
   const [price, setPrice] = useState('');
   const [promo, setPromo] = useState('');
   const [stock, setStock] = useState('');
   const [condition, setCondition] = useState<string | null>(null);
-  const [quality, setQuality] = useState(false);
+  const [tiers, setTiers] = useState<{ qty: string; price: string }[]>([]);
   const [affiliationOn, setAffiliationOn] = useState(false);
   const [commission, setCommission] = useState('15');
   const [description, setDescription] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const maxImages = kind === 'digital' ? 1 : 10;
+
   const pickImages = async () => {
-    const remaining = MAX_IMAGES - images.length;
+    const remaining = maxImages - images.length;
     if (remaining <= 0) return;
-    const res = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], allowsMultipleSelection: true, selectionLimit: remaining, quality: 1 });
-    if (!res.canceled) setImages((prev) => [...prev, ...res.assets.map((a) => a.uri)].slice(0, MAX_IMAGES));
+    const res = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], allowsMultipleSelection: kind === 'physical', selectionLimit: remaining, quality: 1 });
+    if (!res.canceled) setImages((prev) => [...prev, ...res.assets.map((a) => a.uri)].slice(0, maxImages));
   };
   const removeImage = (uri: string) => setImages((prev) => prev.filter((u) => u !== uri));
+
+  const pickFile = async () => {
+    const res = await DocumentPicker.getDocumentAsync({ copyToCacheDirectory: true });
+    if (!res.canceled && res.assets?.[0]) setFile({ uri: res.assets[0].uri, name: res.assets[0].name });
+  };
+
+  const addTier = () => setTiers((t) => [...t, { qty: '', price: '' }]);
+  const updateTier = (i: number, f: 'qty' | 'price', v: string) => setTiers((t) => t.map((row, idx) => (idx === i ? { ...row, [f]: v } : row)));
+  const removeTier = (i: number) => setTiers((t) => t.filter((_, idx) => idx !== i));
 
   const submit = async () => {
     setError(null);
     if (!gate('vendre')) return;
     if (!title.trim() || !price.trim()) return setError('Le nom et le prix sont obligatoires.');
+    if (kind === 'digital' && !file) return setError('Ajoute le fichier que recevra l\'acheteur.');
     const priceN = parseInt(price.replace(/\D/g, ''), 10) || 0;
     const promoN = promo.trim() ? parseInt(promo.replace(/\D/g, ''), 10) : null;
     if (promoN && promoN >= priceN) return setError('Le prix promo doit être inférieur au prix normal.');
     let commissionN = 0;
     if (affiliationOn) commissionN = Math.max(MIN_COMMISSION, parseInt(commission.replace(/\D/g, ''), 10) || 0);
 
-    // Offre de qualité intégrée à la description (persistée sans migration)
-    const extras: string[] = [];
-    if (condition) extras.push(`État : ${condition}`);
-    if (quality) extras.push('✓ Garantie qualité Afylo — satisfait ou remboursé (via séquestre XaalisPay)');
-    const finalDesc = [description.trim(), extras.join('\n')].filter(Boolean).join('\n\n');
+    const quantity_tiers = tiers
+      .map((t) => ({ qty: parseInt(t.qty, 10) || 0, price_cfa: parseInt(t.price.replace(/\D/g, ''), 10) || 0 }))
+      .filter((t) => t.qty > 0 && t.price_cfa > 0);
+
+    const extras = condition && kind === 'physical' ? `État : ${condition}` : '';
+    const finalDesc = [description.trim(), extras].filter(Boolean).join('\n\n');
 
     setLoading(true);
     try {
       const urls: string[] = [];
       for (const uri of images) urls.push(await uploadImage('products', uri));
+      let digital_file_url: string | null = null;
+      if (kind === 'digital' && file) digital_file_url = await uploadFile(file.uri, file.name);
+
       await createProduct({
         title: title.trim(),
+        kind,
         price_cfa: priceN,
         promo_cfa: promoN,
-        stock: parseInt(stock.replace(/\D/g, ''), 10) || 0,
+        stock: kind === 'digital' ? 999999 : parseInt(stock.replace(/\D/g, ''), 10) || 0,
         commission_pct: commissionN,
         description: finalDesc || undefined,
         image_url: urls[0] ?? null,
         images: urls,
+        digital_file_url,
+        quantity_tiers,
       });
       router.back();
     } catch (e: any) {
@@ -81,9 +102,7 @@ export default function ProductNew() {
     <View style={styles.root}>
       <SafeAreaView edges={['top']} style={{ backgroundColor: Afylo.bg }}>
         <View style={styles.header}>
-          <Pressable onPress={() => router.back()} style={styles.hbtn}>
-            <Ionicons name="close" size={26} color={Afylo.text} />
-          </Pressable>
+          <Pressable onPress={() => router.back()} style={styles.hbtn}><Ionicons name="close" size={26} color={Afylo.text} /></Pressable>
           <Text style={styles.title}>Nouveau produit</Text>
           <View style={{ width: 40 }} />
         </View>
@@ -91,20 +110,27 @@ export default function ProductNew() {
 
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
         <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 30 }} keyboardShouldPersistTaps="handled">
+          {/* Type */}
+          <View style={styles.typeRow}>
+            {(['physical', 'digital'] as const).map((k) => (
+              <Pressable key={k} onPress={() => setKind(k)} style={[styles.type, kind === k && styles.typeOn]}>
+                <Ionicons name={k === 'physical' ? 'cube-outline' : 'cloud-download-outline'} size={18} color={kind === k ? '#fff' : Afylo.textDim} />
+                <Text style={[styles.typeText, kind === k && { color: '#fff' }]}>{k === 'physical' ? 'Physique' : 'Digital'}</Text>
+              </Pressable>
+            ))}
+          </View>
+
           {/* Photos */}
-          <Text style={styles.section}>Photos</Text>
-          <Text style={styles.hint}>La 1ʳᵉ photo est la couverture · jusqu'à {MAX_IMAGES}</Text>
+          <Text style={styles.section}>{kind === 'digital' ? 'Visuel (1 image)' : 'Photos'}</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10, paddingVertical: 12 }}>
             {images.map((uri, i) => (
               <View key={uri} style={styles.thumb}>
                 <Image source={{ uri }} style={StyleSheet.absoluteFill} contentFit="cover" />
-                {i === 0 && <View style={styles.coverTag}><Text style={styles.coverText}>Couverture</Text></View>}
-                <Pressable onPress={() => removeImage(uri)} style={styles.thumbX}>
-                  <Ionicons name="close" size={14} color="#fff" />
-                </Pressable>
+                {i === 0 && kind === 'physical' && <View style={styles.coverTag}><Text style={styles.coverText}>Couverture</Text></View>}
+                <Pressable onPress={() => removeImage(uri)} style={styles.thumbX}><Ionicons name="close" size={14} color="#fff" /></Pressable>
               </View>
             ))}
-            {images.length < MAX_IMAGES && (
+            {images.length < maxImages && (
               <Pressable onPress={pickImages} style={styles.addThumb}>
                 <Ionicons name="camera" size={26} color={Afylo.violet} />
                 <Text style={styles.addThumbText}>Ajouter</Text>
@@ -112,35 +138,56 @@ export default function ProductNew() {
             )}
           </ScrollView>
 
+          {/* Fichier digital */}
+          {kind === 'digital' && (
+            <Card>
+              <Text style={styles.cardTitle}>Fichier livré à l'acheteur</Text>
+              <Pressable onPress={pickFile} style={styles.fileBtn}>
+                <Ionicons name={file ? 'document-attach' : 'cloud-upload-outline'} size={22} color={Afylo.violet} />
+                <Text style={styles.fileText} numberOfLines={1}>{file ? file.name : 'Choisir un fichier (PDF, ZIP, MP3…)'}</Text>
+              </Pressable>
+              <Text style={styles.hint}>Stock illimité (∞) · le fichier est envoyé après paiement sécurisé XaalisPay.</Text>
+            </Card>
+          )}
+
           {/* Infos */}
           <Card>
-            <Field label="Nom du produit *" value={title} onChange={setTitle} placeholder="Ex : Ensemble wax premium" />
+            <Field label="Nom du produit *" value={title} onChange={setTitle} placeholder="Ex : Ensemble wax / Ebook marketing" />
             <View style={styles.row}>
               <View style={{ flex: 1 }}><Field label="Prix (FCFA) *" value={price} onChange={setPrice} placeholder="18500" numeric /></View>
               <View style={{ flex: 1 }}><Field label="Prix promo" value={promo} onChange={setPromo} placeholder="14900" numeric /></View>
             </View>
-            <Field label="Stock disponible" value={stock} onChange={setStock} placeholder="24" numeric />
+            {kind === 'physical' && <Field label="Stock disponible" value={stock} onChange={setStock} placeholder="24" numeric />}
           </Card>
 
-          {/* Offre de qualité */}
-          <Card>
-            <Text style={styles.cardTitle}>Offre de qualité</Text>
-            <Text style={styles.subLabel}>État du produit</Text>
-            <View style={styles.chips}>
-              {CONDITIONS.map((c) => (
-                <Pressable key={c} onPress={() => setCondition((v) => (v === c ? null : c))} style={[styles.chip, condition === c && styles.chipOn]}>
-                  <Text style={[styles.chipText, condition === c && { color: '#fff' }]}>{c}</Text>
-                </Pressable>
-              ))}
-            </View>
-            <View style={styles.switchRow}>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.switchTitle}>Garantie qualité Afylo</Text>
-                <Text style={styles.switchHint}>Satisfait ou remboursé via le séquestre XaalisPay — rassure l'acheteur.</Text>
+          {/* Physique : état + offres de quantité */}
+          {kind === 'physical' && (
+            <Card>
+              <Text style={styles.cardTitle}>Détails</Text>
+              <Text style={styles.subLabel}>État du produit</Text>
+              <View style={styles.chips}>
+                {CONDITIONS.map((c) => (
+                  <Pressable key={c} onPress={() => setCondition((v) => (v === c ? null : c))} style={[styles.chip, condition === c && styles.chipOn]}>
+                    <Text style={[styles.chipText, condition === c && { color: '#fff' }]}>{c}</Text>
+                  </Pressable>
+                ))}
               </View>
-              <Switch value={quality} onValueChange={setQuality} trackColor={{ true: Afylo.green }} />
-            </View>
-          </Card>
+
+              <Text style={[styles.subLabel, { marginTop: 14 }]}>Offres de quantité (prix par lot)</Text>
+              {tiers.map((t, i) => (
+                <View key={i} style={styles.tierRow}>
+                  <TextInput style={[styles.input, styles.tierQty]} value={t.qty} onChangeText={(v) => updateTier(i, 'qty', v)} placeholder="Qté" placeholderTextColor={Afylo.textFaint} keyboardType="numeric" />
+                  <Text style={styles.tierArrow}>→</Text>
+                  <TextInput style={[styles.input, { flex: 1 }]} value={t.price} onChangeText={(v) => updateTier(i, 'price', v)} placeholder="Prix total (FCFA)" placeholderTextColor={Afylo.textFaint} keyboardType="numeric" />
+                  <Pressable onPress={() => removeTier(i)} style={styles.tierX}><Ionicons name="close" size={18} color={Afylo.live} /></Pressable>
+                </View>
+              ))}
+              <Pressable onPress={addTier} style={styles.addTier}>
+                <Ionicons name="add-circle-outline" size={20} color={Afylo.violet} />
+                <Text style={styles.addTierText}>Ajouter un palier (ex : 1 → 3000, 2 → 5000)</Text>
+              </Pressable>
+            </Card>
+          )}
 
           {/* Affiliation */}
           <Card>
@@ -159,9 +206,8 @@ export default function ProductNew() {
             )}
           </Card>
 
-          {/* Description */}
           <Card>
-            <Field label="Description" value={description} onChange={setDescription} placeholder="Détails, tailles, livraison..." multiline />
+            <Field label="Description" value={description} onChange={setDescription} placeholder="Détails, livraison, contenu..." multiline />
           </Card>
 
           {error && <Text style={styles.error}>{error}</Text>}
@@ -203,8 +249,13 @@ const styles = StyleSheet.create({
   hbtn: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
   title: { ...Type.subtitle, color: Afylo.text },
 
-  section: { ...Type.body, fontFamily: Font.semibold, color: Afylo.text },
-  hint: { ...Type.caption, color: Afylo.textDim, marginTop: 4, lineHeight: 17 },
+  typeRow: { flexDirection: 'row', gap: 10, marginBottom: 6 },
+  type: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, height: 46, borderRadius: Radius.md, backgroundColor: Afylo.surface, borderWidth: 1, borderColor: Afylo.border },
+  typeOn: { backgroundColor: Afylo.violet, borderColor: Afylo.violet },
+  typeText: { ...Type.body, fontFamily: Font.semibold, color: Afylo.textDim },
+
+  section: { ...Type.body, fontFamily: Font.semibold, color: Afylo.text, marginTop: 8 },
+  hint: { ...Type.caption, color: Afylo.textDim, marginTop: 8, lineHeight: 17 },
   thumb: { width: 88, height: 88, borderRadius: Radius.md, overflow: 'hidden', backgroundColor: Afylo.surfaceAlt },
   coverTag: { position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: '#000000AA', paddingVertical: 2, alignItems: 'center' },
   coverText: { color: '#fff', fontSize: 9, fontFamily: Font.semibold },
@@ -219,12 +270,22 @@ const styles = StyleSheet.create({
   input: { backgroundColor: Afylo.bg, borderRadius: Radius.md, borderWidth: 1, borderColor: Afylo.border, color: Afylo.text, ...Type.body, paddingHorizontal: 14, height: 50 },
   row: { flexDirection: 'row', gap: 12 },
 
-  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 6 },
+  fileBtn: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: Afylo.bg, borderRadius: Radius.md, borderWidth: 1.5, borderStyle: 'dashed', borderColor: Afylo.violet, padding: 14 },
+  fileText: { ...Type.body, color: Afylo.text, flex: 1 },
+
+  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   chip: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: Radius.pill, backgroundColor: Afylo.bg, borderWidth: 1, borderColor: Afylo.border },
   chipOn: { backgroundColor: Afylo.violet, borderColor: Afylo.violet },
   chipText: { ...Type.small, color: Afylo.text },
 
-  switchRow: { flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 12 },
+  tierRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 },
+  tierQty: { width: 64, textAlign: 'center' },
+  tierArrow: { color: Afylo.textDim, fontSize: 18 },
+  tierX: { width: 34, height: 34, alignItems: 'center', justifyContent: 'center' },
+  addTier: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 4 },
+  addTierText: { ...Type.small, color: Afylo.violet, fontFamily: Font.semibold },
+
+  switchRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   switchTitle: { ...Type.body, fontFamily: Font.semibold, color: Afylo.text },
   switchHint: { ...Type.caption, color: Afylo.textDim, marginTop: 2, lineHeight: 17 },
 

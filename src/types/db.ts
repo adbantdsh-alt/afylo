@@ -34,12 +34,15 @@ export interface Product {
   owner_id: string;
   title: string;
   description: string | null;
+  kind: 'physical' | 'digital';
   price_cfa: number;
   promo_cfa: number | null;
   currency: string;
   stock: number;
   image_url: string | null;
   images: string[];
+  digital_file_url: string | null;
+  quantity_tiers: { qty: number; price_cfa: number }[];
   commission_pct: number;
   is_active: boolean;
   sold_count: number;
