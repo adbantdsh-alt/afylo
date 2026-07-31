@@ -11,14 +11,12 @@ import 'react-native-url-polyfill/auto';
  *
  * Les valeurs viennent de .env (préfixe EXPO_PUBLIC_ requis par Expo).
  */
-const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL ?? '';
-const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ?? '';
-
-if (!supabaseUrl || !supabaseAnonKey) {
-  console.warn(
-    '[Afylo] Supabase non configuré : renseigne EXPO_PUBLIC_SUPABASE_URL et EXPO_PUBLIC_SUPABASE_ANON_KEY dans .env',
-  );
-}
+// La clé "publishable" (anon) et l'URL sont PUBLIQUES par design (protégées par RLS),
+// donc on peut les mettre en valeurs par défaut : le site fonctionne en ligne
+// sans config supplémentaire. (La clé SECRÈTE, elle, n'est jamais ici.)
+const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL || 'https://uxtnmvyqwoklspffjbdn.supabase.co';
+const supabaseAnonKey =
+  process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || 'sb_publishable_Reuj2Wa4ffDJYyHmV_Y15g_CTqJpTLW';
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
