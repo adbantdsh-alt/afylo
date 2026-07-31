@@ -80,6 +80,7 @@ export type Post = {
   caption: string;
   product?: Product;
   products?: { title: string; price: string }[]; // jusqu'à 5 produits liés
+  sound?: { id: string; title: string; artist: string };
 };
 
 export const posts: Post[] = [
@@ -96,6 +97,7 @@ export const posts: Post[] = [
     views: '69 K',
     shares: '87',
     caption: 'Mon nouveau look de la semaine 🔥 Dispo en live ce soir 20h !',
+    sound: { id: 's0-0', title: 'Wild Thoughts', artist: 'DJ Khaled' },
     product: { title: 'Ensemble wax premium', price: '18 500 FCFA', commission: '15%' },
     products: [
       { title: 'Ensemble wax premium', price: '18 500 FCFA' },
@@ -204,6 +206,14 @@ export const myLives: MyLive[] = [
   { id: 'ml1', title: 'Nouvelle collection wax 🔥', date: '28 juil.', duration: '48 min', viewers: '2.1 K', revenue: '145 000', thumb: photo('myl1', 400, 300) },
   { id: 'ml2', title: 'Déstockage foulards', date: '25 juil.', duration: '32 min', viewers: '980', revenue: '62 000', thumb: photo('myl2', 400, 300) },
   { id: 'ml3', title: 'Q&A + essayage boubous', date: '21 juil.', duration: '55 min', viewers: '1.5 K', revenue: '210 000', thumb: photo('myl3', 400, 300) },
+];
+
+// ---- Mes achats (acheteur) ----
+export type Purchase = { id: string; title: string; price: string; seller: string; image: string; status: 'sequestre' | 'a_confirmer' | 'termine'; date: string };
+export const myPurchases: Purchase[] = [
+  { id: 'pu1', title: 'Coffret soin visage', price: '12 000 FCFA', seller: 'Awa Beauty', image: photo('buy1', 300, 300), status: 'a_confirmer', date: 'il y a 2 j' },
+  { id: 'pu2', title: 'Beatpack Afro 2026', price: '9 900 FCFA', seller: 'Modou Beats', image: photo('buy2', 300, 300), status: 'termine', date: 'il y a 6 j' },
+  { id: 'pu3', title: 'Sneakers urbaines', price: '25 000 FCFA', seller: 'Modou Shop', image: photo('buy3', 300, 300), status: 'sequestre', date: "aujourd'hui" },
 ];
 
 // ---- Studio / Statistiques ----

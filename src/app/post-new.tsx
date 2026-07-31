@@ -6,10 +6,12 @@ import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, ScrollVie
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { PillButton } from '@/components/ui-kit';
+import { SoundPicker } from '@/components/sound-picker';
 import { Afylo, Font, Radius } from '@/constants/brand';
 import { useAuth } from '@/lib/auth';
 import { createPost, listMyProducts } from '@/lib/db';
 import { photo } from '@/lib/mock';
+import { findSound, type Sound } from '@/lib/sounds';
 import type { Product } from '@/types/db';
 
 const KINDS = [
@@ -21,7 +23,7 @@ const KINDS = [
 export default function PostNew() {
   const router = useRouter();
   const { session } = useAuth();
-  const params = useLocalSearchParams<{ kind?: string; uri?: string }>();
+  const params = useLocalSearchParams<{ kind?: string; uri?: string; soundId?: string; soundTitle?: string }>();
 
   const [kind, setKind] = useState<'image' | 'video' | 'story'>(
     (params.kind as any) === 'video' ? 'video' : 'image',
@@ -33,6 +35,10 @@ export default function PostNew() {
   const [loadingProducts, setLoadingProducts] = useState(false);
   const [publishing, setPublishing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [sound, setSound] = useState<Sound | null>(
+    params.soundId ? findSound(params.soundId) ?? (params.soundTitle ? ({ id: params.soundId, title: params.soundTitle, artist: 'Son', cover: '', duration: '', uses: '' } as Sound) : null) : null,
+  );
+  const [soundOpen, setSoundOpen] = useState(false);
 
   useEffect(() => {
     if (!session) return;
@@ -60,9 +66,10 @@ export default function PostNew() {
     }
     setPublishing(true);
     try {
+      const finalCaption = [sound ? `🎵 ${sound.title} · ${sound.artist}` : '', caption.trim()].filter(Boolean).join('\n');
       await createPost({
         kind,
-        caption: caption.trim() || undefined,
+        caption: finalCaption || undefined,
         media_url: mediaUrl.trim() || null,
         productIds: [...selected],
       });
@@ -97,6 +104,19 @@ export default function PostNew() {
               </Pressable>
             ))}
           </View>
+
+          {/* Son */}
+          <Pressable onPress={() => setSoundOpen(true)} style={styles.soundBtn}>
+            <Ionicons name="musical-notes" size={20} color={sound ? Afylo.violet : Afylo.textDim} />
+            <Text style={[styles.soundBtnText, sound && { color: Afylo.text, fontFamily: Font.semibold }]} numberOfLines={1}>
+              {sound ? `${sound.title} · ${sound.artist}` : 'Ajouter un son'}
+            </Text>
+            {sound ? (
+              <Ionicons name="close-circle" size={20} color={Afylo.textFaint} onPress={() => setSound(null)} />
+            ) : (
+              <Ionicons name="chevron-forward" size={18} color={Afylo.textFaint} />
+            )}
+          </Pressable>
 
           {/* Média */}
           <View style={styles.mediaBox}>
@@ -167,6 +187,8 @@ export default function PostNew() {
           <PillButton label="Publier" icon="send" onPress={publish} loading={publishing} style={{ marginTop: 22 }} />
         </ScrollView>
       </KeyboardAvoidingView>
+
+      <SoundPicker visible={soundOpen} onSelect={(s) => { setSound(s); setSoundOpen(false); }} onClose={() => setSoundOpen(false)} />
     </View>
   );
 }
@@ -176,6 +198,8 @@ const styles = StyleSheet.create({
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 12, paddingVertical: 8 },
   hbtn: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
   title: { color: Afylo.text, fontSize: 18, fontFamily: Font.bold },
+  soundBtn: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: Afylo.surface, borderWidth: 1, borderColor: Afylo.border, borderRadius: Radius.md, paddingHorizontal: 14, height: 50, marginBottom: 12 },
+  soundBtnText: { flex: 1, color: Afylo.textDim, fontSize: 15, fontFamily: Font.regular },
 
   kindRow: { flexDirection: 'row', gap: 10, marginBottom: 16 },
   kind: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 11, borderRadius: Radius.pill, backgroundColor: Afylo.surface, borderWidth: 1, borderColor: Afylo.border },

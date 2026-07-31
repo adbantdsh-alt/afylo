@@ -1,5 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
+import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -11,17 +12,19 @@ import { useHideOnScroll } from '@/lib/tabbar';
 const FILTERS = ['Créateurs', 'Vidéos courtes', 'Produits', 'Lives'];
 
 export default function Explore() {
+  const router = useRouter();
   const [active, setActive] = useState(0);
   const scroll = useHideOnScroll();
   const col = (mod: number) => exploreItems.filter((_, i) => i % 2 === mod);
+  const open = (it: ExploreItem) => router.push({ pathname: '/creator/[id]', params: { id: it.name, name: it.name, avatar: it.image } });
 
   return (
     <View style={styles.root}>
       <SafeAreaView edges={['top']} style={{ backgroundColor: Afylo.bg }}>
-        <View style={styles.searchWrap}>
+        <Pressable style={styles.searchWrap} onPress={() => router.push('/search')}>
           <Ionicons name="search" size={18} color={Afylo.textDim} />
           <Text style={styles.searchPlaceholder}>Chercher un créateur, une vidéo, un produit</Text>
-        </View>
+        </Pressable>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filters}>
           {FILTERS.map((f, i) => (
             <Pressable key={f} onPress={() => setActive(i)} style={[styles.chip, active === i && styles.chipActive]}>
@@ -32,16 +35,16 @@ export default function Explore() {
       </SafeAreaView>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.grid} {...scroll}>
-        <View style={styles.column}>{col(0).map((it) => <GridCard key={it.id} item={it} />)}</View>
-        <View style={styles.column}>{col(1).map((it) => <GridCard key={it.id} item={it} />)}</View>
+        <View style={styles.column}>{col(0).map((it) => <GridCard key={it.id} item={it} onPress={() => open(it)} />)}</View>
+        <View style={styles.column}>{col(1).map((it) => <GridCard key={it.id} item={it} onPress={() => open(it)} />)}</View>
       </ScrollView>
     </View>
   );
 }
 
-function GridCard({ item }: { item: ExploreItem }) {
+function GridCard({ item, onPress }: { item: ExploreItem; onPress: () => void }) {
   return (
-    <View style={[styles.gcard, { aspectRatio: item.tall ? 0.72 : 1 }]}>
+    <Pressable style={[styles.gcard, { aspectRatio: item.tall ? 0.72 : 1 }]} onPress={onPress}>
       <Image source={{ uri: item.image }} style={StyleSheet.absoluteFill} contentFit="cover" transition={250} />
       {item.live && (
         <View style={styles.liveTag}>
@@ -53,7 +56,7 @@ function GridCard({ item }: { item: ExploreItem }) {
         <Text style={styles.gcardName}>{item.name}</Text>
         <Text style={styles.gcardLabel}>{item.label}</Text>
       </View>
-    </View>
+    </Pressable>
   );
 }
 

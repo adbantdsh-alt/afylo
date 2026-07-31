@@ -8,6 +8,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Avatar } from '@/components/ui-kit';
 import { Afylo, Font, Radius, Type } from '@/constants/brand';
 import { exploreItems } from '@/lib/mock';
+import { searchSounds } from '@/lib/sounds';
 
 const TABS = ['Créateurs', 'Vidéos', 'Sons', 'Tags'];
 const TAGS = ['#dakar', '#waxstyle', '#afrobeats', '#tutoriel', '#liveshopping', '#senegal', '#beaute', '#mode'];
@@ -53,15 +54,15 @@ export default function Search() {
           </View>
         ) : tab === 2 ? (
           <View>
-            {['Wild Thoughts — DJ Khaled', 'Afrobeat Type Beat 2026', 'Son original · Fatou', 'Amapiano Vibes'].map((s, i) => (
-              <View key={i} style={styles.soundRow}>
+            {searchSounds(q).map((s) => (
+              <Pressable key={s.id} style={styles.soundRow} onPress={() => router.push({ pathname: '/sound/[id]', params: { id: s.id } })}>
                 <View style={styles.soundIcon}><Ionicons name="musical-notes" size={20} color={Afylo.violet} /></View>
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.soundName}>{s}</Text>
-                  <Text style={styles.soundMeta}>{(i + 1) * 12}k publications</Text>
+                  <Text style={styles.soundName} numberOfLines={1}>{s.title}</Text>
+                  <Text style={styles.soundMeta}>{s.artist} · {s.uses} publications</Text>
                 </View>
                 <Ionicons name="chevron-forward" size={18} color={Afylo.textFaint} />
-              </View>
+              </Pressable>
             ))}
           </View>
         ) : (

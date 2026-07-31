@@ -178,6 +178,13 @@ function PostCard({ post }: { post: Post }) {
 
       <Text style={styles.caption}>{post.caption}</Text>
 
+      {post.sound && (
+        <Pressable onPress={() => router.push({ pathname: '/sound/[id]', params: { id: post.sound!.id } })} style={styles.soundRow}>
+          <Ionicons name="musical-notes" size={14} color={Afylo.text} />
+          <Text style={styles.soundText} numberOfLines={1}>{post.sound.title} · {post.sound.artist}</Text>
+        </Pressable>
+      )}
+
       <RateSheet
         visible={rateOpen}
         rating={rating}
@@ -315,4 +322,6 @@ const styles = StyleSheet.create({
   rate: { flexDirection: 'row', alignItems: 'center', gap: 5 },
   rateEmoji: { fontSize: 17 },
   caption: { ...Type.body, color: Afylo.ink, marginTop: 12 },
+  soundRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 10, backgroundColor: Afylo.surfaceAlt, alignSelf: 'flex-start', paddingHorizontal: 10, paddingVertical: 5, borderRadius: Radius.pill },
+  soundText: { ...Type.small, color: Afylo.text, maxWidth: 240 },
 });

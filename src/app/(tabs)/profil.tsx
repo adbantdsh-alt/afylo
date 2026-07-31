@@ -11,13 +11,13 @@ import { useAuth } from '@/lib/auth';
 import { deleteProduct, getMyProfile, listMyProducts } from '@/lib/db';
 import { useStories } from '@/lib/stories';
 import { useAlwaysShowTabBar } from '@/lib/tabbar';
-import { exploreItems, myLives, myPosts, myProducts, myProfile, photo, type MyLive } from '@/lib/mock';
+import { exploreItems, myLives, myPosts, myProducts, myProfile, myPurchases, photo, type MyLive, type Purchase } from '@/lib/mock';
 import type { Profile } from '@/types/db';
 
 /** Forme d'affichage commune (produit réel ou démo). */
 type DisplayProduct = { id: string; title: string; price: string; stock: number; sold: number; image: string; active: boolean; real: boolean };
 
-type Section = 'posts' | 'boutique' | 'lives' | 'reposts';
+type Section = 'posts' | 'boutique' | 'achats' | 'reposts';
 
 export default function Profil() {
   const router = useRouter();
@@ -158,13 +158,13 @@ export default function Profil() {
         <View style={styles.tabs}>
           <SectionTab icon="grid" active={section === 'posts'} onPress={() => setSection('posts')} />
           <SectionTab icon="bag-handle" active={section === 'boutique'} onPress={() => setSection('boutique')} />
-          <SectionTab icon="radio" active={section === 'lives'} onPress={() => setSection('lives')} />
+          <SectionTab icon="cart" active={section === 'achats'} onPress={() => setSection('achats')} />
           <SectionTab icon="repeat" active={section === 'reposts'} onPress={() => setSection('reposts')} />
         </View>
 
         {section === 'posts' && <PostsGrid />}
         {section === 'boutique' && <BoutiqueList isOwner={isOwner} />}
-        {section === 'lives' && <LivesList isOwner={isOwner} />}
+        {section === 'achats' && <PurchasesList />}
         {section === 'reposts' && <RepostsGrid />}
       </ScrollView>
 
@@ -220,6 +220,42 @@ function PostsGrid() {
           )}
         </View>
       ))}
+    </View>
+  );
+}
+
+const PURCHASE_STATUS: Record<Purchase['status'], { label: string; color: string; icon: keyof typeof Ionicons.glyphMap }> = {
+  sequestre: { label: 'En séquestre', color: Afylo.violet, icon: 'lock-closed' },
+  a_confirmer: { label: 'Confirmer la réception', color: Afylo.gold, icon: 'cube' },
+  termine: { label: 'Terminé', color: Afylo.green, icon: 'checkmark-circle' },
+};
+
+function PurchasesList() {
+  return (
+    <View style={{ paddingHorizontal: 16, paddingTop: 12, gap: 12 }}>
+      {myPurchases.map((p) => {
+        const st = PURCHASE_STATUS[p.status];
+        return (
+          <View key={p.id} style={styles.purchaseRow}>
+            <Image source={{ uri: p.image }} style={styles.purchaseImg} contentFit="cover" />
+            <View style={{ flex: 1 }}>
+              <Text style={styles.purchaseTitle} numberOfLines={1}>{p.title}</Text>
+              <Text style={styles.purchaseMeta}>{p.seller} · {p.date}</Text>
+              <View style={styles.purchaseStatus}>
+                <Ionicons name={st.icon} size={13} color={st.color} />
+                <Text style={[styles.purchaseStatusText, { color: st.color }]}>{st.label}</Text>
+              </View>
+            </View>
+            <View style={{ alignItems: 'flex-end', gap: 6 }}>
+              <Text style={styles.purchasePrice}>{p.price}</Text>
+              {p.status === 'a_confirmer' && (
+                <Pressable style={styles.confirmBtn}><Text style={styles.confirmText}>Confirmer</Text></Pressable>
+              )}
+            </View>
+          </View>
+        );
+      })}
+      <Text style={styles.purchaseNote}>Paiements sécurisés par XaalisPay — l'argent n'est versé au vendeur qu'après ta confirmation.</Text>
     </View>
   );
 }
@@ -434,6 +470,16 @@ const styles = StyleSheet.create({
   repostTag: { position: 'absolute', top: 6, right: 6, width: 22, height: 22, borderRadius: 11, backgroundColor: '#00000088', alignItems: 'center', justifyContent: 'center' },
   cellTagText: { color: '#fff', fontSize: 10, fontWeight: '700' },
 
+  purchaseRow: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: Afylo.surface, borderRadius: Radius.md, borderWidth: 1, borderColor: Afylo.border, padding: 10 },
+  purchaseImg: { width: 60, height: 60, borderRadius: 10, backgroundColor: Afylo.surfaceAlt },
+  purchaseTitle: { ...Type.body, fontFamily: Font.semibold, color: Afylo.text },
+  purchaseMeta: { ...Type.caption, color: Afylo.textDim, marginTop: 1 },
+  purchaseStatus: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 5 },
+  purchaseStatusText: { ...Type.caption, fontFamily: Font.semibold },
+  purchasePrice: { ...Type.body, fontFamily: Font.bold, color: Afylo.text },
+  confirmBtn: { backgroundColor: Afylo.green, paddingHorizontal: 12, paddingVertical: 6, borderRadius: Radius.pill },
+  confirmText: { color: '#fff', ...Type.caption, fontFamily: Font.semibold },
+  purchaseNote: { ...Type.caption, color: Afylo.textFaint, textAlign: 'center', marginTop: 8, lineHeight: 17, paddingHorizontal: 10 },
   createBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: Afylo.surface, borderRadius: Radius.md, paddingVertical: 13, marginBottom: 12, borderWidth: 1, borderColor: Afylo.surfaceAlt },
   createText: { color: Afylo.violet, fontWeight: '700', fontSize: 14 },
   emptyText: { color: Afylo.textDim, fontSize: 14, textAlign: 'center', paddingVertical: 24, paddingHorizontal: 20, lineHeight: 20 },
