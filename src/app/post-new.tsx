@@ -21,13 +21,13 @@ const KINDS = [
 export default function PostNew() {
   const router = useRouter();
   const { session } = useAuth();
-  const params = useLocalSearchParams<{ kind?: string }>();
+  const params = useLocalSearchParams<{ kind?: string; uri?: string }>();
 
   const [kind, setKind] = useState<'image' | 'video' | 'story'>(
     (params.kind as any) === 'video' ? 'video' : 'image',
   );
   const [caption, setCaption] = useState('');
-  const [mediaUrl, setMediaUrl] = useState('');
+  const [mediaUrl, setMediaUrl] = useState(typeof params.uri === 'string' ? params.uri : '');
   const [products, setProducts] = useState<Product[]>([]);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [loadingProducts, setLoadingProducts] = useState(false);

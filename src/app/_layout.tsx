@@ -63,6 +63,8 @@ function RootNavigator() {
       <Stack.Screen name="creator/[id]" />
       <Stack.Screen name="affiliation" />
       <Stack.Screen name="settings" />
+      <Stack.Screen name="notifications" />
+      <Stack.Screen name="search" />
       <Stack.Screen name="messages" />
       <Stack.Screen name="chat/[id]" />
       <Stack.Screen name="comments/[id]" options={{ presentation: 'transparentModal', animation: 'slide_from_bottom' }} />

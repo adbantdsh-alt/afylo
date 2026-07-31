@@ -30,8 +30,8 @@ export default function Feed() {
             Afylo<Text style={{ color: Afylo.violet }}>.</Text>
           </Text>
           <View style={{ flexDirection: 'row', gap: 10 }}>
-            <IconButton name="search" />
-            <IconButton name="notifications-outline" />
+            <IconButton name="search" onPress={() => router.push('/search')} />
+            <IconButton name="notifications-outline" onPress={() => router.push('/notifications')} />
           </View>
         </View>
       </SafeAreaView>

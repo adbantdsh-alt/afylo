@@ -9,6 +9,7 @@ import { Avatar, PillButton } from '@/components/ui-kit';
 import { Afylo, Font, Radius, Type } from '@/constants/brand';
 import { useAuth } from '@/lib/auth';
 import { deleteProduct, getMyProfile, listMyProducts } from '@/lib/db';
+import { useStories } from '@/lib/stories';
 import { useAlwaysShowTabBar } from '@/lib/tabbar';
 import { exploreItems, myLives, myPosts, myProducts, myProfile, photo, type MyLive } from '@/lib/mock';
 import type { Profile } from '@/types/db';
@@ -26,6 +27,8 @@ export default function Profil() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [dbProfile, setDbProfile] = useState<Profile | null>(null);
   const showTabBar = useAlwaysShowTabBar();
+  const { myStory } = useStories();
+  const openStory = () => (myStory ? router.push({ pathname: '/story/[uid]', params: { uid: myStory.id } }) : router.push('/creer'));
 
   useFocusEffect(
     useCallback(() => {
@@ -97,7 +100,14 @@ export default function Profil() {
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 110 }}>
         {/* En-tête profil */}
         <View style={styles.head}>
-          <Avatar uri={p.avatar} size={88} ring />
+          <Pressable onPress={openStory}>
+            <Avatar uri={p.avatar} size={88} ring={!!myStory} />
+            {!myStory && (
+              <View style={styles.addStoryBadge}>
+                <Ionicons name="add" size={16} color="#fff" />
+              </View>
+            )}
+          </Pressable>
           <View style={styles.statsRow}>
             <Stat value={myProfile.followers} label="Abonnés" />
             <Stat value={myProfile.sales} label="Ventes" />
@@ -399,6 +409,7 @@ const styles = StyleSheet.create({
   iconTop: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
 
   head: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 18, marginTop: 12, gap: 20 },
+  addStoryBadge: { position: 'absolute', bottom: 0, right: 0, width: 26, height: 26, borderRadius: 13, backgroundColor: Afylo.violet, alignItems: 'center', justifyContent: 'center', borderWidth: 2.5, borderColor: Afylo.bg },
   statsRow: { flex: 1, flexDirection: 'row', justifyContent: 'space-around' },
   statValue: { ...Type.statNumber, color: Afylo.text },
   statLabel: { ...Type.statLabel, color: Afylo.textDim, marginTop: 4 },

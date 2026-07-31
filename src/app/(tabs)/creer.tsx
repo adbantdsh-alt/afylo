@@ -25,7 +25,7 @@ export default function Creer() {
   const [permission, requestPermission] = useCameraPermissions();
   const camRef = useRef<CameraView>(null);
 
-  const [mode, setMode] = useState<Mode>('Publication');
+  const [mode, setMode] = useState<Mode>('Story');
   const [facing, setFacing] = useState<'front' | 'back'>('back');
   const [media, setMedia] = useState<{ uri: string; type: 'image' | 'video' } | null>(null);
   const [recording, setRecording] = useState(false);
@@ -78,8 +78,8 @@ export default function Creer() {
       setBusy(false);
       router.replace('/accueil');
     } else {
-      // Publication / Reel -> compositeur (légende + produits, jusqu'à 5)
-      router.push(mode === 'Reel' ? '/post-new?kind=video' : '/post-new');
+      // Publication / Reel -> compositeur (légende + produits, jusqu'à 5) avec le média capturé
+      router.push({ pathname: '/post-new', params: { kind: mode === 'Reel' ? 'video' : 'image', uri: media.uri } });
     }
   };
 
