@@ -1,4 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
+import { BlurView } from 'expo-blur';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useState } from 'react';
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
@@ -83,7 +84,8 @@ export default function Comments() {
       </ScrollView>
 
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <SafeAreaView edges={['bottom']} style={{ backgroundColor: Afylo.surface }}>
+        <SafeAreaView edges={['bottom']} style={styles.inputSheet}>
+          <BlurView intensity={30} tint="light" style={StyleSheet.absoluteFill} />
           {replyTo && (
             <View style={styles.replyBanner}>
               <Text style={styles.replyText}>Réponse à {replyTo.handle}</Text>
@@ -153,7 +155,8 @@ const styles = StyleSheet.create({
 
   replyBanner: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 8, backgroundColor: Afylo.bg, borderTopWidth: 1, borderTopColor: Afylo.border },
   replyText: { ...Type.caption, color: Afylo.textDim },
-  inputBar: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 12, paddingVertical: 8, borderTopWidth: 1, borderTopColor: Afylo.border },
+  inputSheet: { backgroundColor: Afylo.glass, overflow: 'hidden', borderTopWidth: 1, borderTopColor: Afylo.glassBorder },
+  inputBar: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 12, paddingVertical: 8 },
   input: { flex: 1, backgroundColor: Afylo.bg, borderRadius: Radius.pill, paddingHorizontal: 16, height: 40, ...Type.body, fontSize: 15, color: Afylo.text },
   send: { width: 40, height: 40, borderRadius: 20, backgroundColor: Afylo.violet, alignItems: 'center', justifyContent: 'center' },
 });
