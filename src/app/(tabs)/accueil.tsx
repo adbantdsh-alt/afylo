@@ -61,7 +61,11 @@ export default function Feed() {
             <Pressable
               key={s.id}
               style={styles.liveItem}
-              onPress={() => router.push({ pathname: '/story/[uid]', params: { uid: s.id } })}>
+              onPress={() =>
+                s.live
+                  ? router.push({ pathname: '/live', params: { role: 'viewer', name: s.name, avatar: s.avatar } })
+                  : router.push({ pathname: '/story/[uid]', params: { uid: s.id } })
+              }>
               <Avatar uri={s.avatar} size={64} live={s.live} ring={!s.live} />
               {s.live && (
                 <View style={styles.liveTag}>

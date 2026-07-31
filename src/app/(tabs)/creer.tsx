@@ -74,7 +74,11 @@ export default function Creer() {
   };
 
   const publish = async () => {
-    if (!gate(mode === 'Story' ? 'publier une story' : 'publier')) return;
+    if (!gate(mode === 'Story' ? 'publier une story' : mode === 'Live' ? 'passer en live' : 'publier')) return;
+    if (mode === 'Live') {
+      router.push({ pathname: '/live', params: { role: 'host' } });
+      return;
+    }
     if (!media) return;
     if (mode === 'Story') {
       setBusy(true);
