@@ -14,7 +14,8 @@ import { Afylo, Font, Radius } from '@/constants/brand';
 import { affiliationProducts, avatar, myProducts, photo, video } from '@/lib/mock';
 
 type SellProduct = { id: string; title: string; price: string; image: string; tag: string };
-type Comment = { id: string; name: string; avatar: string; text: string; gift?: boolean };
+type Comment = { id: string; name: string; avatar: string; text: string; gift?: boolean; system?: 'join' | 'like' | 'share' | 'guest' };
+type Guest = { id: string; name: string; avatar: string };
 
 // Produits disponibles pour le vendeur : les siens + ceux en affiliation
 const AVAILABLE: SellProduct[] = [
@@ -25,6 +26,12 @@ const AVAILABLE: SellProduct[] = [
 const CHATTERS = ['Awa', 'Modou', 'Sokhna', 'Cheikh', 'Mariama', 'Ibou', 'Aïda', 'Serigne'];
 const MSGS = ['Trop belle 😍', 'Ça coûte combien ?', 'Livraison à Thiès ?', '🔥🔥🔥', "J'achète !", 'Bravo 👏', "Tu as d'autres couleurs ?", 'Première fois ici 🙌', 'Salut de Dakar', 'Le lien du produit ?', 'Magnifique'];
 const GIFTS = [500, 1000, 2000, 5000];
+const SYS: Record<'join' | 'like' | 'share' | 'guest', { icon: keyof typeof Ionicons.glyphMap; color: string }> = {
+  join: { icon: 'enter-outline', color: '#7EC8FF' },
+  like: { icon: 'heart', color: Afylo.live },
+  share: { icon: 'arrow-redo', color: '#fff' },
+  guest: { icon: 'mic', color: Afylo.violet2 },
+};
 let cid = 0;
 
 export default function Live() {
@@ -51,6 +58,13 @@ export default function Live() {
   const [pinned, setPinned] = useState<Comment | null>(null);
   const [blocked, setBlocked] = useState<string[]>([]);
   const [mod, setMod] = useState<Comment | null>(null);
+  const [requests, setRequests] = useState<Guest[]>([]); // demandes d'intervention (vendeur)
+  const [guests, setGuests] = useState<Guest[]>([]); // intervenants acceptés
+  const [requested, setRequested] = useState<'idle' | 'pending' | 'live'>('idle'); // côté spectateur
+  const lastTap = useRef(0);
+
+  const pushEvent = (name: string, av: string, system: NonNullable<Comment['system']>, text: string) =>
+    setComments((prev) => [...prev.slice(-30), { id: `e${cid++}`, name, avatar: av, text, system }]);
 
   const viewerPlayer = useVideoPlayer(video(3), (p) => { p.loop = true; p.muted = true; if (!isHost) p.play(); });
 
@@ -73,23 +87,54 @@ export default function Live() {
   const blockUser = (n: string) => { setBlocked((b) => [...b, n]); setComments((prev) => prev.filter((c) => c.name !== n)); setMod(null); };
   const pinComment = (c: Comment) => { setPinned(c); setMod(null); };
 
-  // Flux commentaires + cadeaux (seulement en live)
+  // Double-tap n'importe où = like
+  const onScreenTap = () => {
+    const now = Date.now();
+    if (now - lastTap.current < 300) sendHeart();
+    lastTap.current = now;
+  };
+
+  // Intervenants (co-host façon TikTok)
+  const acceptGuest = (g: Guest) => {
+    setGuests((prev) => [...prev, g]);
+    setRequests((prev) => prev.filter((r) => r.id !== g.id));
+    pushEvent(g.name, g.avatar, 'guest', 'a rejoint en tant qu\'intervenant');
+  };
+  const refuseGuest = (id: string) => setRequests((prev) => prev.filter((r) => r.id !== id));
+  const requestJoin = () => {
+    if (requested !== 'idle') return;
+    setRequested('pending');
+    setTimeout(() => { setRequested('live'); pushEvent('Toi', avatar(12), 'guest', 'tu es maintenant intervenant 🎤'); }, 2600);
+  };
+
+  // Événement d'arrivée
+  useEffect(() => {
+    if (phase === 'live') pushEvent('Toi', avatar(12), 'join', 'a rejoint le live');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phase]);
+
+  // Flux d'événements (chat, cadeaux, rejoint, likes, partages) + demandes d'intervention
   useEffect(() => {
     if (phase !== 'live') return;
     const t = setInterval(() => {
       const nm = CHATTERS[Math.floor((Date.now() / 1000) % CHATTERS.length)];
-      if (blocked.includes(nm)) return;
-      const isGift = Math.round(Date.now() / 1000) % 4 === 0;
-      setComments((prev) => [
-        ...prev.slice(-30),
-        isGift
-          ? { id: `c${cid++}`, name: nm, avatar: avatar(9 + (cid % 40)), text: `a offert ${GIFTS[cid % GIFTS.length].toLocaleString('fr-FR')} FCFA 🎁`, gift: true }
-          : { id: `c${cid++}`, name: nm, avatar: avatar(9 + (cid % 40)), text: MSGS[cid % MSGS.length] },
-      ]);
+      const av = avatar(9 + (cid % 40));
+      if (!blocked.includes(nm)) {
+        const roll = Math.round(Date.now() / 1000) % 6;
+        if (roll === 0) setComments((prev) => [...prev.slice(-30), { id: `c${cid++}`, name: nm, avatar: av, text: `a offert ${GIFTS[cid % GIFTS.length].toLocaleString('fr-FR')} FCFA 🎁`, gift: true }]);
+        else if (roll === 1) pushEvent(nm, av, 'join', 'a rejoint le live');
+        else if (roll === 2) pushEvent(nm, av, 'like', 'a aimé');
+        else if (roll === 3) pushEvent(nm, av, 'share', 'a partagé');
+        else setComments((prev) => [...prev.slice(-30), { id: `c${cid++}`, name: nm, avatar: av, text: MSGS[cid % MSGS.length] }]);
+      }
       setViewers((v) => v + (Math.round(Date.now() / 1000) % 3) - 1);
+      // Demande d'intervention simulée (vue vendeur)
+      if (isHost && Math.round(Date.now() / 1000) % 8 === 0) {
+        setRequests((prev) => (prev.length ? prev : [{ id: `r${cid++}`, name: nm, avatar: av }]));
+      }
     }, 2200);
     return () => clearInterval(t);
-  }, [phase, blocked]);
+  }, [phase, blocked, isHost]);
 
   // ---------- VUE VENDEUR : préparation du live ----------
   if (isHost && phase === 'setup') {
@@ -150,6 +195,9 @@ export default function Live() {
         <VideoView player={viewerPlayer} style={StyleSheet.absoluteFill} contentFit="cover" nativeControls={false} />
       )}
 
+      {/* Double-tap n'importe où = like */}
+      <Pressable style={StyleSheet.absoluteFill} onPress={onScreenTap} />
+
       <SafeAreaView style={{ flex: 1 }} pointerEvents="box-none">
         <View style={styles.top}>
           <View style={styles.hostPill}>
@@ -176,19 +224,48 @@ export default function Live() {
           </View>
         )}
 
+        {/* Demande d'intervention (vendeur accepte/refuse) */}
+        {isHost && requests.length > 0 && (
+          <View style={styles.reqCard}>
+            <Avatar uri={requests[0].avatar} size={34} />
+            <Text style={styles.reqText} numberOfLines={1}><Text style={{ fontFamily: Font.bold }}>{requests[0].name}</Text> veut intervenir</Text>
+            <Pressable onPress={() => refuseGuest(requests[0].id)} style={styles.reqRefuse}><Ionicons name="close" size={18} color="#fff" /></Pressable>
+            <Pressable onPress={() => acceptGuest(requests[0])} style={styles.reqAccept}><Text style={styles.reqAcceptText}>Accepter</Text></Pressable>
+          </View>
+        )}
+
+        {/* Intervenants en direct */}
+        {guests.length > 0 && (
+          <View style={styles.guestStrip}>
+            {guests.map((g) => (
+              <View key={g.id} style={styles.guestPip}>
+                <Avatar uri={g.avatar} size={44} ring />
+                <View style={styles.guestMic}><Ionicons name="mic" size={9} color="#fff" /></View>
+              </View>
+            ))}
+          </View>
+        )}
+
         <View style={{ flex: 1 }} />
 
         {/* Commentaires (tap = modérer pour le vendeur) */}
         <View style={styles.commentsWrap} pointerEvents="box-none">
-          {comments.slice(-6).map((c) => (
-            <Pressable key={c.id} onPress={() => isHost && c.name !== 'Toi' && setMod(c)} style={styles.comment}>
-              <Avatar uri={c.avatar} size={26} />
-              <View style={[styles.commentBubble, c.gift && styles.giftBubble]}>
-                <Text style={[styles.commentName, c.gift && { color: '#fff' }]}>{c.name}</Text>
-                <Text style={[styles.commentText, c.gift && styles.giftText]}>{c.text}</Text>
+          {comments.slice(-7).map((c) =>
+            c.system ? (
+              <View key={c.id} style={styles.sysRow}>
+                <Ionicons name={SYS[c.system].icon} size={13} color={SYS[c.system].color} />
+                <Text style={styles.sysText}><Text style={{ fontFamily: Font.semibold }}>{c.name}</Text> {c.text}</Text>
               </View>
-            </Pressable>
-          ))}
+            ) : (
+              <Pressable key={c.id} onPress={() => isHost && c.name !== 'Toi' && setMod(c)} style={styles.comment}>
+                <Avatar uri={c.avatar} size={26} />
+                <View style={[styles.commentBubble, c.gift && styles.giftBubble]}>
+                  <Text style={[styles.commentName, c.gift && { color: '#fff' }]}>{c.name}</Text>
+                  <Text style={[styles.commentText, c.gift && styles.giftText]}>{c.text}</Text>
+                </View>
+              </Pressable>
+            ),
+          )}
         </View>
 
         {/* Barre du bas */}
@@ -206,6 +283,12 @@ export default function Live() {
           {isHost && (
             <Pressable onPress={() => setProductPicker(true)} style={styles.circleBtn}>
               <Ionicons name="pricetags" size={22} color="#fff" />
+            </Pressable>
+          )}
+
+          {!isHost && (
+            <Pressable onPress={requestJoin} style={[styles.circleBtn, requested !== 'idle' && { backgroundColor: Afylo.violet }]}>
+              <Ionicons name={requested === 'live' ? 'mic' : requested === 'pending' ? 'hourglass' : 'hand-left'} size={20} color="#fff" />
             </Pressable>
           )}
 
@@ -326,6 +409,14 @@ const styles = StyleSheet.create({
 
   pinned: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#00000066', marginHorizontal: 12, marginTop: 10, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 12, borderWidth: 1, borderColor: '#FFD98A55' },
   pinnedText: { color: '#fff', fontSize: 13, flex: 1 },
+  reqCard: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: '#000000AA', marginHorizontal: 12, marginTop: 10, padding: 8, borderRadius: 14, borderWidth: 1, borderColor: Afylo.violet },
+  reqText: { color: '#fff', fontSize: 13, flex: 1 },
+  reqRefuse: { width: 34, height: 34, borderRadius: 17, backgroundColor: '#ffffff22', alignItems: 'center', justifyContent: 'center' },
+  reqAccept: { backgroundColor: Afylo.violet, paddingHorizontal: 14, height: 34, borderRadius: 17, alignItems: 'center', justifyContent: 'center' },
+  reqAcceptText: { color: '#fff', fontFamily: Font.semibold, fontSize: 13 },
+  guestStrip: { flexDirection: 'row', gap: 10, paddingHorizontal: 14, marginTop: 12 },
+  guestPip: { width: 44, height: 44 },
+  guestMic: { position: 'absolute', bottom: -2, right: -2, width: 18, height: 18, borderRadius: 9, backgroundColor: Afylo.violet, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: '#000' },
 
   commentsWrap: { paddingHorizontal: 12, gap: 8, marginBottom: 8, maxWidth: '82%' },
   comment: { flexDirection: 'row', alignItems: 'flex-end', gap: 8 },
@@ -334,6 +425,8 @@ const styles = StyleSheet.create({
   commentText: { color: '#fff', fontSize: 14 },
   giftBubble: { backgroundColor: '#B8791Fee', borderWidth: 1, borderColor: '#FFD98A' },
   giftText: { color: '#fff', fontFamily: Font.bold },
+  sysRow: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingLeft: 4 },
+  sysText: { color: '#ffffffcc', fontSize: 13 },
 
   bottom: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 12, paddingBottom: 8 },
   inputBar: { flex: 1, backgroundColor: '#00000055', borderRadius: Radius.pill, borderWidth: 1, borderColor: '#ffffff44', paddingHorizontal: 16, height: 44, justifyContent: 'center' },
