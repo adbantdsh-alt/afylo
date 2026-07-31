@@ -37,7 +37,7 @@ export default function ProductNew() {
       mediaTypes: ['images'],
       allowsMultipleSelection: true,
       selectionLimit: remaining,
-      quality: 0.7,
+      quality: 1, // haute qualité pour des photos produit nettes
     });
     if (!res.canceled) {
       setImages((prev) => [...prev, ...res.assets.map((a) => a.uri)].slice(0, MAX_IMAGES));

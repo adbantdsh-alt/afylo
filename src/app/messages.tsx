@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Avatar } from '@/components/ui-kit';
@@ -35,7 +35,10 @@ export default function Messages() {
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingVertical: 8 }}>
         {convos.map((c) => (
-          <View key={c.id} style={styles.row}>
+          <Pressable
+            key={c.id}
+            onPress={() => router.push({ pathname: '/chat/[id]', params: { id: c.id, name: c.name, avatar: c.avatar } })}
+            style={styles.row}>
             <View>
               <Avatar uri={c.avatar} size={56} ring={c.unread > 0} />
               {c.online && <View style={styles.online} />}
@@ -54,7 +57,7 @@ export default function Messages() {
                 )}
               </View>
             </View>
-          </View>
+          </Pressable>
         ))}
         <Text style={styles.note}>La messagerie complète arrive bientôt.</Text>
       </ScrollView>

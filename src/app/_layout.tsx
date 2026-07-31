@@ -62,6 +62,7 @@ function RootNavigator() {
       <Stack.Screen name="affiliation" />
       <Stack.Screen name="settings" />
       <Stack.Screen name="messages" />
+      <Stack.Screen name="chat/[id]" />
     </Stack>
   );
 }
