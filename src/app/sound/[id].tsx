@@ -1,4 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
+import { useAudioPlayer } from 'expo-audio';
 import { Image } from 'expo-image';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useState } from 'react';
@@ -18,8 +19,14 @@ export default function SoundPage() {
   const sound = findSound(id);
   const [fav, setFav] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [playing, setPlaying] = useState(false);
 
-  const s = sound ?? { id: 'x', title: 'Son', artist: 'Afylo', cover: photo('snd', 300, 300), duration: '0:30', uses: '12 k' };
+  const s = sound ?? { id: 'x', title: 'Son', artist: 'Afylo', cover: photo('snd', 300, 300), duration: '0:30', uses: '12 k', audio: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3' };
+  const player = useAudioPlayer(s.audio);
+  const togglePlay = () => {
+    if (playing) { player.pause(); setPlaying(false); }
+    else { player.play(); setPlaying(true); }
+  };
 
   const share = async () => {
     try { await Share.share({ message: `Écoute "${s.title}" — ${s.artist} sur Afylo` }); } catch {}
@@ -37,12 +44,17 @@ export default function SoundPage() {
 
         {/* En-tête son */}
         <View style={styles.hero}>
-          <Image source={{ uri: s.cover }} style={styles.cover} contentFit="cover" />
+          <Pressable onPress={togglePlay} style={styles.coverWrap}>
+            <Image source={{ uri: s.cover }} style={styles.cover} contentFit="cover" />
+            <View style={styles.playOverlay}>
+              <Ionicons name={playing ? 'pause' : 'play'} size={26} color="#fff" />
+            </View>
+          </Pressable>
           <View style={{ flex: 1 }}>
             <Text style={styles.title} numberOfLines={2}>{s.title}</Text>
             <Text style={styles.artist}>{s.artist}</Text>
             <View style={styles.metaRow}>
-              <Ionicons name="play" size={14} color="#fff" />
+              <Ionicons name="musical-notes" size={14} color="#fff" />
               <Text style={styles.meta}>{s.duration} · {s.uses} publications</Text>
             </View>
           </View>
@@ -95,7 +107,9 @@ const styles = StyleSheet.create({
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 14, paddingVertical: 10 },
   headerTitle: { color: '#fff', fontFamily: Font.semibold, fontSize: 16, flex: 1, textAlign: 'center', marginHorizontal: 10 },
   hero: { flexDirection: 'row', gap: 14, paddingHorizontal: 16, paddingBottom: 16 },
+  coverWrap: { width: 92, height: 92, borderRadius: 14, overflow: 'hidden' },
   cover: { width: 92, height: 92, borderRadius: 14, backgroundColor: '#222' },
+  playOverlay: { ...StyleSheet.absoluteFillObject, alignItems: 'center', justifyContent: 'center', backgroundColor: '#00000044' },
   title: { color: '#fff', fontFamily: Font.bold, fontSize: 20, letterSpacing: -0.3 },
   artist: { color: '#ffffffcc', ...Type.small, marginTop: 4 },
   metaRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 8 },

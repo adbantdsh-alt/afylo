@@ -2,16 +2,17 @@ import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useVideoPlayer, VideoView } from 'expo-video';
 
 import { Avatar } from '@/components/ui-kit';
 import { PaymentSheet } from '@/components/payment-sheet';
 import { RateSheet } from '@/components/rate-sheet';
 import { Afylo, Font, Radius } from '@/constants/brand';
 import { useAuthGate } from '@/lib/auth-gate';
-import { avatar, face, type Post, posts as basePosts } from '@/lib/mock';
+import { avatar, face, type Post, posts as basePosts, video } from '@/lib/mock';
 import { useHideOnScroll } from '@/lib/tabbar';
 
 // Quelques vidéos verticales supplémentaires pour le défilement
@@ -59,6 +60,7 @@ export default function Trend() {
   const { height, width } = useWindowDimensions();
   const scroll = useHideOnScroll();
   const [tab, setTab] = useState<TabKey>('trend');
+  const [active, setActive] = useState(0);
 
   const shown =
     tab === 'abonnements' ? reels.slice(0, 2) : tab === 'proche' ? reels.slice(2) : reels;
@@ -71,9 +73,10 @@ export default function Trend() {
         showsVerticalScrollIndicator={false}
         snapToInterval={height}
         decelerationRate="fast"
+        onMomentumScrollEnd={(e) => setActive(Math.round(e.nativeEvent.contentOffset.y / height))}
         {...scroll}>
-        {shown.map((r) => (
-          <Reel key={r.id} post={r} height={height} width={width} />
+        {shown.map((r, i) => (
+          <Reel key={r.id} post={r} index={i} active={i === active} height={height} width={width} />
         ))}
         {shown.length === 0 && (
           <View style={{ height, width, alignItems: 'center', justifyContent: 'center' }}>
@@ -96,9 +99,18 @@ export default function Trend() {
   );
 }
 
-function Reel({ post, height, width }: { post: Post; height: number; width: number }) {
+function Reel({ post, index, active, height, width }: { post: Post; index: number; active: boolean; height: number; width: number }) {
   const router = useRouter();
   const gate = useAuthGate();
+
+  const player = useVideoPlayer(video(index), (p) => {
+    p.loop = true;
+    p.muted = true;
+  });
+  useEffect(() => {
+    if (active) player.play();
+    else player.pause();
+  }, [active, player]);
   const [liked, setLiked] = useState(false);
   const [saved, setSaved] = useState(false);
   const [reposted, setReposted] = useState(false);
@@ -117,6 +129,7 @@ function Reel({ post, height, width }: { post: Post; height: number; width: numb
   return (
     <View style={{ height, width, backgroundColor: '#000' }}>
       <Image source={{ uri: post.image }} style={StyleSheet.absoluteFill} contentFit="cover" transition={200} />
+      <VideoView player={player} style={StyleSheet.absoluteFill} contentFit="cover" nativeControls={false} />
       <LinearGradient colors={['#00000000', '#00000000', '#000000CC']} style={StyleSheet.absoluteFill} />
 
       {/* Rail d'actions à droite */}

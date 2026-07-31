@@ -11,8 +11,12 @@ export type Sound = {
   cover: string;
   duration: string;
   uses: string; // nb de publications
+  audio: string; // URL audio réelle (lecture)
   original?: boolean;
 };
+
+// Pistes audio libres de droit (SoundHelix) — pour la lecture réelle.
+const AUDIO = Array.from({ length: 16 }, (_, i) => `https://www.soundhelix.com/examples/mp3/SoundHelix-Song-${i + 1}.mp3`);
 
 const TITLES = [
   'Wild Thoughts', 'Calm Down', 'Last Last', 'Unavailable', 'Rush', 'Love Nwantiti', 'Peru', 'Essence', 'Amapiano Vibes',
@@ -41,6 +45,7 @@ function build(): Sound[] {
         cover: photo(`sound-${t}-${k}`.replace(/\W/g, ''), 300, 300),
         duration: `0:${15 + ((n + k) % 45)}`,
         uses: usesK > 500 ? `${(usesK / 100).toFixed(1)} M` : `${usesK} k`,
+        audio: AUDIO[(n + k) % AUDIO.length],
         original: artist === 'Son original',
       });
     }

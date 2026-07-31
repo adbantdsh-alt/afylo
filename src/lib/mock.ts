@@ -40,6 +40,19 @@ export const avatar = (n: number) =>
 export const photo = (seed: string, w = 600, h = 800) =>
   `https://picsum.photos/seed/${seed}/${w}/${h}`;
 
+// Vraies vidéos de démo (libres, bucket public Google) — lecture réelle.
+export const VIDEOS = [
+  'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4',
+  'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4',
+  'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4',
+  'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerFun.mp4',
+  'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerJoyrides.mp4',
+  'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerMeltdowns.mp4',
+  'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/Sintel.mp4',
+  'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/TearsOfSteel.mp4',
+];
+export const video = (i: number) => VIDEOS[Math.abs(i) % VIDEOS.length];
+
 export const me = {
   name: 'Toi',
   handle: '@toi',
