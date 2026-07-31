@@ -1,4 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
+import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
@@ -7,7 +8,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Avatar, PillButton } from '@/components/ui-kit';
 import { Afylo, Font, Radius } from '@/constants/brand';
 import { useAuth } from '@/lib/auth';
-import { getMyProfile, updateMyProfile } from '@/lib/db';
+import { getMyProfile, updateMyProfile, uploadImage } from '@/lib/db';
 import { myProfile } from '@/lib/mock';
 
 export default function EditProfile() {
@@ -16,6 +17,7 @@ export default function EditProfile() {
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const [avatar, setAvatar] = useState('');
@@ -41,6 +43,26 @@ export default function EditProfile() {
       })
       .finally(() => setLoading(false));
   }, [session]);
+
+  const pickPhoto = async () => {
+    const res = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], allowsEditing: true, aspect: [1, 1], quality: 0.7 });
+    if (res.canceled) return;
+    const uri = res.assets[0].uri;
+    if (!session) {
+      setAvatar(uri); // aperçu en mode invité (non sauvegardé)
+      return;
+    }
+    setUploadingPhoto(true);
+    setError(null);
+    try {
+      const url = await uploadImage('avatars', uri);
+      setAvatar(url);
+    } catch (e: any) {
+      setError(e.message ?? "Échec de l'upload de la photo.");
+    } finally {
+      setUploadingPhoto(false);
+    }
+  };
 
   const save = async () => {
     setError(null);
@@ -84,15 +106,21 @@ export default function EditProfile() {
           <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 40 }} keyboardShouldPersistTaps="handled">
             {/* Photo */}
             <View style={styles.avatarWrap}>
-              <Avatar uri={avatar || myProfile.avatar} size={92} ring />
-              <Text style={styles.changePhoto}>Photo de profil (colle une URL ci-dessous)</Text>
+              <Pressable onPress={pickPhoto}>
+                <Avatar uri={avatar || myProfile.avatar} size={100} ring />
+                <View style={styles.cameraBadge}>
+                  {uploadingPhoto ? <ActivityIndicator color="#fff" size="small" /> : <Ionicons name="camera" size={18} color="#fff" />}
+                </View>
+              </Pressable>
+              <Pressable onPress={pickPhoto}>
+                <Text style={styles.changePhoto}>Changer la photo</Text>
+              </Pressable>
             </View>
 
             {!session && (
               <Text style={styles.demoNote}>Mode invité : connecte-toi pour enregistrer tes modifications.</Text>
             )}
 
-            <Field label="URL de la photo" value={avatar} onChange={setAvatar} placeholder="https://..." />
             <Field label="Nom affiché" value={name} onChange={setName} placeholder="Ton nom" />
             <Field label="Identifiant (@handle)" value={handle} onChange={setHandle} placeholder="fatou.style" />
             <Field label="Bio" value={bio} onChange={setBio} placeholder="Parle de toi, ta boutique..." multiline />
@@ -145,7 +173,8 @@ const styles = StyleSheet.create({
   title: { color: Afylo.text, fontSize: 18, fontFamily: Font.bold },
 
   avatarWrap: { alignItems: 'center', marginTop: 8, gap: 10 },
-  changePhoto: { color: Afylo.textDim, fontSize: 13 },
+  cameraBadge: { position: 'absolute', bottom: 0, right: 0, width: 34, height: 34, borderRadius: 17, backgroundColor: Afylo.violet, alignItems: 'center', justifyContent: 'center', borderWidth: 3, borderColor: Afylo.bg },
+  changePhoto: { color: Afylo.violet, fontSize: 14, fontFamily: Font.semibold },
   demoNote: { color: Afylo.textFaint, fontSize: 12, textAlign: 'center', marginTop: 16 },
 
   label: { color: Afylo.text, fontSize: 14, fontWeight: '700', marginBottom: 8 },

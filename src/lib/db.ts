@@ -37,14 +37,30 @@ export async function updateMyProfile(patch: ProfileInput): Promise<void> {
   if (error) throw error;
 }
 
+// ---- Upload d'image vers Supabase Storage ----
+/** Upload une image locale (uri) et renvoie son URL publique. */
+export async function uploadImage(bucket: 'avatars' | 'products' | 'media', uri: string): Promise<string> {
+  const userId = await requireUserId();
+  const resp = await fetch(uri);
+  const arrayBuffer = await resp.arrayBuffer();
+  const contentType = resp.headers.get('content-type') || 'image/jpeg';
+  const ext = contentType.includes('png') ? 'png' : contentType.includes('webp') ? 'webp' : 'jpg';
+  const path = `${userId}/${Date.now()}-${Math.round(Math.random() * 1e9)}.${ext}`;
+  const { error } = await supabase.storage.from(bucket).upload(path, arrayBuffer, { contentType, upsert: false });
+  if (error) throw error;
+  return supabase.storage.from(bucket).getPublicUrl(path).data.publicUrl;
+}
+
 // ---- Produits ----
 export type ProductInput = {
   title: string;
   price_cfa: number;
+  promo_cfa?: number | null;
   stock: number;
   commission_pct: number;
   description?: string;
   image_url?: string | null;
+  images?: string[];
 };
 
 export async function listMyProducts(): Promise<Product[]> {

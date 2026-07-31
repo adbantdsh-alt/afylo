@@ -94,6 +94,7 @@ function Chip({ label, active, onPress, subtle }: { label: string; active: boole
 
 function ProductRow({ p, copied, onCopy }: { p: AffiliationProduct; copied: boolean; onCopy: () => void }) {
   const earn = Math.round(((p.promo ?? p.price) * p.commission) / 100);
+  const [resold, setResold] = useState(false);
   return (
     <View style={styles.card}>
       <Image source={{ uri: p.image }} style={styles.cardImg} contentFit="cover" transition={200} />
@@ -123,9 +124,9 @@ function ProductRow({ p, copied, onCopy }: { p: AffiliationProduct; copied: bool
             <Ionicons name={copied ? 'checkmark' : 'link'} size={16} color={copied ? '#fff' : Afylo.violet} />
             <Text style={[styles.copyText, copied && { color: '#fff' }]}>{copied ? 'Lien copié' : 'Copier le lien'}</Text>
           </Pressable>
-          <Pressable style={styles.resellBtn}>
-            <Ionicons name="repeat" size={16} color="#fff" />
-            <Text style={styles.resellText}>Revendre</Text>
+          <Pressable onPress={() => setResold(true)} style={[styles.resellBtn, resold && { backgroundColor: Afylo.green }]}>
+            <Ionicons name={resold ? 'checkmark' : 'repeat'} size={16} color="#fff" />
+            <Text style={styles.resellText}>{resold ? 'Dans ta boutique' : 'Revendre'}</Text>
           </Pressable>
         </View>
       </View>

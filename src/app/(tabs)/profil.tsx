@@ -55,7 +55,10 @@ export default function Profil() {
       <SafeAreaView edges={['top']} style={{ backgroundColor: Afylo.bg }}>
         <View style={styles.topbar}>
           <Text style={styles.handle}>{p.handle}</Text>
-          <View style={{ flexDirection: 'row', gap: 4 }}>
+          <View style={{ flexDirection: 'row', gap: 2 }}>
+            <Pressable onPress={() => router.push('/messages')} style={styles.iconTop}>
+              <Ionicons name="chatbubble-ellipses-outline" size={22} color={Afylo.text} />
+            </Pressable>
             {isOwner && (
               <Pressable onPress={() => router.push('/studio')} style={styles.iconTop}>
                 <Ionicons name="stats-chart" size={20} color={Afylo.gold} />
@@ -124,7 +127,7 @@ export default function Profil() {
             {isOwner && <MenuItem icon="bag-add-outline" label="Gérer ma boutique" onPress={() => { setMenuOpen(false); setSection('boutique'); }} />}
             <MenuItem icon="share-social-outline" label="Partager le profil" onPress={() => { setMenuOpen(false); share(); }} />
             <MenuItem icon="bookmark-outline" label="Enregistrements" onPress={() => setMenuOpen(false)} />
-            <MenuItem icon="settings-outline" label="Paramètres" onPress={() => { setMenuOpen(false); router.push('/edit-profile'); }} />
+            <MenuItem icon="settings-outline" label="Paramètres" onPress={() => { setMenuOpen(false); router.push('/settings'); }} />
             <MenuItem icon="help-circle-outline" label="Aide" onPress={() => { setMenuOpen(false); Linking.openURL('mailto:support@afylo.app'); }} />
             {isOwner && <MenuItem icon="log-out-outline" label="Déconnexion" danger onPress={async () => { setMenuOpen(false); await signOut(); }} />}
           </SafeAreaView>

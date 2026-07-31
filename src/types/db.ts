@@ -34,9 +34,11 @@ export interface Product {
   title: string;
   description: string | null;
   price_cfa: number;
+  promo_cfa: number | null;
   currency: string;
   stock: number;
   image_url: string | null;
+  images: string[];
   commission_pct: number;
   is_active: boolean;
   sold_count: number;
