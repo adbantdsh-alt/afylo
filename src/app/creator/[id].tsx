@@ -5,7 +5,7 @@ import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { Avatar, Badge, PillButton } from '@/components/ui-kit';
+import { Avatar, PillButton } from '@/components/ui-kit';
 import { Afylo, Font, Type } from '@/constants/brand';
 import { face, myPosts } from '@/lib/mock';
 
@@ -45,7 +45,6 @@ export default function CreatorProfile() {
 
         <View style={styles.nameRow}>
           <Text style={styles.name}>{name}</Text>
-          {!!params.badge && <Badge label={params.badge} color={params.badge === 'boutique' ? Afylo.gold : Afylo.violet} />}
         </View>
         <Text style={styles.bio}>Créateur Afylo · Contenu, boutique et lives. Suis pour ne rien rater 🔥</Text>
 

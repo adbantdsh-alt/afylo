@@ -64,6 +64,7 @@ function RootNavigator() {
       <Stack.Screen name="settings" />
       <Stack.Screen name="messages" />
       <Stack.Screen name="chat/[id]" />
+      <Stack.Screen name="comments/[id]" />
       <Stack.Screen name="legal/[doc]" />
     </Stack>
   );

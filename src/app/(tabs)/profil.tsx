@@ -6,18 +6,18 @@ import { useCallback, useState } from 'react';
 import { ActivityIndicator, Linking, Pressable, ScrollView, Share, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { Avatar, Badge, PillButton } from '@/components/ui-kit';
+import { Avatar, PillButton } from '@/components/ui-kit';
 import { Afylo, Font, Radius, Type } from '@/constants/brand';
 import { useAuth } from '@/lib/auth';
 import { deleteProduct, getMyProfile, listMyProducts } from '@/lib/db';
 import { useAlwaysShowTabBar } from '@/lib/tabbar';
-import { myLives, myPosts, myProducts, myProfile, photo, type MyLive } from '@/lib/mock';
+import { exploreItems, myLives, myPosts, myProducts, myProfile, photo, type MyLive } from '@/lib/mock';
 import type { Profile } from '@/types/db';
 
 /** Forme d'affichage commune (produit réel ou démo). */
 type DisplayProduct = { id: string; title: string; price: string; stock: number; sold: number; image: string; active: boolean; real: boolean };
 
-type Section = 'posts' | 'boutique' | 'lives';
+type Section = 'posts' | 'boutique' | 'lives' | 'reposts';
 
 export default function Profil() {
   const router = useRouter();
@@ -45,6 +45,9 @@ export default function Profil() {
           bio: dbProfile.bio || 'Ajoute une bio depuis « Modifier le profil ».',
         }
       : myProfile;
+
+  // Certification : compte officiel adbaecomx (ou champ is_verified en base)
+  const isVerified = dbProfile?.is_verified === true || dbProfile?.handle === 'adbaecomx' || p.handle === '@adbaecomx';
 
   const share = async () => {
     try {
@@ -104,7 +107,7 @@ export default function Profil() {
 
         <View style={styles.nameRow}>
           <Text style={styles.name}>{p.name}</Text>
-          <Badge label="créateur" color={Afylo.violet} />
+          {isVerified && <Ionicons name="checkmark-circle" size={20} color={Afylo.violet} />}
         </View>
         <Text style={styles.bio}>{p.bio}</Text>
 
@@ -128,11 +131,13 @@ export default function Profil() {
           <SectionTab icon="grid" active={section === 'posts'} onPress={() => setSection('posts')} />
           <SectionTab icon="bag-handle" active={section === 'boutique'} onPress={() => setSection('boutique')} />
           <SectionTab icon="radio" active={section === 'lives'} onPress={() => setSection('lives')} />
+          <SectionTab icon="repeat" active={section === 'reposts'} onPress={() => setSection('reposts')} />
         </View>
 
         {section === 'posts' && <PostsGrid />}
         {section === 'boutique' && <BoutiqueList isOwner={isOwner} />}
         {section === 'lives' && <LivesList isOwner={isOwner} />}
+        {section === 'reposts' && <RepostsGrid />}
       </ScrollView>
 
       {/* Menu hamburger */}
@@ -186,6 +191,21 @@ function PostsGrid() {
               <Text style={styles.cellTagText}>{p.views}</Text>
             </View>
           )}
+        </View>
+      ))}
+    </View>
+  );
+}
+
+function RepostsGrid() {
+  return (
+    <View style={styles.mediaGrid}>
+      {exploreItems.map((it) => (
+        <View key={it.id} style={styles.cell}>
+          <Image source={{ uri: it.image }} style={StyleSheet.absoluteFill} contentFit="cover" transition={200} />
+          <View style={styles.repostTag}>
+            <Ionicons name="repeat" size={12} color="#fff" />
+          </View>
         </View>
       ))}
     </View>
@@ -380,6 +400,7 @@ const styles = StyleSheet.create({
   mediaGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 2, marginTop: 2 },
   cell: { width: '33%', aspectRatio: 0.8, backgroundColor: Afylo.surfaceAlt, flexGrow: 1 },
   cellTag: { position: 'absolute', bottom: 6, left: 6, flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: '#00000088', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 8 },
+  repostTag: { position: 'absolute', top: 6, right: 6, width: 22, height: 22, borderRadius: 11, backgroundColor: '#00000088', alignItems: 'center', justifyContent: 'center' },
   cellTagText: { color: '#fff', fontSize: 10, fontWeight: '700' },
 
   createBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: Afylo.surface, borderRadius: Radius.md, paddingVertical: 13, marginBottom: 12, borderWidth: 1, borderColor: Afylo.surfaceAlt },

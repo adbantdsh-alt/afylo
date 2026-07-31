@@ -5,7 +5,7 @@ import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { Avatar, Badge, IconButton } from '@/components/ui-kit';
+import { Avatar, IconButton } from '@/components/ui-kit';
 import { Afylo, Font, Radius, Type } from '@/constants/brand';
 import { useAuthGate } from '@/lib/auth-gate';
 import { useHideOnScroll } from '@/lib/tabbar';
@@ -66,14 +66,16 @@ export default function Feed() {
 function PostCard({ post }: { post: Post }) {
   const router = useRouter();
   const gate = useAuthGate();
-  const badgeColor = post.badge === 'boutique' ? Afylo.gold : Afylo.violet;
   const [followed, setFollowed] = useState(false);
   const [liked, setLiked] = useState(false);
   const [bought, setBought] = useState(false);
+  const [reposted, setReposted] = useState(false);
 
   const toggleFollow = () => { if (gate('suivre ce créateur')) setFollowed((v) => !v); };
   const toggleLike = () => { if (gate('aimer')) setLiked((v) => !v); };
   const buy = () => { if (gate('acheter')) setBought(true); };
+  const repost = () => { if (gate('republier')) setReposted((v) => !v); };
+  const openComments = () => router.push({ pathname: '/comments/[id]', params: { id: post.id } });
 
   const openProfile = () =>
     router.push({
@@ -90,7 +92,6 @@ function PostCard({ post }: { post: Post }) {
           <View style={{ flex: 1, marginLeft: 10 }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
               <Text style={styles.name}>{post.name}</Text>
-              {post.badge && <Badge label={post.badge} color={badgeColor} />}
             </View>
             <Text style={styles.time}>{post.time}</Text>
           </View>
@@ -132,10 +133,14 @@ function PostCard({ post }: { post: Post }) {
         <Pressable onPress={toggleLike}>
           <Stat icon={liked ? 'heart' : 'heart-outline'} label={bumpLike(post.likes, liked)} color={liked ? Afylo.live : Afylo.inkDim} />
         </Pressable>
-        <Stat icon="chatbubble-ellipses" label={post.comments} />
-        <Stat icon="eye" label={post.views} />
+        <Pressable onPress={openComments}>
+          <Stat icon="chatbubble-ellipses" label={post.comments} />
+        </Pressable>
+        <Pressable onPress={repost}>
+          <Stat icon="repeat" label={reposted ? 'Republié' : post.shares} color={reposted ? Afylo.green : Afylo.inkDim} />
+        </Pressable>
         <View style={{ flex: 1 }} />
-        <Stat icon="arrow-redo" label={post.shares} />
+        <Stat icon="eye" label={post.views} />
       </View>
 
       <Text style={styles.caption}>{post.caption}</Text>
