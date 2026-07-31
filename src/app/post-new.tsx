@@ -10,6 +10,7 @@ import { SoundPicker } from '@/components/sound-picker';
 import { Afylo, Font, Radius } from '@/constants/brand';
 import { useAuth } from '@/lib/auth';
 import { createPost, listMyProducts } from '@/lib/db';
+import { classifyText } from '@/lib/moderation';
 import { photo } from '@/lib/mock';
 import { findSound, type Sound } from '@/lib/sounds';
 import type { Product } from '@/types/db';
@@ -62,6 +63,11 @@ export default function PostNew() {
     setError(null);
     if (!session) {
       setError('Connecte-toi avec un vrai compte pour publier (le mode invité ne peut pas).');
+      return;
+    }
+    const verdict = classifyText(caption);
+    if (verdict.level === 'blocked') {
+      setError(`🚫 Publication refusée : ${verdict.reason}`);
       return;
     }
     setPublishing(true);

@@ -21,6 +21,18 @@ const DOCS: Record<string, Doc> = {
       { h: '6. Responsabilité', p: "Afylo est fourni « en l'état ». Nous ne sommes pas responsables des litiges entre utilisateurs, mais mettons des outils à disposition pour les résoudre." },
     ],
   },
+  guidelines: {
+    title: 'Règles de la communauté',
+    updated: 'Dernière mise à jour : 2026',
+    body: [
+      { p: "Afylo est une plateforme libre : tu peux t'exprimer, débattre, vendre. Nous posons juste des limites nettes pour que chacun se sente à l'aise — plus souple que Facebook, mais pas le chaos." },
+      { h: '🚫 Strictement interdit (retiré, compte sanctionné)', p: "Toute forme de contenu sexuel impliquant des mineurs — tolérance zéro, signalé aux autorités. Menaces ou incitation à la violence et au terrorisme. Vente de produits illégaux (armes, drogues, contrefaçon dangereuse, êtres humains). Partage d'informations privées (doxxing)." },
+      { h: '⚠️ Autorisé avec avertissement', p: "Nudité artistique ou contenu suggestif (non explicite), images choquantes (violence/sang), sujets clivants (politique, religion, tragédies). Ces contenus restent en ligne mais sont floutés derrière un avertissement « Contenu sensible » et réservés aux adultes." },
+      { h: '✅ Liberté d\'expression', p: "Tes opinions, critiques, humour, débats et la vente de tes produits sont les bienvenus. On ne supprime pas une idée parce qu'elle dérange — on ajoute un avertissement si elle peut heurter." },
+      { h: 'Signalement', p: "Tu peux signaler tout contenu via le menu « … ». Les signalements concernant des mineurs sont traités en priorité absolue." },
+      { h: 'Achats & vendeurs', p: "Les paiements passent par XaalisPay (séquestre). Arnaques, faux produits et non-livraisons entraînent le remboursement de l'acheteur et la suspension du vendeur." },
+    ],
+  },
   privacy: {
     title: 'Politique de confidentialité',
     updated: 'Dernière mise à jour : 2026',

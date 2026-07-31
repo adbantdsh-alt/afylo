@@ -102,6 +102,7 @@ export default function Settings() {
       rows: [
         { icon: 'help-circle-outline', label: 'Aide', url: 'mailto:support@afylo.app' },
         { icon: 'flag-outline', label: 'Signaler un problème', url: 'mailto:support@afylo.app' },
+        { icon: 'people-outline', label: 'Règles de la communauté', route: '/legal/guidelines' },
         { icon: 'document-text-outline', label: "Conditions d'utilisation", route: '/legal/terms' },
         { icon: 'shield-outline', label: 'Politique de confidentialité', route: '/legal/privacy' },
         { icon: 'information-circle-outline', label: 'À propos d\'Afylo', sub: 'Version 1.0.0', route: '/legal/about' },

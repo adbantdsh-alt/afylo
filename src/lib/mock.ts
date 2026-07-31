@@ -94,6 +94,7 @@ export type Post = {
   product?: Product;
   products?: { title: string; price: string }[]; // jusqu'à 5 produits liés
   sound?: { id: string; title: string; artist: string };
+  sensitive?: string; // raison si contenu sensible (affiche un avertissement)
 };
 
 export const posts: Post[] = [
@@ -131,6 +132,7 @@ export const posts: Post[] = [
     views: '33 K',
     shares: '54',
     caption: 'Routine peau glow ✨ Testée et approuvée. Livraison Dakar 24h.',
+    sensitive: 'Contenu pour adultes',
     product: { title: 'Coffret soin visage', price: '12 000 FCFA', commission: '20%' },
   },
   {

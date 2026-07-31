@@ -8,6 +8,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Avatar, IconButton } from '@/components/ui-kit';
 import { PaymentSheet } from '@/components/payment-sheet';
 import { RateSheet } from '@/components/rate-sheet';
+import { ReportSheet } from '@/components/report-sheet';
 import { Afylo, Font, Radius, Type } from '@/constants/brand';
 import { useAuthGate } from '@/lib/auth-gate';
 import { useAlwaysShowTabBar } from '@/lib/tabbar';
@@ -96,6 +97,8 @@ function PostCard({ post }: { post: Post }) {
   const [reaction, setReaction] = useState<string | null>(null);
   const [rateOpen, setRateOpen] = useState(false);
   const [payOpen, setPayOpen] = useState(false);
+  const [reportOpen, setReportOpen] = useState(false);
+  const [revealed, setRevealed] = useState(false);
 
   const toggleFollow = () => { if (gate('suivre ce créateur')) setFollowed((v) => !v); };
   const toggleLike = () => { if (gate('aimer')) setLiked((v) => !v); };
@@ -125,15 +128,26 @@ function PostCard({ post }: { post: Post }) {
         <Pressable onPress={toggleFollow} style={[styles.followBtn, followed && styles.followBtnOn]}>
           <Text style={[styles.followText, followed && styles.followTextOn]}>{followed ? 'Suivi' : 'Suivre'}</Text>
         </Pressable>
+        <Pressable onPress={() => setReportOpen(true)} style={styles.moreBtn}>
+          <Ionicons name="ellipsis-horizontal" size={20} color={Afylo.inkDim} />
+        </Pressable>
       </View>
 
       {/* Média */}
       <Pressable style={styles.media} onPress={toggleLike}>
-        <Image source={{ uri: post.image }} style={styles.mediaImg} contentFit="cover" transition={250} />
+        <Image source={{ uri: post.image }} style={styles.mediaImg} contentFit="cover" transition={250} blurRadius={post.sensitive && !revealed ? 30 : 0} />
         <View style={styles.playBadge}>
           <Ionicons name="play" size={13} color="#fff" />
           <Text style={styles.playText}>0:24</Text>
         </View>
+        {post.sensitive && !revealed && (
+          <Pressable style={styles.sensitiveOverlay} onPress={() => setRevealed(true)}>
+            <Ionicons name="eye-off-outline" size={28} color="#fff" />
+            <Text style={styles.sensitiveTitle}>Contenu sensible</Text>
+            <Text style={styles.sensitiveSub}>{post.sensitive} · appuie pour afficher</Text>
+            <View style={styles.sensitiveBtn}><Text style={styles.sensitiveBtnText}>Afficher</Text></View>
+          </Pressable>
+        )}
       </Pressable>
 
       {/* Barre "Acheter" (live shopping) */}
@@ -203,6 +217,8 @@ function PostCard({ post }: { post: Post }) {
         items={post.products ?? (post.product ? [{ title: post.product.title, price: post.product.price }] : [])}
         onClose={() => setPayOpen(false)}
       />
+
+      <ReportSheet visible={reportOpen} onClose={() => setReportOpen(false)} />
     </View>
   );
 }
@@ -289,6 +305,12 @@ const styles = StyleSheet.create({
   followText: { color: '#fff', fontWeight: '700', fontSize: 13 },
   followTextOn: { color: Afylo.text },
 
+  moreBtn: { width: 34, height: 34, alignItems: 'center', justifyContent: 'center' },
+  sensitiveOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: '#000000AA', alignItems: 'center', justifyContent: 'center', gap: 6, paddingHorizontal: 24 },
+  sensitiveTitle: { color: '#fff', fontFamily: Font.bold, fontSize: 16, marginTop: 4 },
+  sensitiveSub: { color: '#ffffffcc', ...Type.small, textAlign: 'center' },
+  sensitiveBtn: { backgroundColor: '#ffffff22', borderWidth: 1, borderColor: '#ffffff88', paddingHorizontal: 18, paddingVertical: 8, borderRadius: Radius.pill, marginTop: 8 },
+  sensitiveBtnText: { color: '#fff', fontFamily: Font.semibold, fontSize: 14 },
   media: { borderRadius: Radius.lg, overflow: 'hidden', aspectRatio: 1.05, backgroundColor: Afylo.surfaceAlt },
   mediaImg: { flex: 1 },
   playBadge: {

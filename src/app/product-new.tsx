@@ -10,6 +10,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Afylo, Font, Radius, Type } from '@/constants/brand';
 import { useAuthGate } from '@/lib/auth-gate';
 import { createProduct, uploadFile, uploadImage } from '@/lib/db';
+import { classifyProduct } from '@/lib/moderation';
 
 const MIN_COMMISSION = 15;
 const CONDITIONS = ['Neuf', 'Comme neuf', 'Occasion', 'Fait main'];
@@ -56,6 +57,8 @@ export default function ProductNew() {
     setError(null);
     if (!gate('vendre')) return;
     if (!title.trim() || !price.trim()) return setError('Le nom et le prix sont obligatoires.');
+    const modo = classifyProduct(title, description);
+    if (modo.level === 'blocked') return setError(`🚫 Produit refusé : ${modo.reason}`);
     if (kind === 'digital' && !file) return setError('Ajoute le fichier que recevra l\'acheteur.');
     const priceN = parseInt(price.replace(/\D/g, ''), 10) || 0;
     const promoN = promo.trim() ? parseInt(promo.replace(/\D/g, ''), 10) : null;
