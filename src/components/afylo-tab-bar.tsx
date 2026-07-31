@@ -1,6 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
 import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
-import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated, { useAnimatedStyle } from 'react-native-reanimated';
@@ -29,7 +28,7 @@ export function AfyloTabBar({ state, navigation }: BottomTabBarProps) {
 
   return (
     <Animated.View style={[styles.wrap, animStyle]} pointerEvents="box-none">
-      <BlurView intensity={44} tint="light" style={[styles.bar, { paddingBottom: Math.max(insets.bottom, 8) }]}>
+      <View style={[styles.bar, { paddingBottom: Math.max(insets.bottom, 8) }]}>
         {state.routes.map((route, index) => {
           const focused = state.index === index;
           const onPress = () => {
@@ -57,13 +56,13 @@ export function AfyloTabBar({ state, navigation }: BottomTabBarProps) {
               <Ionicons
                 name={focused ? cfg.on : cfg.off}
                 size={24}
-                color={focused ? Afylo.text : Afylo.textFaint}
+                color={focused ? '#fff' : '#8E8E93'}
               />
               <Text style={[styles.label, focused ? styles.labelOn : styles.labelOff]}>{cfg.label}</Text>
             </Pressable>
           );
         })}
-      </BlurView>
+      </View>
     </Animated.View>
   );
 }
@@ -76,22 +75,22 @@ const styles = StyleSheet.create({
     justifyContent: 'space-around',
     paddingTop: 10,
     paddingHorizontal: 6,
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
+    borderTopLeftRadius: 22,
+    borderTopRightRadius: 22,
     overflow: 'hidden',
-    backgroundColor: 'rgba(250,247,242,0.96)',
+    backgroundColor: Afylo.navBg,
     borderTopWidth: 1,
-    borderColor: '#E4DCCC',
-    shadowColor: Afylo.glassShadow,
-    shadowOpacity: 1,
-    shadowRadius: 20,
-    shadowOffset: { width: 0, height: -6 },
+    borderColor: Afylo.navBorder,
+    shadowColor: '#000',
+    shadowOpacity: 0.25,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: -4 },
     elevation: 16,
   },
   slot: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 3, paddingVertical: 2 },
   label: { fontSize: 10.5, fontFamily: Font.medium },
-  labelOn: { color: Afylo.text, fontFamily: Font.semibold },
-  labelOff: { color: Afylo.textFaint },
+  labelOn: { color: '#fff', fontFamily: Font.semibold },
+  labelOff: { color: '#8E8E93' },
   create: {
     width: 48,
     height: 34,

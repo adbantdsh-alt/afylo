@@ -1,4 +1,3 @@
-import { BlurView } from 'expo-blur';
 import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { Afylo, Font, Radius, Type } from '@/constants/brand';
@@ -28,7 +27,6 @@ export function RateSheet({
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <Pressable style={styles.backdrop} onPress={onClose}>
         <Pressable style={styles.sheet} onPress={(e) => e.stopPropagation()}>
-          <BlurView intensity={30} tint="light" style={StyleSheet.absoluteFill} />
           <View style={styles.handle} />
 
           <Text style={styles.title}>Note ce contenu</Text>

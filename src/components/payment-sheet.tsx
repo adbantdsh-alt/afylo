@@ -1,5 +1,4 @@
 import { Ionicons } from '@expo/vector-icons';
-import { BlurView } from 'expo-blur';
 import { useState } from 'react';
 import { Linking, Modal, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
@@ -68,7 +67,6 @@ export function PaymentSheet({
       <View style={styles.overlay}>
         <Pressable style={StyleSheet.absoluteFill} onPress={close} />
         <View style={styles.sheet}>
-          <BlurView intensity={40} tint="light" style={StyleSheet.absoluteFill} />
           <View style={styles.grip} />
 
           {/* En-tête sécurisé */}

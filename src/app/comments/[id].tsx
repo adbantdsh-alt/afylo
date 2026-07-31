@@ -1,5 +1,4 @@
 import { Ionicons } from '@expo/vector-icons';
-import { BlurView } from 'expo-blur';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useState } from 'react';
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
@@ -98,7 +97,6 @@ export default function Comments() {
 
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
           <SafeAreaView edges={['bottom']} style={styles.inputSheet}>
-            <BlurView intensity={30} tint="light" style={StyleSheet.absoluteFill} />
             {replyTo && (
               <View style={styles.replyBanner}>
                 <Text style={styles.replyText}>Réponse à {replyTo.handle}</Text>

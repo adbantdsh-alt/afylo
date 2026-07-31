@@ -1,5 +1,4 @@
 import { Ionicons } from '@expo/vector-icons';
-import { BlurView } from 'expo-blur';
 import { Image } from 'expo-image';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
@@ -163,7 +162,6 @@ export default function Profil() {
       {menuOpen && (
         <Pressable style={styles.overlay} onPress={() => setMenuOpen(false)}>
           <SafeAreaView edges={['top']} style={styles.menu}>
-            <BlurView intensity={30} tint="light" style={StyleSheet.absoluteFill} />
             <View style={styles.menuHandle} />
             <MenuItem icon="repeat" label="Affiliation — produits à revendre" onPress={() => { setMenuOpen(false); router.push('/affiliation'); }} />
             {isOwner && <MenuItem icon="stats-chart" label="Studio & statistiques" onPress={() => { setMenuOpen(false); router.push('/studio'); }} />}

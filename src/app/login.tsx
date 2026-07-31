@@ -64,7 +64,7 @@ export default function Login() {
 
   return (
     <View style={styles.root}>
-      <LinearGradient colors={['#E7ECFF', '#F4EFE6', '#F4EFE6']} style={StyleSheet.absoluteFill} />
+      <LinearGradient colors={['#EEF1FF', '#FFFFFF', '#FFFFFF']} style={StyleSheet.absoluteFill} />
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
         <SafeAreaView style={styles.safe}>
           <Pressable onPress={() => router.back()} style={styles.back}>

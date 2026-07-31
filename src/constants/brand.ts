@@ -6,31 +6,35 @@
  * chaleur africaine) au lieu du violet générique. Verre dépoli sur la nav.
  */
 export const Afylo = {
-  // Fonds (clairs)
-  bg: '#F4EFE6', // crème chaud
+  // Fonds — blanc pur façon Instagram
+  bg: '#FFFFFF',
   surface: '#FFFFFF',
-  surfaceAlt: '#EBE3D6', // beige clair
+  surfaceAlt: '#F2F2F2', // gris très clair (thumbs/skeleton)
   card: '#FFFFFF',
-  border: '#E4DCCC',
+  border: '#DBDBDB', // gris de séparation Instagram
 
-  // Texte (neutres premium, façon Instagram / Airbnb)
-  text: '#111111', // titres, noms
-  textDim: '#7A7A7A', // labels, secondaire
-  textFaint: '#8A8A8A', // captions
-  ink: '#111111', // texte sur carte blanche
-  inkDim: '#7A7A7A',
+  // Texte
+  text: '#0A0A0A', // noir
+  textDim: '#737373', // gris secondaire
+  textFaint: '#A8A8A8', // gris clair
+  ink: '#0A0A0A',
+  inkDim: '#737373',
 
-  // Accent principal = bleu (clé "violet" conservée pour compat)
-  violet: '#3E5BFF', // bleu Afylo
-  violet2: '#6E80FF', // bleu clair (dégradés discrets)
-  gold: '#B8791F', // argent / prix
-  live: '#E11D48', // live (rose-rouge)
-  green: '#1F7A4D', // payé / gains
+  // Accent principal = bleu
+  violet: '#3E5BFF',
+  violet2: '#6E80FF',
+  gold: '#B8791F',
+  live: '#E11D48',
+  green: '#1F7A4D',
 
-  // Verre (liquid glass)
-  glass: 'rgba(255,255,255,0.6)',
-  glassBorder: 'rgba(255,255,255,0.7)',
-  glassShadow: 'rgba(28,23,18,0.14)',
+  // Nav bar sombre (contraste avec le contenu blanc)
+  navBg: '#0B0B0F',
+  navBorder: '#1E1E24',
+
+  // (héritage) surfaces solides — plus de verre
+  glass: '#FFFFFF',
+  glassBorder: '#DBDBDB',
+  glassShadow: 'rgba(0,0,0,0.12)',
 } as const;
 
 /** Familles de police — Inter (naturelle, moderne, non « géométrique/IA »). */
