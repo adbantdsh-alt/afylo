@@ -6,7 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Avatar } from '@/components/ui-kit';
 import { Afylo, Radius } from '@/constants/brand';
-import { photo, type Post, posts as basePosts } from '@/lib/mock';
+import { avatar, face, type Post, posts as basePosts } from '@/lib/mock';
 
 // Quelques vidéos verticales supplémentaires pour le défilement
 const reels: Post[] = [
@@ -15,10 +15,10 @@ const reels: Post[] = [
     id: 'r4',
     name: 'Sokhna Live',
     handle: '@sokhna.crea',
-    avatar: 'https://i.pravatar.cc/200?img=20',
+    avatar: avatar(20),
     badge: 'créateur',
     time: 'en direct',
-    image: photo('afylo-reel4', 700, 1300),
+    image: face('afylo-reel4', 700, 1300),
     likes: '15k',
     comments: '890',
     views: '210k',
@@ -30,9 +30,9 @@ const reels: Post[] = [
     id: 'r5',
     name: 'Cheikh Tech',
     handle: '@cheikh.tech',
-    avatar: 'https://i.pravatar.cc/200?img=33',
+    avatar: avatar(33),
     time: 'il y a 1 j',
-    image: photo('afylo-reel5', 700, 1300),
+    image: face('afylo-reel5', 700, 1300),
     likes: '6.4k',
     comments: '120',
     views: '58k',

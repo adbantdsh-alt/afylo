@@ -28,12 +28,12 @@ export default function Onboarding() {
 
         {/* Collage d'avatars créateurs */}
         <View style={styles.collage}>
-          <Tile n={5} size={96} top={10} left={20} r={-6} />
-          <Tile n={9} size={120} top={0} left={130} r={4} />
-          <Tile n={20} size={104} top={110} left={0} r={5} />
-          <Tile n={15} size={128} top={120} left={120} r={-4} ring />
-          <Tile n={45} size={92} top={240} left={40} r={6} />
-          <Tile n={33} size={100} top={230} left={160} r={-5} ring />
+          <Tile n={0} size={96} top={10} left={20} r={-6} />
+          <Tile n={1} size={120} top={0} left={130} r={4} />
+          <Tile n={2} size={104} top={110} left={0} r={5} />
+          <Tile n={6} size={128} top={120} left={120} r={-4} ring />
+          <Tile n={8} size={92} top={240} left={40} r={6} />
+          <Tile n={11} size={100} top={230} left={160} r={-5} ring />
         </View>
 
         <View style={styles.bottom}>

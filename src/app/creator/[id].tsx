@@ -7,7 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Avatar, Badge, PillButton } from '@/components/ui-kit';
 import { Afylo, Font, Type } from '@/constants/brand';
-import { myPosts } from '@/lib/mock';
+import { face, myPosts } from '@/lib/mock';
 
 /** Profil VISITEUR (celui d'un autre créateur, ouvert depuis une publication). */
 export default function CreatorProfile() {
@@ -17,7 +17,7 @@ export default function CreatorProfile() {
 
   const name = params.name || 'Créateur';
   const handle = params.id?.startsWith('@') ? params.id : `@${params.id ?? 'afylo'}`;
-  const avatar = params.avatar || 'https://i.pravatar.cc/200?img=5';
+  const avatar = params.avatar || face(params.id ?? 'afylo');
 
   return (
     <View style={styles.root}>

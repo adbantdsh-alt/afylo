@@ -3,7 +3,40 @@
  * Images via services de placeholder (pravatar / picsum).
  */
 
-export const avatar = (n: number) => `https://i.pravatar.cc/200?img=${n}`;
+// Portraits africains (Unsplash, libres de droit) — pour les visages/créateurs.
+const AFRICAN_PORTRAITS = [
+  'https://images.unsplash.com/photo-1628682814595-a3f0816b25ff',
+  'https://images.unsplash.com/photo-1593351799227-75df2026356b',
+  'https://images.unsplash.com/photo-1669040084821-097235fe53ff',
+  'https://images.unsplash.com/photo-1542775846-e6c1e8aba884',
+  'https://images.unsplash.com/photo-1674469773382-a1dadd0c3abd',
+  'https://images.unsplash.com/photo-1613876215075-276fd62c89a4',
+  'https://images.unsplash.com/photo-1657356217561-6ed26b47e116',
+  'https://images.unsplash.com/photo-1598955682933-b9eb38181565',
+  'https://images.unsplash.com/photo-1694175454386-8bf459618c0a',
+  'https://images.unsplash.com/photo-1560856218-79fbabe3617b',
+  'https://images.unsplash.com/photo-1597807171365-adf4371436e0',
+  'https://images.unsplash.com/photo-1560856218-eea94210b841',
+  'https://images.unsplash.com/photo-1655313836628-af779ac11e14',
+  'https://images.unsplash.com/photo-1699903674163-fb7b3a06225f',
+  'https://images.unsplash.com/photo-1639572495229-92f12489b356',
+];
+
+const hashKey = (s: string | number) => {
+  const str = String(s);
+  let h = 0;
+  for (let i = 0; i < str.length; i++) h = (h * 31 + str.charCodeAt(i)) >>> 0;
+  return h;
+};
+
+/** Portrait africain (visages) — pour avatars et créateurs. */
+export const face = (key: string | number, w = 400, h = 400) =>
+  `${AFRICAN_PORTRAITS[hashKey(key) % AFRICAN_PORTRAITS.length]}?w=${w}&h=${h}&fit=crop&crop=faces&auto=format&q=72`;
+
+export const avatar = (n: number) =>
+  `${AFRICAN_PORTRAITS[n % AFRICAN_PORTRAITS.length]}?w=200&h=200&fit=crop&crop=faces&auto=format&q=72`;
+
+/** Image générique (produits, objets) — placeholder neutre. */
 export const photo = (seed: string, w = 600, h = 800) =>
   `https://picsum.photos/seed/${seed}/${w}/${h}`;
 
@@ -56,7 +89,7 @@ export const posts: Post[] = [
     avatar: avatar(5),
     badge: 'créateur',
     time: 'il y a 45 min',
-    image: photo('afylo-look', 700, 800),
+    image: face('afylo-look', 700, 800),
     likes: '7.2 K',
     comments: '300',
     views: '69 K',
@@ -71,7 +104,7 @@ export const posts: Post[] = [
     avatar: avatar(9),
     badge: 'boutique',
     time: 'il y a 2 h',
-    image: photo('afylo-beauty', 700, 800),
+    image: face('afylo-beauty', 700, 800),
     likes: '4.1 K',
     comments: '210',
     views: '33 K',
@@ -86,7 +119,7 @@ export const posts: Post[] = [
     avatar: avatar(15),
     badge: 'créateur',
     time: 'il y a 5 h',
-    image: photo('afylo-music', 700, 800),
+    image: face('afylo-music', 700, 800),
     likes: '9.8 K',
     comments: '640',
     views: '112 K',
@@ -106,12 +139,12 @@ export type ExploreItem = {
 };
 
 export const exploreItems: ExploreItem[] = [
-  { id: 'e1', name: 'Danielle', label: 'Créatrice', image: photo('afx1', 500, 700), tall: true, live: true },
-  { id: 'e2', name: 'Jiwoo', label: 'Mode', image: photo('afx2', 500, 500) },
-  { id: 'e3', name: 'Aïcha', label: 'Beauté', image: photo('afx3', 500, 640) },
-  { id: 'e4', name: 'Ibou', label: 'Tech', image: photo('afx4', 500, 560), tall: true },
-  { id: 'e5', name: 'Mariama', label: 'Cuisine', image: photo('afx5', 500, 500), live: true },
-  { id: 'e6', name: 'Serigne', label: 'Sport', image: photo('afx6', 500, 680) },
+  { id: 'e1', name: 'Danielle', label: 'Créatrice', image: face('afx1', 500, 700), tall: true, live: true },
+  { id: 'e2', name: 'Jiwoo', label: 'Mode', image: face('afx2', 500, 500) },
+  { id: 'e3', name: 'Aïcha', label: 'Beauté', image: face('afx3', 500, 640) },
+  { id: 'e4', name: 'Ibou', label: 'Tech', image: face('afx4', 500, 560), tall: true },
+  { id: 'e5', name: 'Mariama', label: 'Cuisine', image: face('afx5', 500, 500), live: true },
+  { id: 'e6', name: 'Serigne', label: 'Sport', image: face('afx6', 500, 680) },
 ];
 
 // ---- Profil (propriétaire connecté) ----
@@ -129,7 +162,7 @@ export const myProfile = {
 
 export const myPosts = Array.from({ length: 12 }, (_, i) => ({
   id: `mp${i}`,
-  image: photo(`myp${i}`, 300, 400),
+  image: face(`myp${i}`, 300, 400),
   views: `${(i * 7 + 4)} K`,
   video: i % 3 === 0,
 }));
@@ -190,9 +223,9 @@ export const studioDays = [
 ];
 
 export const studioTopPosts = [
-  { id: 't1', image: photo('myp1', 200, 200), views: '112 K', sales: 18, viral: 94 },
-  { id: 't2', image: photo('myp4', 200, 200), views: '69 K', sales: 11, viral: 81 },
-  { id: 't3', image: photo('myp7', 200, 200), views: '58 K', sales: 7, viral: 73 },
+  { id: 't1', image: face('myp1', 200, 200), views: '112 K', sales: 18, viral: 94 },
+  { id: 't2', image: face('myp4', 200, 200), views: '69 K', sales: 11, viral: 81 },
+  { id: 't3', image: face('myp7', 200, 200), views: '58 K', sales: 7, viral: 73 },
 ];
 
 // ---- Affiliation (marketplace) ----

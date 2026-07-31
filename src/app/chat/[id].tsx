@@ -8,7 +8,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Avatar } from '@/components/ui-kit';
 import { Afylo, Font, Radius, Type } from '@/constants/brand';
-import { myProducts } from '@/lib/mock';
+import { face, myProducts } from '@/lib/mock';
 
 type Kind = 'text' | 'image' | 'video' | 'voice' | 'product';
 type Product = { id: string; title: string; price: string; image: string };
@@ -30,7 +30,7 @@ export default function Chat() {
   const router = useRouter();
   const params = useLocalSearchParams<{ id: string; name?: string; avatar?: string }>();
   const name = params.name || 'Discussion';
-  const avatar = params.avatar || 'https://i.pravatar.cc/200?img=9';
+  const avatar = params.avatar || face(params.id ?? 'afylo');
 
   const [messages, setMessages] = useState<Msg[]>([
     { id: uid(), mine: false, kind: 'text', text: 'Salut ! Le coffret est toujours dispo ?', time: '10:02' },
