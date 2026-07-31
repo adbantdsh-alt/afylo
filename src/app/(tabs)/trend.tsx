@@ -7,6 +7,8 @@ import { Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } fr
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Avatar } from '@/components/ui-kit';
+import { PaymentSheet } from '@/components/payment-sheet';
+import { RateSheet } from '@/components/rate-sheet';
 import { Afylo, Font, Radius } from '@/constants/brand';
 import { useAuthGate } from '@/lib/auth-gate';
 import { avatar, face, type Post, posts as basePosts } from '@/lib/mock';
@@ -100,10 +102,16 @@ function Reel({ post, height, width }: { post: Post; height: number; width: numb
   const [liked, setLiked] = useState(false);
   const [saved, setSaved] = useState(false);
   const [reposted, setReposted] = useState(false);
+  const [rating, setRating] = useState(0);
+  const [reaction, setReaction] = useState<string | null>(null);
+  const [rateOpen, setRateOpen] = useState(false);
+  const [payOpen, setPayOpen] = useState(false);
 
   const like = () => { if (gate('aimer')) setLiked((v) => !v); };
   const save = () => { if (gate('enregistrer')) setSaved((v) => !v); };
   const share = () => { if (gate('republier')) setReposted((v) => !v); };
+  const rate = () => { if (gate('noter')) setRateOpen(true); };
+  const buy = () => { if (gate('acheter')) setPayOpen(true); };
   const openComments = () => router.push({ pathname: '/comments/[id]', params: { id: post.id } });
 
   return (
@@ -116,6 +124,7 @@ function Reel({ post, height, width }: { post: Post; height: number; width: numb
         <View style={{ marginBottom: 6 }}>
           <Avatar uri={post.avatar} size={48} ring />
         </View>
+        <Action icon={reaction ? 'star' : 'star-outline'} label={rating > 0 ? `${rating}/10` : 'Noter'} color={rating > 0 ? Afylo.gold : '#fff'} onPress={rate} />
         <Action icon={liked ? 'heart' : 'heart-outline'} label={post.likes} color={liked ? Afylo.live : '#fff'} onPress={like} />
         <Action icon="chatbubble-ellipses" label={post.comments} onPress={openComments} />
         <Action icon={saved ? 'bookmark' : 'bookmark-outline'} label="Enreg." color={saved ? Afylo.gold : '#fff'} onPress={save} />
@@ -140,12 +149,26 @@ function Reel({ post, height, width }: { post: Post; height: number; width: numb
             <Ionicons name="bag-handle" size={18} color="#fff" />
             <Text style={styles.buyTitle} numberOfLines={1}>{post.product.title}</Text>
             <Text style={styles.buyPrice}>{post.product.price}</Text>
-            <Pressable style={styles.buyCta} onPress={() => gate('acheter')}>
+            <Pressable style={styles.buyCta} onPress={buy}>
               <Text style={styles.buyCtaText}>Acheter</Text>
             </Pressable>
           </View>
         )}
       </SafeAreaView>
+
+      <RateSheet
+        visible={rateOpen}
+        rating={rating}
+        reaction={reaction}
+        onRate={setRating}
+        onReact={(e) => setReaction((r) => (r === e ? null : e))}
+        onClose={() => setRateOpen(false)}
+      />
+      <PaymentSheet
+        visible={payOpen}
+        items={post.products ?? (post.product ? [{ title: post.product.title, price: post.product.price }] : [])}
+        onClose={() => setPayOpen(false)}
+      />
     </View>
   );
 }
