@@ -140,7 +140,7 @@ function PostCard({ post }: { post: Post }) {
           </View>
           <View style={{ flex: 1 }}>
             <Text style={styles.buyTitle} numberOfLines={1}>
-              {post.product.title}
+              {post.products && post.products.length > 1 ? `${post.products.length} produits · à partir de` : post.product.title}
             </Text>
             <Text style={styles.buyPrice}>{post.product.price}</Text>
           </View>
@@ -189,8 +189,7 @@ function PostCard({ post }: { post: Post }) {
 
       <PaymentSheet
         visible={payOpen}
-        title={post.product?.title ?? 'Produit'}
-        price={post.product?.price ?? ''}
+        items={post.products ?? (post.product ? [{ title: post.product.title, price: post.product.price }] : [])}
         onClose={() => setPayOpen(false)}
       />
     </View>

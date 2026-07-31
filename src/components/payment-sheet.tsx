@@ -26,13 +26,11 @@ type Status = 'form' | 'processing' | 'done';
 
 export function PaymentSheet({
   visible,
-  title,
-  price,
+  items,
   onClose,
 }: {
   visible: boolean;
-  title: string;
-  price: string;
+  items: { title: string; price: string }[];
   onClose: () => void;
 }) {
   const [country] = useState('Sénégal');
@@ -40,7 +38,11 @@ export function PaymentSheet({
   const [phone, setPhone] = useState('');
   const [name, setName] = useState('');
   const [status, setStatus] = useState<Status>('form');
+  const [chosen, setChosen] = useState<number | null>(items.length > 1 ? null : 0);
 
+  const item = items[chosen ?? 0] ?? { title: 'Produit', price: '' };
+  const title = item.title;
+  const price = item.price;
   const methods = METHODS[country] ?? METHODS['Sénégal'];
   const canPay = method && phone.trim().length >= 6 && name.trim().length >= 2;
 
@@ -48,6 +50,7 @@ export function PaymentSheet({
     setStatus('form');
     setPhone('');
     setName('');
+    setChosen(items.length > 1 ? null : 0);
   };
   const close = () => {
     reset();
@@ -79,7 +82,23 @@ export function PaymentSheet({
             </View>
           </View>
 
-          {status === 'done' ? (
+          {chosen === null ? (
+            <View>
+              <Text style={styles.section}>Choisis le produit à acheter</Text>
+              <View style={{ gap: 10, marginTop: 4 }}>
+                {items.map((it, i) => (
+                  <Pressable key={i} onPress={() => setChosen(i)} style={styles.chooseRow}>
+                    <View style={styles.chooseIcon}>
+                      <Ionicons name="bag-handle" size={18} color={Afylo.violet} />
+                    </View>
+                    <Text style={styles.chooseTitle} numberOfLines={1}>{it.title}</Text>
+                    <Text style={styles.choosePrice}>{it.price}</Text>
+                    <Ionicons name="chevron-forward" size={18} color={Afylo.textFaint} />
+                  </Pressable>
+                ))}
+              </View>
+            </View>
+          ) : status === 'done' ? (
             <View style={styles.doneBox}>
               <View style={styles.doneCircle}>
                 <Ionicons name="checkmark" size={40} color="#fff" />
@@ -168,6 +187,10 @@ const styles = StyleSheet.create({
   productPrice: { ...Type.title, fontSize: 34, color: Afylo.text, marginTop: 4 },
 
   section: { ...Type.small, fontFamily: Font.semibold, color: Afylo.text, marginBottom: 10 },
+  chooseRow: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: Afylo.surface, borderRadius: Radius.md, borderWidth: 1, borderColor: Afylo.border, padding: 12 },
+  chooseIcon: { width: 36, height: 36, borderRadius: 10, backgroundColor: '#3E5BFF14', alignItems: 'center', justifyContent: 'center' },
+  chooseTitle: { ...Type.body, fontFamily: Font.semibold, color: Afylo.text, flex: 1 },
+  choosePrice: { ...Type.body, fontFamily: Font.bold, color: Afylo.violet },
   methods: { gap: 10, marginBottom: 16 },
   method: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: Afylo.surface, borderRadius: Radius.md, borderWidth: 1, borderColor: Afylo.border, padding: 12 },
   methodDot: { width: 34, height: 34, borderRadius: 17, alignItems: 'center', justifyContent: 'center' },

@@ -42,10 +42,12 @@ export default function PostNew() {
       .finally(() => setLoadingProducts(false));
   }, [session]);
 
+  const MAX_PRODUCTS = 5;
   const toggle = (id: string) => {
     setSelected((prev) => {
       const next = new Set(prev);
-      next.has(id) ? next.delete(id) : next.add(id);
+      if (next.has(id)) next.delete(id);
+      else if (next.size < MAX_PRODUCTS) next.add(id); // max 5 produits attachés
       return next;
     });
   };
@@ -131,7 +133,7 @@ export default function PostNew() {
           <View style={styles.sectionRow}>
             <Ionicons name="pricetags" size={18} color={Afylo.violet} />
             <Text style={styles.section}>Attacher des produits</Text>
-            {selected.size > 0 && <Text style={styles.count}>{selected.size} sélectionné(s)</Text>}
+            <Text style={styles.count}>{selected.size}/5</Text>
           </View>
           <Text style={styles.sectionHint}>Les produits liés affichent un bouton « Acheter » sur ta publication.</Text>
 

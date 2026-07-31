@@ -79,6 +79,7 @@ export type Post = {
   shares: string;
   caption: string;
   product?: Product;
+  products?: { title: string; price: string }[]; // jusqu'à 5 produits liés
 };
 
 export const posts: Post[] = [
@@ -96,6 +97,11 @@ export const posts: Post[] = [
     shares: '87',
     caption: 'Mon nouveau look de la semaine 🔥 Dispo en live ce soir 20h !',
     product: { title: 'Ensemble wax premium', price: '18 500 FCFA', commission: '15%' },
+    products: [
+      { title: 'Ensemble wax premium', price: '18 500 FCFA' },
+      { title: 'Foulard assorti', price: '6 500 FCFA' },
+      { title: 'Sac raphia', price: '14 000 FCFA' },
+    ],
   },
   {
     id: 'p2',
