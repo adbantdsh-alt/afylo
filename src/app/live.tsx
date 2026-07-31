@@ -3,13 +3,20 @@ import { CameraView, useCameraPermissions } from 'expo-camera';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useVideoPlayer, VideoView } from 'expo-video';
 import { useEffect, useRef, useState } from 'react';
-import { Animated, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Animated, Pressable, Share, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Avatar } from '@/components/ui-kit';
+import { GiftSheet } from '@/components/gift-sheet';
 import { PaymentSheet } from '@/components/payment-sheet';
 import { Afylo, Font, Radius } from '@/constants/brand';
 import { avatar, video } from '@/lib/mock';
+
+const LIVE_PRODUCTS = [
+  { title: 'Ensemble wax premium', price: '18 500 FCFA' },
+  { title: 'Foulard assorti', price: '6 500 FCFA' },
+  { title: 'Sac raphia', price: '14 000 FCFA' },
+];
 
 const CHATTERS = ['Awa', 'Modou', 'Sokhna', 'Cheikh', 'Mariama', 'Ibou', 'Aïda', 'Serigne'];
 const MSGS = [
@@ -27,20 +34,34 @@ export default function Live() {
 
   const [permission, requestPermission] = useCameraPermissions();
   const [facing, setFacing] = useState<'front' | 'back'>('front');
-  const [comments, setComments] = useState<{ id: string; name: string; avatar: string; text: string }[]>([]);
+  const [comments, setComments] = useState<{ id: string; name: string; avatar: string; text: string; gift?: boolean }[]>([]);
   const [text, setText] = useState('');
   const [viewers, setViewers] = useState(128);
   const [hearts, setHearts] = useState<{ id: number }[]>([]);
   const [followed, setFollowed] = useState(false);
   const [payOpen, setPayOpen] = useState(false);
+  const [giftOpen, setGiftOpen] = useState(false);
+
+  const onGiftSent = (amount: number) => {
+    setComments((prev) => [...prev.slice(-30), { id: `g${cid++}`, name: 'Toi', avatar: avatar(12), text: `a offert ${amount.toLocaleString('fr-FR')} FCFA 🎁`, gift: true }]);
+    sendHeart();
+  };
+  const share = async () => { try { await Share.share({ message: `${name} est en direct sur Afylo — rejoins le live !` }); } catch {} };
 
   const viewerPlayer = useVideoPlayer(video(3), (p) => { p.loop = true; p.muted = true; if (!isHost) p.play(); });
 
-  // Flux de commentaires + spectateurs (démo)
+  // Flux de commentaires + cadeaux + spectateurs (démo)
   useEffect(() => {
+    const GIFTS = [500, 1000, 2000, 5000];
     const t = setInterval(() => {
       const nm = CHATTERS[Math.floor((Date.now() / 1000) % CHATTERS.length)];
-      setComments((prev) => [...prev.slice(-30), { id: `c${cid++}`, name: nm, avatar: avatar(9 + (cid % 40)), text: MSGS[cid % MSGS.length] }]);
+      const isGift = Math.round(Date.now() / 1000) % 4 === 0;
+      setComments((prev) => [
+        ...prev.slice(-30),
+        isGift
+          ? { id: `c${cid++}`, name: nm, avatar: avatar(9 + (cid % 40)), text: `a offert ${GIFTS[cid % GIFTS.length].toLocaleString('fr-FR')} FCFA 🎁`, gift: true }
+          : { id: `c${cid++}`, name: nm, avatar: avatar(9 + (cid % 40)), text: MSGS[cid % MSGS.length] },
+      ]);
       setViewers((v) => v + (Math.round(Date.now() / 1000) % 3) - 1);
     }, 2200);
     return () => clearInterval(t);
@@ -84,6 +105,7 @@ export default function Live() {
           </View>
           <View style={styles.liveBadge}><View style={styles.liveDot} /><Text style={styles.liveText}>EN DIRECT</Text></View>
           <View style={styles.viewers}><Ionicons name="eye" size={13} color="#fff" /><Text style={styles.viewersText}>{Math.max(1, viewers)}</Text></View>
+          <Pressable onPress={share} style={styles.topIcon}><Ionicons name="share-social" size={18} color="#fff" /></Pressable>
           <Pressable onPress={() => router.back()} style={styles.close}><Ionicons name="close" size={24} color="#fff" /></Pressable>
         </View>
 
@@ -94,9 +116,9 @@ export default function Live() {
           {comments.slice(-6).map((c) => (
             <View key={c.id} style={styles.comment}>
               <Avatar uri={c.avatar} size={26} />
-              <View style={styles.commentBubble}>
-                <Text style={styles.commentName}>{c.name}</Text>
-                <Text style={styles.commentText}>{c.text}</Text>
+              <View style={[styles.commentBubble, c.gift && styles.giftBubble]}>
+                <Text style={[styles.commentName, c.gift && { color: '#fff' }]}>{c.name}</Text>
+                <Text style={[styles.commentText, c.gift && styles.giftText]}>{c.text}</Text>
               </View>
             </View>
           ))}
@@ -114,11 +136,18 @@ export default function Live() {
             </Pressable>
           )}
 
-          {/* Produit à vendre */}
+          {/* Produit à vendre / acheter */}
           <Pressable onPress={() => setPayOpen(true)} style={styles.sellBtn}>
             <Ionicons name="bag-handle" size={18} color="#fff" />
-            <Text style={styles.sellText}>{isHost ? 'Vendre' : 'Acheter'}</Text>
+            <Text style={styles.sellText}>{isHost ? 'Vendre' : `Acheter (${LIVE_PRODUCTS.length})`}</Text>
           </Pressable>
+
+          {/* Cadeau (argent réel) */}
+          {!isHost && (
+            <Pressable onPress={() => setGiftOpen(true)} style={styles.giftBtn}>
+              <Ionicons name="gift" size={24} color={Afylo.gold} />
+            </Pressable>
+          )}
 
           <Pressable onPress={sendHeart} style={styles.heartBtn}>
             <Ionicons name="heart" size={26} color={Afylo.live} />
@@ -131,7 +160,8 @@ export default function Live() {
         {hearts.map((h) => <FloatingHeart key={h.id} onDone={() => setHearts((prev) => prev.filter((x) => x.id !== h.id))} />)}
       </View>
 
-      <PaymentSheet visible={payOpen} items={[{ title: 'Ensemble wax premium', price: '18 500 FCFA' }]} onClose={() => setPayOpen(false)} />
+      <PaymentSheet visible={payOpen} items={LIVE_PRODUCTS} onClose={() => setPayOpen(false)} />
+      <GiftSheet visible={giftOpen} host={name} onClose={() => setGiftOpen(false)} onSent={onGiftSent} />
     </View>
   );
 }
@@ -171,13 +201,16 @@ const styles = StyleSheet.create({
   liveText: { color: '#fff', fontFamily: Font.bold, fontSize: 10 },
   viewers: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#00000055', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 12 },
   viewersText: { color: '#fff', fontFamily: Font.semibold, fontSize: 12 },
-  close: { marginLeft: 'auto', width: 34, height: 34, borderRadius: 17, backgroundColor: '#00000055', alignItems: 'center', justifyContent: 'center' },
+  topIcon: { marginLeft: 'auto', width: 34, height: 34, borderRadius: 17, backgroundColor: '#00000055', alignItems: 'center', justifyContent: 'center' },
+  close: { width: 34, height: 34, borderRadius: 17, backgroundColor: '#00000055', alignItems: 'center', justifyContent: 'center' },
 
   commentsWrap: { paddingHorizontal: 12, gap: 8, marginBottom: 8, maxWidth: '80%' },
   comment: { flexDirection: 'row', alignItems: 'flex-end', gap: 8 },
   commentBubble: { backgroundColor: '#00000055', borderRadius: 16, paddingHorizontal: 12, paddingVertical: 6 },
   commentName: { color: '#ffffffcc', fontFamily: Font.semibold, fontSize: 11 },
   commentText: { color: '#fff', fontSize: 14 },
+  giftBubble: { backgroundColor: '#B8791Fee', borderWidth: 1, borderColor: '#FFD98A' },
+  giftText: { color: '#fff', fontFamily: Font.bold },
 
   bottom: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 12, paddingBottom: 8 },
   inputBar: { flex: 1, backgroundColor: '#00000055', borderRadius: Radius.pill, borderWidth: 1, borderColor: '#ffffff44', paddingHorizontal: 16, height: 44, justifyContent: 'center' },
@@ -185,6 +218,7 @@ const styles = StyleSheet.create({
   hostTool: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#00000055', alignItems: 'center', justifyContent: 'center' },
   sellBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: Afylo.violet, paddingHorizontal: 16, height: 44, borderRadius: Radius.pill, marginLeft: 'auto' },
   sellText: { color: '#fff', fontFamily: Font.semibold, fontSize: 14 },
+  giftBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#00000055', alignItems: 'center', justifyContent: 'center' },
   heartBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#00000055', alignItems: 'center', justifyContent: 'center' },
 
   heartsLayer: { position: 'absolute', right: 0, bottom: 0, width: 100, height: 400 },
