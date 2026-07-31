@@ -26,6 +26,13 @@
     "plugins": [
       "expo-router",
       [
+        "expo-camera",
+        {
+          "cameraPermission": "Afylo utilise la caméra pour prendre des photos et vidéos.",
+          "microphonePermission": "Afylo utilise le micro pour enregistrer des vidéos et lives."
+        }
+      ],
+      [
         "expo-splash-screen",
         {
           "backgroundColor": "#208AEF",
