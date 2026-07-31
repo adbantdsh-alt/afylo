@@ -17,6 +17,7 @@ type Comment = {
   handle: string;
   avatar: string;
   text: string;
+  voice?: string;
   time: string;
   likes: number;
   liked: boolean;
@@ -42,6 +43,15 @@ export default function Comments() {
   const [comments, setComments] = useState<Comment[]>(seed);
   const [text, setText] = useState('');
   const [replyTo, setReplyTo] = useState<{ id: string; handle: string } | null>(null);
+  const [recording, setRecording] = useState(false);
+
+  const addVoice = () => {
+    if (!gate('commenter')) return;
+    setRecording(false);
+    const dur = `0:0${3 + (comments.length % 6)}`;
+    const me: Comment = { id: nid(), name: 'Toi', handle: '@toi', avatar: face('toi'), text: '', voice: dur, time: 'à l\'instant', likes: 0, liked: false, replies: [] };
+    setComments((prev) => [me, ...prev]);
+  };
 
   const toggleLike = (id: string) => {
     if (!gate('réagir')) return;
@@ -69,46 +79,61 @@ export default function Comments() {
   };
 
   return (
-    <View style={styles.root}>
-      <SafeAreaView edges={['top']} style={{ backgroundColor: Afylo.bg }}>
+    <View style={styles.overlay}>
+      {/* Zone haute : la publication reste visible derrière (tap pour fermer) */}
+      <Pressable style={StyleSheet.absoluteFill} onPress={() => router.back()} />
+
+      <View style={styles.sheet}>
+        <View style={styles.grip} />
         <View style={styles.header}>
-          <Ionicons name="chevron-back" size={26} color={Afylo.text} onPress={() => router.back()} />
-          <Text style={styles.title}>Commentaires</Text>
-          <View style={{ width: 26 }} />
+          <Text style={styles.title}>{comments.length} commentaires</Text>
+          <Ionicons name="close" size={24} color={Afylo.text} onPress={() => router.back()} />
         </View>
-      </SafeAreaView>
 
-      <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 20 }} showsVerticalScrollIndicator={false}>
-        {comments.map((c) => (
-          <CommentRow key={c.id} c={c} onLike={toggleLike} onReply={(t) => setReplyTo(t)} />
-        ))}
-      </ScrollView>
+        <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16, paddingBottom: 12 }} showsVerticalScrollIndicator={false}>
+          {comments.map((c) => (
+            <CommentRow key={c.id} c={c} onLike={toggleLike} onReply={(t) => setReplyTo(t)} />
+          ))}
+        </ScrollView>
 
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <SafeAreaView edges={['bottom']} style={styles.inputSheet}>
-          <BlurView intensity={30} tint="light" style={StyleSheet.absoluteFill} />
-          {replyTo && (
-            <View style={styles.replyBanner}>
-              <Text style={styles.replyText}>Réponse à {replyTo.handle}</Text>
-              <Ionicons name="close" size={18} color={Afylo.textDim} onPress={() => setReplyTo(null)} />
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+          <SafeAreaView edges={['bottom']} style={styles.inputSheet}>
+            <BlurView intensity={30} tint="light" style={StyleSheet.absoluteFill} />
+            {replyTo && (
+              <View style={styles.replyBanner}>
+                <Text style={styles.replyText}>Réponse à {replyTo.handle}</Text>
+                <Ionicons name="close" size={18} color={Afylo.textDim} onPress={() => setReplyTo(null)} />
+              </View>
+            )}
+            {recording && (
+              <View style={styles.recBanner}>
+                <View style={styles.recDot} />
+                <Text style={styles.recText}>Enregistrement… relâche pour envoyer</Text>
+              </View>
+            )}
+            <View style={styles.inputBar}>
+              <Avatar uri={face('toi')} size={34} />
+              <TextInput
+                style={styles.input}
+                value={text}
+                onChangeText={setText}
+                placeholder={replyTo ? `Répondre à ${replyTo.handle}` : 'Ajoute un commentaire...'}
+                placeholderTextColor={Afylo.textFaint}
+                onSubmitEditing={send}
+              />
+              {text.trim() ? (
+                <Pressable onPress={send} style={styles.send}>
+                  <Ionicons name="send" size={18} color="#fff" />
+                </Pressable>
+              ) : (
+                <Pressable onPress={addVoice} onLongPress={() => setRecording(true)} onPressOut={() => recording && addVoice()} style={[styles.send, recording && { backgroundColor: Afylo.live }]}>
+                  <Ionicons name={recording ? 'stop' : 'mic'} size={20} color="#fff" />
+                </Pressable>
+              )}
             </View>
-          )}
-          <View style={styles.inputBar}>
-            <Avatar uri={face('toi')} size={34} />
-            <TextInput
-              style={styles.input}
-              value={text}
-              onChangeText={setText}
-              placeholder={replyTo ? `Répondre à ${replyTo.handle}` : 'Ajoute un commentaire...'}
-              placeholderTextColor={Afylo.textFaint}
-              onSubmitEditing={send}
-            />
-            <Pressable onPress={send} disabled={!text.trim()} style={[styles.send, !text.trim() && { opacity: 0.4 }]}>
-              <Ionicons name="send" size={18} color="#fff" />
-            </Pressable>
-          </View>
-        </SafeAreaView>
-      </KeyboardAvoidingView>
+          </SafeAreaView>
+        </KeyboardAvoidingView>
+      </View>
     </View>
   );
 }
@@ -123,7 +148,15 @@ function CommentRow({ c, onLike, onReply, depth = 0 }: { c: Comment; onLike: (id
         <Avatar uri={c.avatar} size={depth ? 30 : 38} />
         <View style={{ flex: 1, marginLeft: 10 }}>
           <Text style={styles.cName}>{c.name} <Text style={styles.cTime}>· {c.time}</Text></Text>
-          <Text style={styles.cText}>{c.text}</Text>
+          {c.voice ? (
+            <View style={styles.voiceNote}>
+              <Ionicons name="play" size={15} color="#fff" />
+              <View style={styles.voiceWave} />
+              <Text style={styles.voiceDur}>{c.voice}</Text>
+            </View>
+          ) : (
+            <Text style={styles.cText}>{c.text}</Text>
+          )}
           <View style={styles.cActions}>
             <Pressable onPress={() => onReply({ id: c.id, handle: c.handle })}>
               <Text style={styles.cReply}>Répondre</Text>
@@ -158,9 +191,17 @@ function CommentRow({ c, onLike, onReply, depth = 0 }: { c: Comment; onLike: (id
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: Afylo.bg },
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 12, paddingVertical: 8 },
+  overlay: { flex: 1, backgroundColor: '#00000066', justifyContent: 'flex-end' },
+  sheet: { height: '82%', backgroundColor: Afylo.bg, borderTopLeftRadius: 24, borderTopRightRadius: 24, overflow: 'hidden' },
+  grip: { width: 40, height: 4, borderRadius: 2, backgroundColor: Afylo.border, alignSelf: 'center', marginTop: 10 },
+  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: Afylo.border },
   title: { ...Type.subtitle, color: Afylo.text },
+  recBanner: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 16, paddingVertical: 8 },
+  recDot: { width: 9, height: 9, borderRadius: 5, backgroundColor: Afylo.live },
+  recText: { ...Type.small, color: Afylo.live, fontFamily: Font.semibold },
+  voiceNote: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: Afylo.violet, borderRadius: 20, paddingHorizontal: 14, paddingVertical: 9, marginTop: 4, alignSelf: 'flex-start', minWidth: 150 },
+  voiceWave: { flex: 1, height: 3, borderRadius: 2, backgroundColor: '#ffffff66' },
+  voiceDur: { color: '#fff', ...Type.caption, fontFamily: Font.semibold },
 
   cName: { ...Type.small, fontFamily: Font.semibold, color: Afylo.text },
   cTime: { ...Type.caption, color: Afylo.textFaint, fontFamily: Font.regular },

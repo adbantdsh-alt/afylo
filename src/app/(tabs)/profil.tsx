@@ -43,8 +43,9 @@ export default function Profil() {
           handle: dbProfile.handle ? `@${dbProfile.handle}` : myProfile.handle,
           avatar: dbProfile.avatar_url || myProfile.avatar,
           bio: dbProfile.bio || 'Ajoute une bio depuis « Modifier le profil ».',
+          website: dbProfile.website || null,
         }
-      : myProfile;
+      : { ...myProfile, website: 'afylo.app' as string | null };
 
   // Certification : compte officiel adbaecomx (ou champ is_verified en base)
   const isVerified = dbProfile?.is_verified === true || dbProfile?.handle === 'adbaecomx' || p.handle === '@adbaecomx';
@@ -110,6 +111,24 @@ export default function Profil() {
           {isVerified && <Ionicons name="checkmark-circle" size={20} color={Afylo.violet} />}
         </View>
         <Text style={styles.bio}>{p.bio}</Text>
+
+        {/* Méta-infos (lien web, localisation, arrivée) */}
+        <View style={styles.metaRow}>
+          {p.website && (
+            <Pressable style={styles.meta} onPress={() => Linking.openURL(p.website!.startsWith('http') ? p.website! : `https://${p.website}`)}>
+              <Ionicons name="link-outline" size={15} color={Afylo.violet} />
+              <Text style={[styles.metaText, { color: Afylo.violet }]}>{p.website}</Text>
+            </Pressable>
+          )}
+          <View style={styles.meta}>
+            <Ionicons name="location-outline" size={15} color={Afylo.textDim} />
+            <Text style={styles.metaText}>Dakar, Sénégal</Text>
+          </View>
+          <View style={styles.meta}>
+            <Ionicons name="calendar-outline" size={15} color={Afylo.textDim} />
+            <Text style={styles.metaText}>Sur Afylo depuis 2026</Text>
+          </View>
+        </View>
 
         {/* Actions selon le rôle */}
         <View style={styles.actions}>
@@ -388,6 +407,9 @@ const styles = StyleSheet.create({
   nameRow: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 18, marginTop: 18 },
   name: { ...Type.name, color: Afylo.text },
   bio: { ...Type.bio, color: Afylo.text, opacity: 0.9, paddingHorizontal: 18, marginTop: 8 },
+  metaRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 14, paddingHorizontal: 18, marginTop: 10 },
+  meta: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  metaText: { ...Type.small, color: Afylo.textDim },
   earnPill: { flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start', marginHorizontal: 18, marginTop: 12, backgroundColor: '#FFB0201A', borderWidth: 1, borderColor: '#FFB02033', paddingHorizontal: 12, paddingVertical: 8, borderRadius: Radius.pill, gap: 2 },
   earnText: { color: Afylo.textDim, fontSize: 13 },
   earnValue: { color: Afylo.gold, fontSize: 13, fontWeight: '800' },

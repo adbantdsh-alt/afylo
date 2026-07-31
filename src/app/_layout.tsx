@@ -65,7 +65,7 @@ function RootNavigator() {
       <Stack.Screen name="settings" />
       <Stack.Screen name="messages" />
       <Stack.Screen name="chat/[id]" />
-      <Stack.Screen name="comments/[id]" />
+      <Stack.Screen name="comments/[id]" options={{ presentation: 'transparentModal', animation: 'slide_from_bottom' }} />
       <Stack.Screen name="story/[uid]" options={{ animation: 'fade', presentation: 'fullScreenModal' }} />
       <Stack.Screen name="legal/[doc]" />
     </Stack>

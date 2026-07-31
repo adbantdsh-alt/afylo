@@ -1,22 +1,27 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
-import { useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useFocusEffect, useRouter } from 'expo-router';
+import { useCallback, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Avatar, IconButton } from '@/components/ui-kit';
+import { PaymentSheet } from '@/components/payment-sheet';
 import { RateSheet } from '@/components/rate-sheet';
 import { Afylo, Font, Radius, Type } from '@/constants/brand';
 import { useAuthGate } from '@/lib/auth-gate';
-import { useHideOnScroll } from '@/lib/tabbar';
+import { useAlwaysShowTabBar } from '@/lib/tabbar';
 import { me, posts, type Post } from '@/lib/mock';
 import { useStories } from '@/lib/stories';
 
 export default function Feed() {
-  const scroll = useHideOnScroll();
   const router = useRouter();
   const { stories, myStory } = useStories();
+  const showTabBar = useAlwaysShowTabBar();
+
+  // Nav bar persistante sur l'accueil (pas de masquage au scroll)
+  useFocusEffect(useCallback(() => { showTabBar(); }, [showTabBar]));
+
   return (
     <View style={styles.root}>
       <SafeAreaView edges={['top']} style={{ backgroundColor: Afylo.bg }}>
@@ -31,7 +36,7 @@ export default function Feed() {
         </View>
       </SafeAreaView>
 
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 110 }} {...scroll}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 110 }}>
         {/* Lives en direct */}
         <ScrollView
           horizontal
@@ -86,10 +91,11 @@ function PostCard({ post }: { post: Post }) {
   const [rating, setRating] = useState(0);
   const [reaction, setReaction] = useState<string | null>(null);
   const [rateOpen, setRateOpen] = useState(false);
+  const [payOpen, setPayOpen] = useState(false);
 
   const toggleFollow = () => { if (gate('suivre ce créateur')) setFollowed((v) => !v); };
   const toggleLike = () => { if (gate('aimer')) setLiked((v) => !v); };
-  const buy = () => { if (gate('acheter')) setBought(true); };
+  const buy = () => { if (gate('acheter')) setPayOpen(true); };
   const repost = () => { if (gate('republier')) setReposted((v) => !v); };
   const openComments = () => router.push({ pathname: '/comments/[id]', params: { id: post.id } });
 
@@ -179,6 +185,13 @@ function PostCard({ post }: { post: Post }) {
         onRate={setRating}
         onReact={(e) => setReaction((r) => (r === e ? null : e))}
         onClose={() => setRateOpen(false)}
+      />
+
+      <PaymentSheet
+        visible={payOpen}
+        title={post.product?.title ?? 'Produit'}
+        price={post.product?.price ?? ''}
+        onClose={() => setPayOpen(false)}
       />
     </View>
   );
