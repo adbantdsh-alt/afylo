@@ -8,9 +8,11 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Avatar, Badge, IconButton } from '@/components/ui-kit';
 import { Afylo, Font, Radius, Type } from '@/constants/brand';
 import { useAuthGate } from '@/lib/auth-gate';
+import { useHideOnScroll } from '@/lib/tabbar';
 import { lives, me, posts, type Post } from '@/lib/mock';
 
 export default function Feed() {
+  const scroll = useHideOnScroll();
   return (
     <View style={styles.root}>
       <SafeAreaView edges={['top']} style={{ backgroundColor: Afylo.bg }}>
@@ -25,7 +27,7 @@ export default function Feed() {
         </View>
       </SafeAreaView>
 
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 110 }}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 110 }} {...scroll}>
         {/* Lives en direct */}
         <ScrollView
           horizontal

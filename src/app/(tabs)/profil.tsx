@@ -10,6 +10,7 @@ import { Avatar, Badge, PillButton } from '@/components/ui-kit';
 import { Afylo, Font, Radius, Type } from '@/constants/brand';
 import { useAuth } from '@/lib/auth';
 import { deleteProduct, getMyProfile, listMyProducts } from '@/lib/db';
+import { useAlwaysShowTabBar } from '@/lib/tabbar';
 import { myLives, myPosts, myProducts, myProfile, photo, type MyLive } from '@/lib/mock';
 import type { Profile } from '@/types/db';
 
@@ -25,11 +26,13 @@ export default function Profil() {
   const isOwner = true; // l'onglet Profil est toujours TON profil ; le profil visiteur est /creator/[id]
   const [menuOpen, setMenuOpen] = useState(false);
   const [dbProfile, setDbProfile] = useState<Profile | null>(null);
+  const showTabBar = useAlwaysShowTabBar();
 
   useFocusEffect(
     useCallback(() => {
+      showTabBar(); // pas de masquage de nav sur le profil
       if (session) getMyProfile().then(setDbProfile);
-    }, [session]),
+    }, [session, showTabBar]),
   );
 
   // Profil réel si connecté, sinon démo

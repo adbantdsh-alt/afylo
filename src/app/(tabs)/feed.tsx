@@ -6,11 +6,13 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Afylo, Radius } from '@/constants/brand';
 import { exploreItems, type ExploreItem } from '@/lib/mock';
+import { useHideOnScroll } from '@/lib/tabbar';
 
 const FILTERS = ['Créateurs', 'Vidéos courtes', 'Produits', 'Lives'];
 
 export default function Explore() {
   const [active, setActive] = useState(0);
+  const scroll = useHideOnScroll();
   const col = (mod: number) => exploreItems.filter((_, i) => i % 2 === mod);
 
   return (
@@ -29,7 +31,7 @@ export default function Explore() {
         </ScrollView>
       </SafeAreaView>
 
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.grid}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.grid} {...scroll}>
         <View style={styles.column}>{col(0).map((it) => <GridCard key={it.id} item={it} />)}</View>
         <View style={styles.column}>{col(1).map((it) => <GridCard key={it.id} item={it} />)}</View>
       </ScrollView>

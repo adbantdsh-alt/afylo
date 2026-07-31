@@ -7,6 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Avatar } from '@/components/ui-kit';
 import { Afylo, Radius } from '@/constants/brand';
 import { avatar, face, type Post, posts as basePosts } from '@/lib/mock';
+import { useHideOnScroll } from '@/lib/tabbar';
 
 // Quelques vidéos verticales supplémentaires pour le défilement
 const reels: Post[] = [
@@ -44,6 +45,7 @@ const reels: Post[] = [
 
 export default function Trend() {
   const { height, width } = useWindowDimensions();
+  const scroll = useHideOnScroll();
 
   return (
     <View style={styles.root}>
@@ -51,7 +53,8 @@ export default function Trend() {
         pagingEnabled
         showsVerticalScrollIndicator={false}
         snapToInterval={height}
-        decelerationRate="fast">
+        decelerationRate="fast"
+        {...scroll}>
         {reels.map((r) => (
           <Reel key={r.id} post={r} height={height} width={width} />
         ))}

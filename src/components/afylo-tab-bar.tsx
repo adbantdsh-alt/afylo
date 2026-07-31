@@ -2,10 +2,12 @@ import { Ionicons } from '@expo/vector-icons';
 import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { BlurView } from 'expo-blur';
 import { Pressable, StyleSheet, View } from 'react-native';
+import Animated, { useAnimatedStyle } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Afylo } from '@/constants/brand';
 import { useAuthGate } from '@/lib/auth-gate';
+import { useTabBar } from '@/lib/tabbar';
 
 const ICONS: Record<string, [keyof typeof Ionicons.glyphMap, keyof typeof Ionicons.glyphMap]> = {
   accueil: ['home', 'home-outline'],
@@ -17,9 +19,15 @@ const ICONS: Record<string, [keyof typeof Ionicons.glyphMap, keyof typeof Ionico
 export function AfyloTabBar({ state, navigation }: BottomTabBarProps) {
   const insets = useSafeAreaInsets();
   const gate = useAuthGate();
+  const { hidden } = useTabBar();
+
+  const animStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: hidden.value * 130 }],
+    opacity: 1 - hidden.value * 0.2,
+  }));
 
   return (
-    <View style={[styles.wrap, { paddingBottom: Math.max(insets.bottom, 12) }]} pointerEvents="box-none">
+    <Animated.View style={[styles.wrap, { paddingBottom: Math.max(insets.bottom, 12) }, animStyle]} pointerEvents="box-none">
       <BlurView intensity={40} tint="light" style={styles.bar}>
         {state.routes.map((route, index) => {
           const focused = state.index === index;
@@ -48,7 +56,7 @@ export function AfyloTabBar({ state, navigation }: BottomTabBarProps) {
           );
         })}
       </BlurView>
-    </View>
+    </Animated.View>
   );
 }
 
