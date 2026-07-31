@@ -13,12 +13,12 @@ export const Afylo = {
   card: '#FFFFFF',
   border: '#E4DCCC',
 
-  // Texte
-  text: '#1C1712', // encre
-  textDim: '#6E6456',
-  textFaint: '#AB9F8C',
-  ink: '#1C1712', // texte sur carte blanche
-  inkDim: '#6E6456',
+  // Texte (neutres premium, façon Instagram / Airbnb)
+  text: '#111111', // titres, noms
+  textDim: '#7A7A7A', // labels, secondaire
+  textFaint: '#8A8A8A', // captions
+  ink: '#111111', // texte sur carte blanche
+  inkDim: '#7A7A7A',
 
   // Accent principal = bleu (clé "violet" conservée pour compat)
   violet: '#3E5BFF', // bleu Afylo
@@ -33,13 +33,34 @@ export const Afylo = {
   glassShadow: 'rgba(28,23,18,0.14)',
 } as const;
 
-/** Familles de police (Bricolage Grotesque, chargées au démarrage). */
+/** Familles de police — Inter (naturelle, moderne, non « géométrique/IA »). */
 export const Font = {
-  regular: 'BricolageGrotesque_400Regular',
-  medium: 'BricolageGrotesque_500Medium',
-  semibold: 'BricolageGrotesque_600SemiBold',
-  bold: 'BricolageGrotesque_700Bold',
-  extrabold: 'BricolageGrotesque_800ExtraBold',
+  regular: 'Inter_400Regular',
+  medium: 'Inter_500Medium',
+  semibold: 'Inter_600SemiBold',
+  bold: 'Inter_700Bold',
+} as const;
+
+/**
+ * Échelle typographique (spec premium). À étaler dans les styles :
+ *   <Text style={[Type.name, { color: Afylo.text }]}>…</Text>
+ * On utilise fontFamily par graisse (Inter a de vraies graisses),
+ * jamais fontWeight, pour un rendu net et cohérent iOS/Android/web.
+ */
+export const Type = {
+  title: { fontFamily: Font.bold, fontSize: 22, letterSpacing: -0.3 },
+  subtitle: { fontFamily: Font.semibold, fontSize: 18, letterSpacing: -0.2 },
+  username: { fontFamily: Font.semibold, fontSize: 28, letterSpacing: -0.4 },
+  name: { fontFamily: Font.bold, fontSize: 22, letterSpacing: -0.3 },
+  badge: { fontFamily: Font.medium, fontSize: 12, letterSpacing: 0 },
+  bio: { fontFamily: Font.regular, fontSize: 16, lineHeight: 24 },
+  statNumber: { fontFamily: Font.bold, fontSize: 24, letterSpacing: -0.3 },
+  statLabel: { fontFamily: Font.medium, fontSize: 13 },
+  button: { fontFamily: Font.semibold, fontSize: 17, letterSpacing: -0.1 },
+  body: { fontFamily: Font.regular, fontSize: 16, lineHeight: 24 },
+  small: { fontFamily: Font.medium, fontSize: 13 },
+  caption: { fontFamily: Font.regular, fontSize: 12 },
+  navLabel: { fontFamily: Font.medium, fontSize: 12 },
 } as const;
 
 export const Radius = { sm: 12, md: 16, lg: 22, xl: 28, pill: 999 } as const;

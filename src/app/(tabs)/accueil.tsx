@@ -1,11 +1,12 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
+import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Avatar, Badge, IconButton } from '@/components/ui-kit';
-import { Afylo, Radius } from '@/constants/brand';
+import { Afylo, Font, Radius, Type } from '@/constants/brand';
 import { lives, me, posts, type Post } from '@/lib/mock';
 
 export default function Feed() {
@@ -60,23 +61,32 @@ export default function Feed() {
 }
 
 function PostCard({ post }: { post: Post }) {
+  const router = useRouter();
   const badgeColor = post.badge === 'boutique' ? Afylo.gold : Afylo.violet;
   const [followed, setFollowed] = useState(false);
   const [liked, setLiked] = useState(false);
   const [bought, setBought] = useState(false);
 
+  const openProfile = () =>
+    router.push({
+      pathname: '/creator/[id]',
+      params: { id: post.handle, name: post.name, avatar: post.avatar, badge: post.badge ?? '' },
+    });
+
   return (
     <View style={styles.card}>
       {/* En-tête */}
       <View style={styles.cardHeader}>
-        <Avatar uri={post.avatar} size={44} />
-        <View style={{ flex: 1, marginLeft: 10 }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-            <Text style={styles.name}>{post.name}</Text>
-            {post.badge && <Badge label={post.badge} color={badgeColor} />}
+        <Pressable onPress={openProfile} style={styles.cardHeaderTap}>
+          <Avatar uri={post.avatar} size={44} />
+          <View style={{ flex: 1, marginLeft: 10 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              <Text style={styles.name}>{post.name}</Text>
+              {post.badge && <Badge label={post.badge} color={badgeColor} />}
+            </View>
+            <Text style={styles.time}>{post.time}</Text>
           </View>
-          <Text style={styles.time}>{post.time}</Text>
-        </View>
+        </Pressable>
         <Pressable onPress={() => setFollowed((v) => !v)} style={[styles.followBtn, followed && styles.followBtnOn]}>
           <Text style={[styles.followText, followed && styles.followTextOn]}>{followed ? 'Suivi' : 'Suivre'}</Text>
         </Pressable>
@@ -128,8 +138,8 @@ function PostCard({ post }: { post: Post }) {
 /** +1 visuel quand on like (les compteurs façon "7.2k" restent tels quels). */
 function bumpLike(base: string, liked: boolean): string {
   if (!liked) return base;
-  if (base.includes('k') || base.includes('M')) return base;
-  const n = parseInt(base, 10);
+  if (/[a-zA-Z]/.test(base)) return base; // "7.2 K" etc. : on ne recalcule pas
+  const n = parseInt(base.replace(/\s/g, ''), 10);
   return isNaN(n) ? base : String(n + 1);
 }
 
@@ -159,7 +169,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 18,
     paddingVertical: 10,
   },
-  brand: { color: Afylo.text, fontSize: 24, fontWeight: '800', letterSpacing: -0.5 },
+  brand: { color: Afylo.text, fontFamily: Font.bold, fontSize: 24, letterSpacing: -0.6 },
 
   livesRow: { paddingHorizontal: 16, paddingVertical: 12, gap: 16 },
   liveItem: { alignItems: 'center', width: 72 },
@@ -197,8 +207,9 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   cardHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 12 },
-  name: { color: Afylo.ink, fontSize: 15, fontWeight: '700' },
-  time: { color: Afylo.inkDim, fontSize: 12, marginTop: 2 },
+  cardHeaderTap: { flexDirection: 'row', alignItems: 'center', flex: 1 },
+  name: { color: Afylo.ink, fontFamily: Font.semibold, fontSize: 15, letterSpacing: -0.2 },
+  time: { color: Afylo.textFaint, fontFamily: Font.regular, fontSize: 12, marginTop: 2 },
   followBtn: { backgroundColor: Afylo.violet, paddingHorizontal: 18, paddingVertical: 8, borderRadius: Radius.pill },
   followBtnOn: { backgroundColor: 'transparent', borderWidth: 1.5, borderColor: Afylo.border, paddingHorizontal: 16 },
   followText: { color: '#fff', fontWeight: '700', fontSize: 13 },
@@ -237,6 +248,6 @@ const styles = StyleSheet.create({
 
   stats: { flexDirection: 'row', alignItems: 'center', gap: 18, marginTop: 12 },
   stat: { flexDirection: 'row', alignItems: 'center', gap: 5 },
-  statText: { color: Afylo.inkDim, fontSize: 13, fontWeight: '600' },
-  caption: { color: Afylo.ink, fontSize: 14, lineHeight: 20, marginTop: 10 },
+  statText: { ...Type.small, color: Afylo.inkDim },
+  caption: { ...Type.body, color: Afylo.ink, marginTop: 12 },
 });

@@ -3,11 +3,11 @@ import { BlurView } from 'expo-blur';
 import { Image } from 'expo-image';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, Share, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Linking, Pressable, ScrollView, Share, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Avatar, Badge, PillButton } from '@/components/ui-kit';
-import { Afylo, Radius } from '@/constants/brand';
+import { Afylo, Font, Radius, Type } from '@/constants/brand';
 import { useAuth } from '@/lib/auth';
 import { deleteProduct, getMyProfile, listMyProducts } from '@/lib/db';
 import { myLives, myPosts, myProducts, myProfile, photo, type MyLive } from '@/lib/mock';
@@ -22,7 +22,7 @@ export default function Profil() {
   const router = useRouter();
   const { signOut, session } = useAuth();
   const [section, setSection] = useState<Section>('posts');
-  const [isOwner, setIsOwner] = useState(true);
+  const isOwner = true; // l'onglet Profil est toujours TON profil ; le profil visiteur est /creator/[id]
   const [menuOpen, setMenuOpen] = useState(false);
   const [dbProfile, setDbProfile] = useState<Profile | null>(null);
 
@@ -53,17 +53,6 @@ export default function Profil() {
     <View style={styles.root}>
       {/* Bascule d'aperçu propriétaire / visiteur (dev — sera l'auth plus tard) */}
       <SafeAreaView edges={['top']} style={{ backgroundColor: Afylo.bg }}>
-        <View style={styles.previewToggle}>
-          <Ionicons name="eye-outline" size={14} color={Afylo.textFaint} />
-          <Text style={styles.previewText}>Aperçu :</Text>
-          <Pressable onPress={() => setIsOwner(true)} style={[styles.previewChip, isOwner && styles.previewChipOn]}>
-            <Text style={[styles.previewChipText, isOwner && styles.previewChipTextOn]}>Propriétaire</Text>
-          </Pressable>
-          <Pressable onPress={() => setIsOwner(false)} style={[styles.previewChip, !isOwner && styles.previewChipOn]}>
-            <Text style={[styles.previewChipText, !isOwner && styles.previewChipTextOn]}>Visiteur</Text>
-          </Pressable>
-        </View>
-
         <View style={styles.topbar}>
           <Text style={styles.handle}>{p.handle}</Text>
           <View style={{ flexDirection: 'row', gap: 4 }}>
@@ -129,13 +118,14 @@ export default function Profil() {
           <SafeAreaView edges={['top']} style={styles.menu}>
             <BlurView intensity={30} tint="light" style={StyleSheet.absoluteFill} />
             <View style={styles.menuHandle} />
+            <MenuItem icon="repeat" label="Affiliation — produits à revendre" onPress={() => { setMenuOpen(false); router.push('/affiliation'); }} />
             {isOwner && <MenuItem icon="stats-chart" label="Studio & statistiques" onPress={() => { setMenuOpen(false); router.push('/studio'); }} />}
-            {isOwner && <MenuItem icon="wallet-outline" label="Portefeuille & retraits" />}
+            {isOwner && <MenuItem icon="wallet-outline" label="Portefeuille & retraits" onPress={() => { setMenuOpen(false); router.push('/studio'); }} />}
             {isOwner && <MenuItem icon="bag-add-outline" label="Gérer ma boutique" onPress={() => { setMenuOpen(false); setSection('boutique'); }} />}
-            <MenuItem icon="share-social-outline" label="Partager le profil" />
-            <MenuItem icon="bookmark-outline" label="Enregistrements" />
-            <MenuItem icon="settings-outline" label="Paramètres" />
-            <MenuItem icon="help-circle-outline" label="Aide" />
+            <MenuItem icon="share-social-outline" label="Partager le profil" onPress={() => { setMenuOpen(false); share(); }} />
+            <MenuItem icon="bookmark-outline" label="Enregistrements" onPress={() => setMenuOpen(false)} />
+            <MenuItem icon="settings-outline" label="Paramètres" onPress={() => { setMenuOpen(false); router.push('/edit-profile'); }} />
+            <MenuItem icon="help-circle-outline" label="Aide" onPress={() => { setMenuOpen(false); Linking.openURL('mailto:support@afylo.app'); }} />
             {isOwner && <MenuItem icon="log-out-outline" label="Déconnexion" danger onPress={async () => { setMenuOpen(false); await signOut(); }} />}
           </SafeAreaView>
         </Pressable>
@@ -341,16 +331,16 @@ const styles = StyleSheet.create({
   previewChipTextOn: { color: '#fff' },
 
   topbar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 18, paddingVertical: 6 },
-  handle: { color: Afylo.text, fontSize: 18, fontWeight: '800' },
+  handle: { ...Type.username, fontSize: 20, color: Afylo.text },
   iconTop: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
 
-  head: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 18, marginTop: 8, gap: 18 },
+  head: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 18, marginTop: 12, gap: 20 },
   statsRow: { flex: 1, flexDirection: 'row', justifyContent: 'space-around' },
-  statValue: { color: Afylo.text, fontSize: 19, fontWeight: '800' },
-  statLabel: { color: Afylo.textDim, fontSize: 12, marginTop: 2 },
-  nameRow: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 18, marginTop: 14 },
-  name: { color: Afylo.text, fontSize: 18, fontWeight: '800' },
-  bio: { color: Afylo.textDim, fontSize: 14, lineHeight: 20, paddingHorizontal: 18, marginTop: 6 },
+  statValue: { ...Type.statNumber, color: Afylo.text },
+  statLabel: { ...Type.statLabel, color: Afylo.textDim, marginTop: 4 },
+  nameRow: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 18, marginTop: 18 },
+  name: { ...Type.name, color: Afylo.text },
+  bio: { ...Type.bio, color: Afylo.text, opacity: 0.9, paddingHorizontal: 18, marginTop: 8 },
   earnPill: { flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start', marginHorizontal: 18, marginTop: 12, backgroundColor: '#FFB0201A', borderWidth: 1, borderColor: '#FFB02033', paddingHorizontal: 12, paddingVertical: 8, borderRadius: Radius.pill, gap: 2 },
   earnText: { color: Afylo.textDim, fontSize: 13 },
   earnValue: { color: Afylo.gold, fontSize: 13, fontWeight: '800' },

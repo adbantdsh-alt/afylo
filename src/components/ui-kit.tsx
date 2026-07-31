@@ -3,7 +3,7 @@ import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View, ViewStyle } from 'react-native';
 
-import { Afylo, Radius } from '@/constants/brand';
+import { Afylo, Radius, Type } from '@/constants/brand';
 
 /** Avatar circulaire avec anneau (rouge si en live). */
 export function Avatar({
@@ -122,8 +122,8 @@ const styles = StyleSheet.create({
   pillGhost: { backgroundColor: 'transparent', borderWidth: 1.5, borderColor: Afylo.border },
   pillLight: { backgroundColor: '#fff' },
   pillRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  pillText: { color: '#fff', fontSize: 16, fontWeight: '700' },
-  badge: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: Radius.pill, borderWidth: 1 },
-  badgeText: { fontSize: 11, fontWeight: '700' },
+  pillText: { ...Type.button, color: '#fff' },
+  badge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: Radius.pill, borderWidth: 1 },
+  badgeText: { ...Type.badge },
   iconBtn: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
 });

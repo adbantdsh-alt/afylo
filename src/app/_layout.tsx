@@ -1,11 +1,10 @@
 import {
-  BricolageGrotesque_400Regular,
-  BricolageGrotesque_500Medium,
-  BricolageGrotesque_600SemiBold,
-  BricolageGrotesque_700Bold,
-  BricolageGrotesque_800ExtraBold,
+  Inter_400Regular,
+  Inter_500Medium,
+  Inter_600SemiBold,
+  Inter_700Bold,
   useFonts,
-} from '@expo-google-fonts/bricolage-grotesque';
+} from '@expo-google-fonts/inter';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
@@ -59,17 +58,18 @@ function RootNavigator() {
       <Stack.Screen name="product-new" options={{ presentation: 'modal' }} />
       <Stack.Screen name="post-new" options={{ presentation: 'modal' }} />
       <Stack.Screen name="edit-profile" options={{ presentation: 'modal' }} />
+      <Stack.Screen name="creator/[id]" />
+      <Stack.Screen name="affiliation" />
     </Stack>
   );
 }
 
 export default function RootLayout() {
   const [fontsLoaded, fontError] = useFonts({
-    BricolageGrotesque_400Regular,
-    BricolageGrotesque_500Medium,
-    BricolageGrotesque_600SemiBold,
-    BricolageGrotesque_700Bold,
-    BricolageGrotesque_800ExtraBold,
+    Inter_400Regular,
+    Inter_500Medium,
+    Inter_600SemiBold,
+    Inter_700Bold,
   });
 
   // Ne jamais bloquer le site si une police échoue à charger.

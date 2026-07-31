@@ -22,12 +22,12 @@ export type Live = {
 };
 
 export const lives: Live[] = [
-  { id: 'l1', name: 'Fatou', avatar: avatar(5), live: true, viewers: '1.2k' },
+  { id: 'l1', name: 'Fatou', avatar: avatar(5), live: true, viewers: '1.2 K' },
   { id: 'l2', name: 'Awa', avatar: avatar(9), live: true, viewers: '340' },
   { id: 'l3', name: 'Modou', avatar: avatar(15), live: true, viewers: '89' },
   { id: 'l4', name: 'Sokhna', avatar: avatar(20), live: false },
   { id: 'l5', name: 'Cheikh', avatar: avatar(33), live: false },
-  { id: 'l6', name: 'Aida', avatar: avatar(45), live: true, viewers: '2.1k' },
+  { id: 'l6', name: 'Aida', avatar: avatar(45), live: true, viewers: '2.1 K' },
 ];
 
 export type Product = { title: string; price: string; commission?: string };
@@ -57,9 +57,9 @@ export const posts: Post[] = [
     badge: 'créateur',
     time: 'il y a 45 min',
     image: photo('afylo-look', 700, 800),
-    likes: '7.2k',
+    likes: '7.2 K',
     comments: '300',
-    views: '69k',
+    views: '69 K',
     shares: '87',
     caption: 'Mon nouveau look de la semaine 🔥 Dispo en live ce soir 20h !',
     product: { title: 'Ensemble wax premium', price: '18 500 FCFA', commission: '15%' },
@@ -72,9 +72,9 @@ export const posts: Post[] = [
     badge: 'boutique',
     time: 'il y a 2 h',
     image: photo('afylo-beauty', 700, 800),
-    likes: '4.1k',
+    likes: '4.1 K',
     comments: '210',
-    views: '33k',
+    views: '33 K',
     shares: '54',
     caption: 'Routine peau glow ✨ Testée et approuvée. Livraison Dakar 24h.',
     product: { title: 'Coffret soin visage', price: '12 000 FCFA', commission: '20%' },
@@ -87,9 +87,9 @@ export const posts: Post[] = [
     badge: 'créateur',
     time: 'il y a 5 h',
     image: photo('afylo-music', 700, 800),
-    likes: '9.8k',
+    likes: '9.8 K',
     comments: '640',
-    views: '112k',
+    views: '112 K',
     shares: '230',
     caption: 'Nouveau son 🎧 Qui veut le beatpack complet ?',
     product: { title: 'Beatpack Afro 2026', price: '9 900 FCFA', commission: '30%' },
@@ -120,17 +120,17 @@ export const myProfile = {
   handle: '@fatou.style',
   avatar: avatar(5),
   bio: 'Mode & lifestyle 🇸🇳 · Lives tous les soirs 20h · Livraison partout au Sénégal',
-  followers: '128k',
+  followers: '128 K',
   following: '312',
   sales: '342',
-  views: '1.2M',
+  views: '1.2 M',
   earnings: '2 340 000',
 };
 
 export const myPosts = Array.from({ length: 12 }, (_, i) => ({
   id: `mp${i}`,
   image: photo(`myp${i}`, 300, 400),
-  views: `${(i * 7 + 4)}k`,
+  views: `${(i * 7 + 4)} K`,
   video: i % 3 === 0,
 }));
 
@@ -162,9 +162,9 @@ export type MyLive = {
 };
 
 export const myLives: MyLive[] = [
-  { id: 'ml1', title: 'Nouvelle collection wax 🔥', date: '28 juil.', duration: '48 min', viewers: '2.1k', revenue: '145 000', thumb: photo('myl1', 400, 300) },
+  { id: 'ml1', title: 'Nouvelle collection wax 🔥', date: '28 juil.', duration: '48 min', viewers: '2.1 K', revenue: '145 000', thumb: photo('myl1', 400, 300) },
   { id: 'ml2', title: 'Déstockage foulards', date: '25 juil.', duration: '32 min', viewers: '980', revenue: '62 000', thumb: photo('myl2', 400, 300) },
-  { id: 'ml3', title: 'Q&A + essayage boubous', date: '21 juil.', duration: '55 min', viewers: '1.5k', revenue: '210 000', thumb: photo('myl3', 400, 300) },
+  { id: 'ml3', title: 'Q&A + essayage boubous', date: '21 juil.', duration: '55 min', viewers: '1.5 K', revenue: '210 000', thumb: photo('myl3', 400, 300) },
 ];
 
 // ---- Studio / Statistiques ----
@@ -190,9 +190,36 @@ export const studioDays = [
 ];
 
 export const studioTopPosts = [
-  { id: 't1', image: photo('myp1', 200, 200), views: '112k', sales: 18, viral: 94 },
-  { id: 't2', image: photo('myp4', 200, 200), views: '69k', sales: 11, viral: 81 },
-  { id: 't3', image: photo('myp7', 200, 200), views: '58k', sales: 7, viral: 73 },
+  { id: 't1', image: photo('myp1', 200, 200), views: '112 K', sales: 18, viral: 94 },
+  { id: 't2', image: photo('myp4', 200, 200), views: '69 K', sales: 11, viral: 81 },
+  { id: 't3', image: photo('myp7', 200, 200), views: '58 K', sales: 7, viral: 73 },
+];
+
+// ---- Affiliation (marketplace) ----
+export type AffiliationProduct = {
+  id: string;
+  title: string;
+  price: number;
+  promo?: number; // prix promo optionnel
+  commission: number; // % pour le revendeur
+  niche: string;
+  city: string;
+  seller: string;
+  image: string;
+};
+
+export const NICHES = ['Tout', 'Mode', 'Beauté', 'Tech', 'Cuisine', 'Sport', 'Maison'];
+export const CITIES = ['Toutes', 'Dakar', 'Thiès', 'Saint-Louis', 'Abidjan', 'Bamako'];
+
+export const affiliationProducts: AffiliationProduct[] = [
+  { id: 'af1', title: 'Ensemble wax premium', price: 18500, commission: 15, niche: 'Mode', city: 'Dakar', seller: 'Fatou Style', image: photo('aff1', 500, 500) },
+  { id: 'af2', title: 'Coffret soin visage glow', price: 12000, promo: 9900, commission: 20, niche: 'Beauté', city: 'Dakar', seller: 'Awa Beauty', image: photo('aff2', 500, 500) },
+  { id: 'af3', title: 'Écouteurs sans fil Pro', price: 15000, commission: 12, niche: 'Tech', city: 'Abidjan', seller: 'Modou Tech', image: photo('aff3', 500, 500) },
+  { id: 'af4', title: 'Épices maison (lot)', price: 6500, commission: 25, niche: 'Cuisine', city: 'Thiès', seller: 'Mariama Cuisine', image: photo('aff4', 500, 500) },
+  { id: 'af5', title: 'Tenue de sport femme', price: 14000, promo: 11000, commission: 18, niche: 'Sport', city: 'Dakar', seller: 'Serigne Sport', image: photo('aff5', 500, 500) },
+  { id: 'af6', title: 'Parfum unisexe 100ml', price: 25000, commission: 15, niche: 'Beauté', city: 'Saint-Louis', seller: 'Aida Parfums', image: photo('aff6', 500, 500) },
+  { id: 'af7', title: 'Boubou brodé main', price: 35000, commission: 15, niche: 'Mode', city: 'Bamako', seller: 'Sokhna Créations', image: photo('aff7', 500, 500) },
+  { id: 'af8', title: 'Lampe déco design', price: 9000, commission: 22, niche: 'Maison', city: 'Abidjan', seller: 'Deco Plus', image: photo('aff8', 500, 500) },
 ];
 
 export const shopProducts = [
