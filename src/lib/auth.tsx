@@ -1,7 +1,12 @@
 import type { Session } from '@supabase/supabase-js';
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
+import { Platform } from 'react-native';
 
 import { supabase } from './supabase';
+
+/** URL de retour des emails (confirmation, reset) : domaine courant sur le web. */
+export const redirectOrigin =
+  Platform.OS === 'web' && typeof window !== 'undefined' ? window.location.origin : undefined;
 
 type AuthState = {
   session: Session | null;
@@ -35,7 +40,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signUp: AuthState['signUp'] = async (email, password) => {
-    const { data, error } = await supabase.auth.signUp({ email: email.trim(), password });
+    const { data, error } = await supabase.auth.signUp({
+      email: email.trim(),
+      password,
+      options: { emailRedirectTo: redirectOrigin },
+    });
     // Si la confirmation email est requise, il n'y a pas encore de session.
     return { error: error?.message ?? null, needsConfirm: !error && !data.session };
   };

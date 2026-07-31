@@ -247,7 +247,7 @@ function BoutiqueList({ isOwner }: { isOwner: boolean }) {
       {loading && <ActivityIndicator color={Afylo.violet} style={{ marginVertical: 20 }} />}
 
       {isOwner && session && list.length === 0 && !loading && (
-        <Text style={styles.emptyText}>Aucun produit pour l'instant. Crée ton premier article ci-dessus 👆</Text>
+        <Text style={styles.emptyText}>Aucun produit pour l'instant. Crée ton premier article ci-dessus.</Text>
       )}
 
       {!session && isOwner && (

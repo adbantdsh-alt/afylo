@@ -7,7 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { PillButton } from '@/components/ui-kit';
 import { Afylo, Radius } from '@/constants/brand';
-import { useAuth } from '@/lib/auth';
+import { redirectOrigin, useAuth } from '@/lib/auth';
 import { supabase } from '@/lib/supabase';
 
 export default function Login() {
@@ -57,7 +57,7 @@ export default function Login() {
       setError('Entre ton email d\'abord, puis touche « Mot de passe oublié ».');
       return;
     }
-    const { error } = await supabase.auth.resetPasswordForEmail(email.trim());
+    const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), { redirectTo: redirectOrigin });
     if (error) setError(traduire(error));
     else setInfo('Email de réinitialisation envoyé. Vérifie ta boîte mail.');
   };
@@ -74,7 +74,7 @@ export default function Login() {
           <Text style={styles.brand}>
             Afylo<Text style={{ color: Afylo.violet }}>.</Text>
           </Text>
-          <Text style={styles.title}>{mode === 'login' ? 'Content de te revoir 👋' : 'Rejoins Afylo 🚀'}</Text>
+          <Text style={styles.title}>{mode === 'login' ? 'Content de te revoir' : 'Rejoins Afylo'}</Text>
           <Text style={styles.sub}>
             {mode === 'login' ? 'Connecte-toi pour créer, vendre et gagner.' : 'Crée ton compte en quelques secondes.'}
           </Text>
