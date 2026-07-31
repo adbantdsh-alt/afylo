@@ -4,13 +4,14 @@ import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useRef, useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import Animated, { useAnimatedStyle, withTiming } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Afylo, Font, Radius } from '@/constants/brand';
 import { useAuthGate } from '@/lib/auth-gate';
-import { useStories } from '@/lib/stories';
+import { myProducts } from '@/lib/mock';
+import { useStories, type StoryProduct } from '@/lib/stories';
 import { useTabBar } from '@/lib/tabbar';
 
 type Mode = 'Publication' | 'Story' | 'Reel' | 'Live';
@@ -30,11 +31,14 @@ export default function Creer() {
   const [media, setMedia] = useState<{ uri: string; type: 'image' | 'video' } | null>(null);
   const [recording, setRecording] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [product, setProduct] = useState<StoryProduct | null>(null);
+  const [productPicker, setProductPicker] = useState(false);
 
-  // Masquer la barre de nav sur l'écran Créer (elle gêne les boutons)
+  // Masquer la barre de nav + repartir d'un écran vierge à chaque ouverture
   useFocusEffect(
     useCallback(() => {
       hidden.value = withTiming(1, { duration: 150 });
+      setMedia(null); // ne pas garder l'ancienne capture
       return () => {
         hidden.value = withTiming(0, { duration: 150 });
       };
@@ -74,7 +78,7 @@ export default function Creer() {
     if (!media) return;
     if (mode === 'Story') {
       setBusy(true);
-      addStory({ type: media.type, uri: media.uri });
+      addStory({ type: media.type, uri: media.uri }, product ?? undefined);
       setBusy(false);
       router.replace('/accueil');
     } else {
@@ -104,7 +108,7 @@ export default function Creer() {
           {media ? (
             <Image source={{ uri: media.uri }} style={StyleSheet.absoluteFill} contentFit="cover" />
           ) : permission?.granted ? (
-            <CameraView ref={camRef} style={StyleSheet.absoluteFill} facing={facing} mode="video" />
+            <CameraView key={facing} ref={camRef} style={StyleSheet.absoluteFill} facing={facing} mode="video" />
           ) : (
             <View style={styles.stageEmpty}>
               <View style={styles.cameraCircle}>
@@ -160,6 +164,19 @@ export default function Creer() {
         </View>
         <Text style={styles.captureHint}>Appuie = photo · Appui long = vidéo</Text>
 
+        {/* Attacher un produit (story ou publication) */}
+        <Pressable onPress={() => setProductPicker(true)} style={styles.attachProduct}>
+          <Ionicons name="pricetag" size={18} color={product ? Afylo.violet2 : '#ffffffcc'} />
+          <Text style={[styles.attachText, product && { color: '#fff' }]} numberOfLines={1}>
+            {product ? `${product.title} · ${product.price}` : 'Attacher un produit (achat direct)'}
+          </Text>
+          {product ? (
+            <Ionicons name="close-circle" size={20} color="#ffffff88" onPress={() => setProduct(null)} />
+          ) : (
+            <Ionicons name="chevron-forward" size={18} color="#ffffff88" />
+          )}
+        </Pressable>
+
         {/* Onglets de mode */}
         <View style={styles.modes}>
           {MODES.map((m) => (
@@ -178,6 +195,28 @@ export default function Creer() {
           </Pressable>
         </View>
       </SafeAreaView>
+
+      {/* Sélecteur de produit */}
+      <Modal visible={productPicker} transparent animationType="slide" onRequestClose={() => setProductPicker(false)}>
+        <Pressable style={styles.pmOverlay} onPress={() => setProductPicker(false)}>
+          <View style={styles.pmSheet}>
+            <View style={styles.pmHandle} />
+            <Text style={styles.pmTitle}>Attacher un produit</Text>
+            <ScrollView>
+              {myProducts.map((p) => (
+                <Pressable key={p.id} onPress={() => { setProduct({ title: p.title, price: `${p.price} FCFA` }); setProductPicker(false); }} style={styles.pmRow}>
+                  <Image source={{ uri: p.image }} style={styles.pmImg} contentFit="cover" />
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.pmName} numberOfLines={1}>{p.title}</Text>
+                    <Text style={styles.pmPrice}>{p.price} FCFA</Text>
+                  </View>
+                  <Ionicons name="add-circle" size={22} color={Afylo.violet} />
+                </Pressable>
+              ))}
+            </ScrollView>
+          </View>
+        </Pressable>
+      </Modal>
     </Animated.View>
   );
 }
@@ -215,4 +254,16 @@ const styles = StyleSheet.create({
 
   cta: { height: 52, borderRadius: Radius.pill, backgroundColor: Afylo.violet, alignItems: 'center', justifyContent: 'center' },
   ctaText: { color: '#fff', fontFamily: Font.semibold, fontSize: 16 },
+
+  attachProduct: { flexDirection: 'row', alignItems: 'center', gap: 10, marginHorizontal: 16, marginTop: 12, backgroundColor: '#ffffff14', borderRadius: Radius.pill, paddingHorizontal: 16, height: 46 },
+  attachText: { flex: 1, color: '#ffffffcc', fontFamily: Font.medium, fontSize: 14 },
+
+  pmOverlay: { flex: 1, backgroundColor: '#00000088', justifyContent: 'flex-end' },
+  pmSheet: { backgroundColor: '#15151C', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 16, maxHeight: '60%' },
+  pmHandle: { width: 40, height: 4, borderRadius: 2, backgroundColor: '#ffffff33', alignSelf: 'center', marginBottom: 12 },
+  pmTitle: { color: '#fff', fontFamily: Font.bold, fontSize: 17, marginBottom: 12 },
+  pmRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 8 },
+  pmImg: { width: 48, height: 48, borderRadius: 10, backgroundColor: '#222' },
+  pmName: { color: '#fff', fontFamily: Font.semibold, fontSize: 15 },
+  pmPrice: { color: '#ffffffaa', fontSize: 13, marginTop: 2 },
 });

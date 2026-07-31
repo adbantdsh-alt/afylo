@@ -7,7 +7,8 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Avatar } from '@/components/ui-kit';
-import { Afylo, Font, Type } from '@/constants/brand';
+import { PaymentSheet } from '@/components/payment-sheet';
+import { Afylo, Font, Radius, Type } from '@/constants/brand';
 import { useStories } from '@/lib/stories';
 
 const ITEM_MS = 5000;
@@ -21,6 +22,7 @@ export default function StoryViewer() {
   const [sIdx, setSIdx] = useState(startIdx);
   const [iIdx, setIIdx] = useState(0);
   const [progress, setProgress] = useState(0);
+  const [payOpen, setPayOpen] = useState(false);
   const timer = useRef<any>(null);
 
   const story = stories[sIdx];
@@ -107,6 +109,18 @@ export default function StoryViewer() {
         </View>
       </SafeAreaView>
 
+      {/* Produit attaché (achat direct) */}
+      {story.product && (
+        <View style={styles.productWrap} pointerEvents="box-none">
+          <Pressable onPress={() => { clearInterval(timer.current); setPayOpen(true); }} style={styles.productBar}>
+            <Ionicons name="bag-handle" size={18} color="#fff" />
+            <Text style={styles.productTitle} numberOfLines={1}>{story.product.title}</Text>
+            <Text style={styles.productPrice}>{story.product.price}</Text>
+            <View style={styles.productCta}><Text style={styles.productCtaText}>Acheter</Text></View>
+          </Pressable>
+        </View>
+      )}
+
       {/* Réponse rapide */}
       <SafeAreaView edges={['bottom']} style={styles.replyWrap} pointerEvents="box-none">
         <View style={styles.replyBox}>
@@ -115,6 +129,12 @@ export default function StoryViewer() {
         <Ionicons name="heart-outline" size={26} color="#fff" />
         <Ionicons name="paper-plane-outline" size={24} color="#fff" />
       </SafeAreaView>
+
+      <PaymentSheet
+        visible={payOpen}
+        items={story.product ? [story.product] : []}
+        onClose={() => setPayOpen(false)}
+      />
     </View>
   );
 }
@@ -133,6 +153,12 @@ const styles = StyleSheet.create({
   liveTag: { backgroundColor: Afylo.live, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6 },
   liveText: { color: '#fff', fontFamily: Font.bold, fontSize: 10 },
 
+  productWrap: { position: 'absolute', left: 0, right: 0, bottom: 76, paddingHorizontal: 14, zIndex: 6 },
+  productBar: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: '#ffffff26', borderWidth: 1, borderColor: '#ffffff44', borderRadius: Radius.pill, paddingLeft: 14, paddingRight: 6, paddingVertical: 6 },
+  productTitle: { color: '#fff', fontFamily: Font.semibold, fontSize: 13, flex: 1 },
+  productPrice: { color: Afylo.gold, fontFamily: Font.bold, fontSize: 13 },
+  productCta: { backgroundColor: Afylo.violet, paddingHorizontal: 16, paddingVertical: 8, borderRadius: Radius.pill },
+  productCtaText: { color: '#fff', fontFamily: Font.semibold, fontSize: 13 },
   replyWrap: { position: 'absolute', left: 0, right: 0, bottom: 0, flexDirection: 'row', alignItems: 'center', gap: 14, paddingHorizontal: 14, paddingBottom: 8, zIndex: 6 },
   replyBox: { flex: 1, height: 44, borderRadius: 22, borderWidth: 1.5, borderColor: '#ffffff88', justifyContent: 'center', paddingHorizontal: 18 },
   replyPlaceholder: { color: '#ffffffcc', ...Type.body, fontSize: 15 },

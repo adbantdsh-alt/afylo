@@ -3,6 +3,7 @@ import { createContext, useCallback, useContext, useMemo, useState, type ReactNo
 import { avatar, face } from '@/lib/mock';
 
 export type StoryItem = { type: 'image' | 'video'; uri: string };
+export type StoryProduct = { title: string; price: string };
 export type Story = {
   id: string;
   name: string;
@@ -12,6 +13,7 @@ export type Story = {
   live?: boolean;
   mine?: boolean;
   seen?: boolean;
+  product?: StoryProduct;
 };
 
 const STORY_TTL = 10 * 60 * 60 * 1000; // 10 heures
@@ -29,7 +31,7 @@ const seedStories: Story[] = [
 type Ctx = {
   stories: Story[];
   myStory: Story | null;
-  addStory: (item: StoryItem) => void;
+  addStory: (item: StoryItem, product?: StoryProduct) => void;
   markSeen: (id: string) => void;
 };
 const StoriesCtx = createContext<Ctx | null>(null);
@@ -38,16 +40,16 @@ export function StoriesProvider({ children }: { children: ReactNode }) {
   const [stories, setStories] = useState<Story[]>(seedStories);
   const [tick, setTick] = useState(0); // pour forcer le recalcul d'expiration si besoin
 
-  const addStory: Ctx['addStory'] = (item) => {
+  const addStory: Ctx['addStory'] = (item, product) => {
     const t = safeNow();
     setStories((prev) => {
       const mineIdx = prev.findIndex((s) => s.mine);
       if (mineIdx >= 0) {
         const copy = [...prev];
-        copy[mineIdx] = { ...copy[mineIdx], items: [...copy[mineIdx].items, item], createdAt: t };
+        copy[mineIdx] = { ...copy[mineIdx], items: [...copy[mineIdx].items, item], createdAt: t, product: product ?? copy[mineIdx].product };
         return copy;
       }
-      return [{ id: 'st-mine', name: 'Ta story', avatar: face('toi'), mine: true, createdAt: t, items: [item] }, ...prev];
+      return [{ id: 'st-mine', name: 'Ta story', avatar: face('toi'), mine: true, createdAt: t, items: [item], product }, ...prev];
     });
     setTick((x) => x + 1);
   };
