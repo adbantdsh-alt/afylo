@@ -6,6 +6,7 @@ import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Avatar } from '@/components/ui-kit';
+import { REACTIONS } from '@/components/rate-sheet';
 import { Afylo, Font, Radius, Type } from '@/constants/brand';
 import { useAuthGate } from '@/lib/auth-gate';
 import { avatar, face } from '@/lib/mock';
@@ -113,6 +114,9 @@ export default function Comments() {
 }
 
 function CommentRow({ c, onLike, onReply, depth = 0 }: { c: Comment; onLike: (id: string) => void; onReply: (t: { id: string; handle: string }) => void; depth?: number }) {
+  const [reaction, setReaction] = useState<string | null>(null);
+  const [picker, setPicker] = useState(false);
+
   return (
     <View style={{ marginLeft: depth * 44, marginBottom: 16 }}>
       <View style={{ flexDirection: 'row' }}>
@@ -124,7 +128,20 @@ function CommentRow({ c, onLike, onReply, depth = 0 }: { c: Comment; onLike: (id
             <Pressable onPress={() => onReply({ id: c.id, handle: c.handle })}>
               <Text style={styles.cReply}>Répondre</Text>
             </Pressable>
+            <Pressable onPress={() => setPicker((p) => !p)}>
+              <Text style={styles.cReply}>Réagir</Text>
+            </Pressable>
+            {reaction && <Text style={{ fontSize: 15 }}>{reaction}</Text>}
           </View>
+          {picker && (
+            <View style={styles.picker}>
+              {REACTIONS.map((e) => (
+                <Pressable key={e} onPress={() => { setReaction((r) => (r === e ? null : e)); setPicker(false); onLike(c.id); }}>
+                  <Text style={styles.pickerEmoji}>{e}</Text>
+                </Pressable>
+              ))}
+            </View>
+          )}
         </View>
         <Pressable onPress={() => onLike(c.id)} style={styles.cLike}>
           <Ionicons name={c.liked ? 'heart' : 'heart-outline'} size={17} color={c.liked ? Afylo.live : Afylo.textDim} />
@@ -148,8 +165,10 @@ const styles = StyleSheet.create({
   cName: { ...Type.small, fontFamily: Font.semibold, color: Afylo.text },
   cTime: { ...Type.caption, color: Afylo.textFaint, fontFamily: Font.regular },
   cText: { ...Type.body, fontSize: 15, color: Afylo.text, marginTop: 3 },
-  cActions: { flexDirection: 'row', gap: 16, marginTop: 6 },
+  cActions: { flexDirection: 'row', alignItems: 'center', gap: 16, marginTop: 6 },
   cReply: { ...Type.caption, fontFamily: Font.semibold, color: Afylo.textDim },
+  picker: { flexDirection: 'row', gap: 10, marginTop: 8, backgroundColor: Afylo.surface, borderWidth: 1, borderColor: Afylo.border, borderRadius: Radius.pill, paddingHorizontal: 12, paddingVertical: 6, alignSelf: 'flex-start' },
+  pickerEmoji: { fontSize: 22 },
   cLike: { alignItems: 'center', paddingLeft: 8, gap: 2 },
   cLikeCount: { ...Type.caption, color: Afylo.textDim },
 

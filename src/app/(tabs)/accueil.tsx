@@ -6,6 +6,7 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Avatar, IconButton } from '@/components/ui-kit';
+import { RateSheet } from '@/components/rate-sheet';
 import { Afylo, Font, Radius, Type } from '@/constants/brand';
 import { useAuthGate } from '@/lib/auth-gate';
 import { useHideOnScroll } from '@/lib/tabbar';
@@ -82,6 +83,9 @@ function PostCard({ post }: { post: Post }) {
   const [liked, setLiked] = useState(false);
   const [bought, setBought] = useState(false);
   const [reposted, setReposted] = useState(false);
+  const [rating, setRating] = useState(0);
+  const [reaction, setReaction] = useState<string | null>(null);
+  const [rateOpen, setRateOpen] = useState(false);
 
   const toggleFollow = () => { if (gate('suivre ce créateur')) setFollowed((v) => !v); };
   const toggleLike = () => { if (gate('aimer')) setLiked((v) => !v); };
@@ -142,6 +146,17 @@ function PostCard({ post }: { post: Post }) {
 
       {/* Stats */}
       <View style={styles.stats}>
+        {/* Notation /10 (nouveau) — juste avant le like */}
+        <Pressable onPress={() => { if (gate('noter')) setRateOpen(true); }} style={styles.rate}>
+          {reaction ? (
+            <Text style={styles.rateEmoji}>{reaction}</Text>
+          ) : (
+            <Ionicons name="star" size={18} color={rating > 0 ? Afylo.gold : Afylo.inkDim} />
+          )}
+          <Text style={[styles.statText, rating > 0 && { color: Afylo.gold, fontFamily: Font.bold }]}>
+            {rating > 0 ? `${rating}/10` : 'Noter'}
+          </Text>
+        </Pressable>
         <Pressable onPress={toggleLike}>
           <Stat icon={liked ? 'heart' : 'heart-outline'} label={bumpLike(post.likes, liked)} color={liked ? Afylo.live : Afylo.inkDim} />
         </Pressable>
@@ -156,6 +171,15 @@ function PostCard({ post }: { post: Post }) {
       </View>
 
       <Text style={styles.caption}>{post.caption}</Text>
+
+      <RateSheet
+        visible={rateOpen}
+        rating={rating}
+        reaction={reaction}
+        onRate={setRating}
+        onReact={(e) => setReaction((r) => (r === e ? null : e))}
+        onClose={() => setRateOpen(false)}
+      />
     </View>
   );
 }
@@ -274,5 +298,7 @@ const styles = StyleSheet.create({
   stats: { flexDirection: 'row', alignItems: 'center', gap: 18, marginTop: 12 },
   stat: { flexDirection: 'row', alignItems: 'center', gap: 5 },
   statText: { ...Type.small, color: Afylo.inkDim },
+  rate: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  rateEmoji: { fontSize: 17 },
   caption: { ...Type.body, color: Afylo.ink, marginTop: 12 },
 });

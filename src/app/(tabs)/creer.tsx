@@ -76,7 +76,7 @@ export default function Creer() {
                 <Ionicons name={isVideoMode ? 'videocam' : 'camera'} size={34} color="#fff" />
               </View>
               <Text style={styles.stageHint}>Appuie pour choisir depuis la galerie</Text>
-              <Text style={styles.stageSub}>{isVideoMode ? 'Vidéo verticale (Reel)' : mode === 'Story' ? 'Photo ou vidéo · visible 24 h' : 'Photo ou vidéo'}</Text>
+              <Text style={styles.stageSub}>{isVideoMode ? 'Vidéo verticale (Reel)' : mode === 'Story' ? 'Photo ou vidéo · visible 10 h' : 'Photo ou vidéo'}</Text>
             </View>
           )}
         </Pressable>

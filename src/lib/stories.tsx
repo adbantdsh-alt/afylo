@@ -14,9 +14,9 @@ export type Story = {
   seen?: boolean;
 };
 
-const DAY = 24 * 60 * 60 * 1000;
+const STORY_TTL = 10 * 60 * 60 * 1000; // 10 heures
 
-// Démo — créateurs africains (les stories expirent après 24 h)
+// Démo — créateurs africains (les stories expirent après 10 h)
 const now = 0; // stamp relatif ; on considère tout comme récent au démarrage
 const seedStories: Story[] = [
   { id: 'st-fatou', name: 'Fatou', avatar: avatar(5), live: true, createdAt: now, items: [{ type: 'image', uri: face('story-fatou', 800, 1400) }] },
@@ -56,10 +56,10 @@ export function StoriesProvider({ children }: { children: ReactNode }) {
     setStories((prev) => prev.map((s) => (s.id === id ? { ...s, seen: true } : s)));
   };
 
-  // Filtre 24 h (les seeds ont createdAt=0 => toujours visibles en démo)
+  // Filtre 10 h (les seeds ont createdAt=0 => toujours visibles en démo)
   const visible = useMemo(() => {
     const t = safeNow();
-    return stories.filter((s) => s.createdAt === 0 || t - s.createdAt < DAY);
+    return stories.filter((s) => s.createdAt === 0 || t - s.createdAt < STORY_TTL);
   }, [stories, tick]);
 
   const myStory = visible.find((s) => s.mine) ?? null;
