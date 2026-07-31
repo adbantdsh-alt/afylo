@@ -151,7 +151,7 @@ export default function Live() {
         <View style={styles.setupDim} />
         <SafeAreaView style={{ flex: 1 }}>
           <View style={styles.setupHeader}>
-            <Pressable onPress={() => router.back()} style={styles.close}><Ionicons name="close" size={24} color="#fff" /></Pressable>
+            <Pressable onPress={() => (router.canGoBack() ? router.back() : router.replace('/accueil'))} style={styles.close}><Ionicons name="close" size={24} color="#fff" /></Pressable>
             <Text style={styles.setupTitle}>Préparer ton live</Text>
             <Pressable onPress={() => setFacing((f) => (f === 'front' ? 'back' : 'front'))} style={styles.close}><Ionicons name="camera-reverse-outline" size={22} color="#fff" /></Pressable>
           </View>
@@ -212,7 +212,7 @@ export default function Live() {
           <View style={styles.liveBadge}><View style={styles.liveDot} /><Text style={styles.liveText}>EN DIRECT</Text></View>
           <View style={styles.viewersPill}><Ionicons name="eye" size={13} color="#fff" /><Text style={styles.viewersText}>{Math.max(1, viewers)}</Text></View>
           <Pressable onPress={share} style={styles.topIcon}><Ionicons name="share-social" size={18} color="#fff" /></Pressable>
-          <Pressable onPress={() => router.back()} style={styles.close}><Ionicons name="close" size={24} color="#fff" /></Pressable>
+          <Pressable onPress={() => (router.canGoBack() ? router.back() : router.replace('/accueil'))} style={styles.close}><Ionicons name="close" size={24} color="#fff" /></Pressable>
         </View>
 
         {/* Commentaire épinglé */}

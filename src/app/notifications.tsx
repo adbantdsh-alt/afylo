@@ -31,7 +31,7 @@ export default function Notifications() {
     <View style={styles.root}>
       <SafeAreaView edges={['top']} style={{ backgroundColor: Afylo.bg }}>
         <View style={styles.header}>
-          <Ionicons name="chevron-back" size={26} color={Afylo.text} onPress={() => router.back()} />
+          <Ionicons name="chevron-back" size={26} color={Afylo.text} onPress={() => (router.canGoBack() ? router.back() : router.replace('/accueil'))} />
           <Text style={styles.title}>Notifications</Text>
           <View style={{ width: 26 }} />
         </View>

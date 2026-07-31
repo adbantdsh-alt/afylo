@@ -23,7 +23,7 @@ export default function CreatorProfile() {
     <View style={styles.root}>
       <SafeAreaView edges={['top']} style={{ backgroundColor: Afylo.bg }}>
         <View style={styles.topbar}>
-          <Pressable onPress={() => router.back()} style={styles.iconBtn}>
+          <Pressable onPress={() => (router.canGoBack() ? router.back() : router.replace('/accueil'))} style={styles.iconBtn}>
             <Ionicons name="chevron-back" size={26} color={Afylo.text} />
           </Pressable>
           <Text style={styles.topHandle} numberOfLines={1}>{handle}</Text>

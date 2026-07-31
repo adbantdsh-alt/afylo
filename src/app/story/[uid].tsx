@@ -44,11 +44,11 @@ export default function StoryViewer() {
   }, [sIdx, iIdx]);
 
   if (!story) {
-    router.back();
+    (router.canGoBack() ? router.back() : router.replace('/accueil'));
     return null;
   }
 
-  const close = () => router.back();
+  const close = () => (router.canGoBack() ? router.back() : router.replace('/accueil'));
 
   const next = () => {
     clearInterval(timer.current);

@@ -16,7 +16,7 @@ export default function Studio() {
     <View style={styles.root}>
       <SafeAreaView edges={['top']} style={{ backgroundColor: Afylo.bg }}>
         <View style={styles.header}>
-          <Pressable onPress={() => router.back()} style={styles.back}>
+          <Pressable onPress={() => (router.canGoBack() ? router.back() : router.replace('/accueil'))} style={styles.back}>
             <Ionicons name="chevron-back" size={24} color={Afylo.text} />
           </Pressable>
           <View>

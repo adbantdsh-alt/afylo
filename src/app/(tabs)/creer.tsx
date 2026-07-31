@@ -98,7 +98,7 @@ export default function Creer() {
       <SafeAreaView edges={['top']} style={{ flex: 1 }}>
         {/* En-tête (sans "Suivant") */}
         <View style={styles.header}>
-          <Pressable onPress={() => router.back()} hitSlop={10}>
+          <Pressable onPress={() => (router.canGoBack() ? router.back() : router.replace('/accueil'))} hitSlop={10}>
             <Ionicons name="close" size={28} color="#fff" />
           </Pressable>
           <Text style={styles.title}>Créer</Text>

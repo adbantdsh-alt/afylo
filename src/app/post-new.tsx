@@ -85,7 +85,7 @@ export default function PostNew() {
     <View style={styles.root}>
       <SafeAreaView edges={['top']} style={{ backgroundColor: Afylo.bg }}>
         <View style={styles.header}>
-          <Pressable onPress={() => router.back()} style={styles.hbtn}>
+          <Pressable onPress={() => (router.canGoBack() ? router.back() : router.replace('/accueil'))} style={styles.hbtn}>
             <Ionicons name="close" size={26} color={Afylo.text} />
           </Pressable>
           <Text style={styles.title}>Nouvelle publication</Text>

@@ -22,7 +22,7 @@ export default function Messages() {
       <SafeAreaView edges={['top']} style={{ backgroundColor: Afylo.bg }}>
         <View style={styles.header}>
           <View style={styles.backRow}>
-            <Ionicons name="chevron-back" size={26} color={Afylo.text} onPress={() => router.back()} />
+            <Ionicons name="chevron-back" size={26} color={Afylo.text} onPress={() => (router.canGoBack() ? router.back() : router.replace('/accueil'))} />
             <Text style={styles.title}>Messages</Text>
           </View>
           <Ionicons name="create-outline" size={24} color={Afylo.text} />

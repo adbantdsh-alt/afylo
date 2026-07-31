@@ -67,7 +67,7 @@ export default function Login() {
       <LinearGradient colors={['#EEF1FF', '#FFFFFF', '#FFFFFF']} style={StyleSheet.absoluteFill} />
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
         <SafeAreaView style={styles.safe}>
-          <Pressable onPress={() => router.back()} style={styles.back}>
+          <Pressable onPress={() => (router.canGoBack() ? router.back() : router.replace('/accueil'))} style={styles.back}>
             <Ionicons name="chevron-back" size={26} color={Afylo.text} />
           </Pressable>
 

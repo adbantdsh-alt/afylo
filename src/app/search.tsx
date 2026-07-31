@@ -27,7 +27,7 @@ export default function Search() {
     <View style={styles.root}>
       <SafeAreaView edges={['top']} style={{ backgroundColor: Afylo.bg }}>
         <View style={styles.headerRow}>
-          <Ionicons name="chevron-back" size={26} color={Afylo.text} onPress={() => router.back()} />
+          <Ionicons name="chevron-back" size={26} color={Afylo.text} onPress={() => (router.canGoBack() ? router.back() : router.replace('/accueil'))} />
           <View style={styles.searchBox}>
             <Ionicons name="search" size={18} color={Afylo.textDim} />
             <TextInput style={styles.searchInput} value={q} onChangeText={setQ} placeholder="Rechercher" placeholderTextColor={Afylo.textFaint} autoFocus />

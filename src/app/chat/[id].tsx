@@ -78,7 +78,7 @@ export default function Chat() {
     <View style={styles.root}>
       <SafeAreaView edges={['top']} style={{ backgroundColor: Afylo.surface }}>
         <View style={styles.header}>
-          <Pressable onPress={() => router.back()} style={styles.back}>
+          <Pressable onPress={() => (router.canGoBack() ? router.back() : router.replace('/accueil'))} style={styles.back}>
             <Ionicons name="chevron-back" size={26} color={Afylo.text} />
           </Pressable>
           <Avatar uri={avatar} size={38} />

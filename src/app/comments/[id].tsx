@@ -80,13 +80,13 @@ export default function Comments() {
   return (
     <View style={styles.overlay}>
       {/* Zone haute : la publication reste visible derrière (tap pour fermer) */}
-      <Pressable style={StyleSheet.absoluteFill} onPress={() => router.back()} />
+      <Pressable style={StyleSheet.absoluteFill} onPress={() => (router.canGoBack() ? router.back() : router.replace('/accueil'))} />
 
       <View style={styles.sheet}>
         <View style={styles.grip} />
         <View style={styles.header}>
           <Text style={styles.title}>{comments.length} commentaires</Text>
-          <Ionicons name="close" size={24} color={Afylo.text} onPress={() => router.back()} />
+          <Ionicons name="close" size={24} color={Afylo.text} onPress={() => (router.canGoBack() ? router.back() : router.replace('/accueil'))} />
         </View>
 
         <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16, paddingBottom: 12 }} showsVerticalScrollIndicator={false}>

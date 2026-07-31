@@ -37,7 +37,7 @@ export default function SoundPage() {
     <View style={styles.root}>
       <SafeAreaView edges={['top']} style={{ backgroundColor: Afylo.navBg }}>
         <View style={styles.header}>
-          <Ionicons name="chevron-back" size={26} color="#fff" onPress={() => router.back()} />
+          <Ionicons name="chevron-back" size={26} color="#fff" onPress={() => (router.canGoBack() ? router.back() : router.replace('/accueil'))} />
           <Text style={styles.headerTitle} numberOfLines={1}>{s.title}</Text>
           <Ionicons name="share-social-outline" size={22} color="#fff" onPress={share} />
         </View>

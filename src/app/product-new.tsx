@@ -90,7 +90,7 @@ export default function ProductNew() {
         digital_file_url,
         quantity_tiers,
       });
-      router.back();
+      (router.canGoBack() ? router.back() : router.replace('/accueil'));
     } catch (e: any) {
       setError(e.message ?? 'Erreur lors de la création.');
     } finally {
@@ -102,7 +102,7 @@ export default function ProductNew() {
     <View style={styles.root}>
       <SafeAreaView edges={['top']} style={{ backgroundColor: Afylo.bg }}>
         <View style={styles.header}>
-          <Pressable onPress={() => router.back()} style={styles.hbtn}><Ionicons name="close" size={26} color={Afylo.text} /></Pressable>
+          <Pressable onPress={() => (router.canGoBack() ? router.back() : router.replace('/accueil'))} style={styles.hbtn}><Ionicons name="close" size={26} color={Afylo.text} /></Pressable>
           <Text style={styles.title}>Nouveau produit</Text>
           <View style={{ width: 40 }} />
         </View>
