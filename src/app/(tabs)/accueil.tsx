@@ -18,15 +18,20 @@ import { useAlwaysShowTabBar } from '@/lib/tabbar';
 import { me, posts, type Post } from '@/lib/mock';
 import { useStories } from '@/lib/stories';
 
+const REPOSTED_COLOR = '#16A34A'; // vert vif, bien visible une fois republié
+
 export default function Feed() {
   const router = useRouter();
   const { stories, myStory } = useStories();
   const showTabBar = useAlwaysShowTabBar();
   const [isPro, setIsPro] = useState(false);
+  const [myHandle, setMyHandle] = useState('moi');
 
   // Nav bar persistante sur l'accueil (pas de masquage au scroll)
   useFocusEffect(useCallback(() => { showTabBar(); }, [showTabBar]));
-  useEffect(() => { getMyProfile().then((p) => setIsPro(isProAccount(p?.account_type))).catch(() => {}); }, []);
+  useEffect(() => {
+    getMyProfile().then((p) => { setIsPro(isProAccount(p?.account_type)); if (p?.handle) setMyHandle(p.handle); }).catch(() => {});
+  }, []);
 
   return (
     <View style={styles.root}>
@@ -84,14 +89,14 @@ export default function Feed() {
         </ScrollView>
 
         {posts.map((p) => (
-          <PostCard key={p.id} post={p} isPro={isPro} />
+          <PostCard key={p.id} post={p} isPro={isPro} myHandle={myHandle} />
         ))}
       </ScrollView>
     </View>
   );
 }
 
-function PostCard({ post, isPro }: { post: Post; isPro: boolean }) {
+function PostCard({ post, isPro, myHandle }: { post: Post; isPro: boolean; myHandle: string }) {
   const router = useRouter();
   const gate = useAuthGate();
   const { addRepost, hasReposted } = useReposts();
@@ -199,7 +204,7 @@ function PostCard({ post, isPro }: { post: Post; isPro: boolean }) {
         </Pressable>
         {canAffiliate && (
           <Pressable onPress={repost}>
-            <Stat icon={reposted ? 'repeat' : 'repeat-outline'} label={reposted ? 'Republié' : post.shares} color={reposted ? Afylo.green : Afylo.inkDim} />
+            <Stat icon="repeat" label={reposted ? 'Republié' : post.shares} color={reposted ? REPOSTED_COLOR : Afylo.inkDim} bold={reposted} />
           </Pressable>
         )}
         <View style={{ flex: 1 }} />
@@ -238,7 +243,7 @@ function PostCard({ post, isPro }: { post: Post; isPro: boolean }) {
         isPro={isPro}
         onClose={() => setRepostOpen(false)}
         onUpgrade={() => router.push('/upgrade-pro')}
-        onPublish={(p) => addRepost({ mode: p.mode, text: p.text, media: p.media, post: { id: post.id, name: post.name, avatar: post.avatar, caption: post.caption, image: post.image, product: post.product } })}
+        onPublish={(p) => addRepost({ mode: p.mode, text: p.text, media: p.media, by: myHandle, post: { id: post.id, name: post.name, avatar: post.avatar, caption: post.caption, image: post.image, product: post.product } })}
       />
     </View>
   );
@@ -256,15 +261,17 @@ function Stat({
   icon,
   label,
   color = Afylo.inkDim,
+  bold,
 }: {
   icon: keyof typeof Ionicons.glyphMap;
   label: string;
   color?: string;
+  bold?: boolean;
 }) {
   return (
     <View style={styles.stat}>
       <Ionicons name={icon} size={18} color={color} />
-      <Text style={styles.statText}>{label}</Text>
+      <Text style={[styles.statText, bold && { color, fontFamily: Font.bold }]}>{label}</Text>
     </View>
   );
 }

@@ -284,10 +284,13 @@ function ProUpsell({ onPress, what }: { onPress: () => void; what: string }) {
   );
 }
 
+const fmtCfa = (n: number) => n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ') + ' FCFA';
+
 function RepostsGrid() {
-  const { reposts, updateRepost, removeRepost } = useReposts();
-  const [open, setOpen] = useState<Repost | null>(null);
+  const { reposts, updateRepost, removeRepost, registerSale } = useReposts();
+  const [openId, setOpenId] = useState<string | null>(null);
   const [editing, setEditing] = useState<Repost | null>(null);
+  const open = reposts.find((r) => r.id === openId) ?? null; // live : se met à jour avec le store
 
   if (reposts.length === 0) {
     return (
@@ -302,7 +305,7 @@ function RepostsGrid() {
     <>
       <View style={styles.mediaGrid}>
         {reposts.map((r) => (
-          <Pressable key={r.id} style={styles.cell} onPress={() => setOpen(r)}>
+          <Pressable key={r.id} style={styles.cell} onPress={() => setOpenId(r.id)}>
             <Image source={{ uri: r.post.image }} style={StyleSheet.absoluteFill} contentFit="cover" transition={200} />
             <View style={styles.repostTag}><Ionicons name="repeat" size={12} color="#fff" /></View>
             {r.media && (
@@ -318,17 +321,17 @@ function RepostsGrid() {
       </View>
 
       {/* Détail d'un repartage */}
-      <Modal visible={!!open} transparent animationType="slide" onRequestClose={() => setOpen(null)}>
-        <Pressable style={styles.rdOverlay} onPress={() => setOpen(null)}>
+      <Modal visible={!!open} transparent animationType="slide" onRequestClose={() => setOpenId(null)}>
+        <Pressable style={styles.rdOverlay} onPress={() => setOpenId(null)}>
           <Pressable style={styles.rdSheet} onPress={(e) => e.stopPropagation?.()}>
             <View style={styles.rdHandle} />
             {open && (
-              <>
+              <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 520 }}>
                 <View style={styles.rdHeader}>
-                  <View style={styles.rdMe}><Ionicons name="repeat" size={14} color={Afylo.green} /><Text style={styles.rdMeText}>Tu as republié</Text></View>
+                  <View style={styles.rdMe}><Ionicons name="repeat" size={14} color={'#16A34A'} /><Text style={styles.rdMeText}>Tu as republié</Text></View>
                   <View style={{ flex: 1 }} />
-                  <Pressable onPress={() => { const r = open; setOpen(null); setEditing(r); }} style={styles.rdAction}><Ionicons name="create-outline" size={20} color={Afylo.text} /></Pressable>
-                  <Pressable onPress={() => { removeRepost(open.id); setOpen(null); }} style={styles.rdAction}><Ionicons name="trash-outline" size={20} color={Afylo.live} /></Pressable>
+                  <Pressable onPress={() => { const r = open; setOpenId(null); setEditing(r); }} style={styles.rdAction}><Ionicons name="create-outline" size={20} color={Afylo.text} /></Pressable>
+                  <Pressable onPress={() => { removeRepost(open.id); setOpenId(null); }} style={styles.rdAction}><Ionicons name="trash-outline" size={20} color={Afylo.live} /></Pressable>
                 </View>
 
                 {open.text ? <Text style={styles.rdQuote}>{open.text}</Text> : null}
@@ -348,7 +351,33 @@ function RepostsGrid() {
                   </View>
                   <Image source={{ uri: open.post.image }} style={styles.rdThumb} contentFit="cover" />
                 </View>
-              </>
+
+                {/* Lien d'affiliation créé automatiquement à ton nom */}
+                {open.affiliate && (
+                  <View style={styles.affBox}>
+                    <View style={styles.affHead}>
+                      <Ionicons name="link" size={15} color={Afylo.violet} />
+                      <Text style={styles.affTitle}>Ton lien d'affiliation</Text>
+                    </View>
+                    <Text style={styles.affLink} numberOfLines={1}>{open.affiliate.link}</Text>
+                    <Text style={styles.affInfo}>Toute vente via ce lien te verse <Text style={{ fontFamily: Font.bold, color: Afylo.text }}>{open.affiliate.commission}</Text> de commission.</Text>
+                    <View style={styles.affStats}>
+                      <View style={styles.affStat}><Text style={styles.affStatV}>{open.affiliate.sales}</Text><Text style={styles.affStatL}>ventes</Text></View>
+                      <View style={styles.affDivider} />
+                      <View style={styles.affStat}><Text style={[styles.affStatV, { color: '#16A34A' }]}>{fmtCfa(open.affiliate.earned)}</Text><Text style={styles.affStatL}>gagnés</Text></View>
+                    </View>
+                    <View style={styles.affActions}>
+                      <Pressable style={styles.affShare} onPress={() => Share.share({ message: `Découvre ${open.post.product?.title ?? 'ce produit'} sur Afylo 👉 ${open.affiliate!.link}` }).catch(() => {})}>
+                        <Ionicons name="share-social" size={16} color="#fff" /><Text style={styles.affShareText}>Partager le lien</Text>
+                      </Pressable>
+                      <Pressable style={styles.affTest} onPress={() => registerSale(open.id)}>
+                        <Ionicons name="flask-outline" size={15} color={Afylo.textDim} /><Text style={styles.affTestText}>Simuler une vente</Text>
+                      </Pressable>
+                    </View>
+                  </View>
+                )}
+                <View style={{ height: 10 }} />
+              </ScrollView>
             )}
           </Pressable>
         </Pressable>
@@ -592,6 +621,21 @@ const styles = StyleSheet.create({
   rdProduct: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 4 },
   rdProductText: { color: Afylo.violet, fontFamily: Font.semibold, fontSize: 11, flex: 1 },
   rdThumb: { width: 46, height: 46, borderRadius: 10, backgroundColor: Afylo.surfaceAlt },
+  affBox: { marginTop: 14, backgroundColor: Afylo.surface, borderWidth: 1, borderColor: Afylo.border, borderRadius: Radius.lg, padding: 14 },
+  affHead: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 },
+  affTitle: { color: Afylo.text, fontFamily: Font.bold, fontSize: 14 },
+  affLink: { color: Afylo.violet, fontFamily: Font.semibold, fontSize: 13, backgroundColor: Afylo.surfaceAlt, borderRadius: Radius.sm, paddingHorizontal: 10, paddingVertical: 8 },
+  affInfo: { color: Afylo.textDim, fontSize: 13, marginTop: 8, lineHeight: 18 },
+  affStats: { flexDirection: 'row', alignItems: 'center', marginTop: 12, marginBottom: 4 },
+  affStat: { flex: 1, alignItems: 'center' },
+  affStatV: { color: Afylo.text, fontFamily: Font.bold, fontSize: 18 },
+  affStatL: { color: Afylo.textDim, fontSize: 12, marginTop: 1 },
+  affDivider: { width: 1, height: 28, backgroundColor: Afylo.border },
+  affActions: { flexDirection: 'row', gap: 10, marginTop: 12 },
+  affShare: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, height: 44, borderRadius: Radius.pill, backgroundColor: Afylo.violet },
+  affShareText: { color: '#fff', fontFamily: Font.semibold, fontSize: 14 },
+  affTest: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5, height: 44, paddingHorizontal: 14, borderRadius: Radius.pill, backgroundColor: Afylo.surfaceAlt },
+  affTestText: { color: Afylo.textDim, fontFamily: Font.semibold, fontSize: 13 },
 
   purchaseRow: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: Afylo.surface, borderRadius: Radius.md, borderWidth: 1, borderColor: Afylo.border, padding: 10 },
   purchaseImg: { width: 60, height: 60, borderRadius: 10, backgroundColor: Afylo.surfaceAlt },
