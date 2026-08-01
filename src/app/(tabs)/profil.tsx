@@ -8,7 +8,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Avatar, PillButton } from '@/components/ui-kit';
 import { Afylo, Font, Radius, Type } from '@/constants/brand';
 import { useAuth } from '@/lib/auth';
-import { deleteProduct, getMyProfile, listMyProducts } from '@/lib/db';
+import { deleteProduct, getMyProfile, isProAccount, listMyProducts } from '@/lib/db';
 import { useStories } from '@/lib/stories';
 import { useAlwaysShowTabBar } from '@/lib/tabbar';
 import { exploreItems, myLives, myPosts, myProducts, myProfile, myPurchases, photo, type MyLive, type Purchase } from '@/lib/mock';
@@ -51,6 +51,8 @@ export default function Profil() {
 
   // Certification : compte officiel adbaecomx (ou champ is_verified en base)
   const isVerified = dbProfile?.is_verified === true || dbProfile?.handle === 'adbaecomx' || p.handle === '@adbaecomx';
+  // Type de compte : Simple (regarder/acheter) vs Pro (vendre/affilier)
+  const isPro = isProAccount(dbProfile?.account_type);
 
   const share = async () => {
     try {
@@ -85,7 +87,7 @@ export default function Profil() {
             <Pressable onPress={() => router.push('/messages')} style={styles.iconTop}>
               <Ionicons name="chatbubble-ellipses-outline" size={22} color={Afylo.text} />
             </Pressable>
-            {isOwner && (
+            {isOwner && isPro && (
               <Pressable onPress={() => router.push('/studio')} style={styles.iconTop}>
                 <Ionicons name="stats-chart" size={20} color={Afylo.gold} />
               </Pressable>
@@ -110,8 +112,17 @@ export default function Profil() {
           </Pressable>
           <View style={styles.statsRow}>
             <Stat value={myProfile.followers} label="Abonnés" />
-            <Stat value={myProfile.sales} label="Ventes" />
-            <Stat value={myProfile.views} label="Vues" />
+            {isPro ? (
+              <>
+                <Stat value={myProfile.sales} label="Ventes" />
+                <Stat value="2.3 M" label="Chiffre d'affaires" />
+              </>
+            ) : (
+              <>
+                <Stat value={myProfile.following} label="Abonnements" />
+                <Stat value={myProfile.views} label="Vues" />
+              </>
+            )}
           </View>
         </View>
 
@@ -154,6 +165,18 @@ export default function Profil() {
           )}
         </View>
 
+        {/* Bannière : passer en compte professionnel (comptes Simple) */}
+        {isOwner && !isPro && (
+          <Pressable onPress={() => router.push('/upgrade-pro')} style={styles.proBanner}>
+            <View style={styles.proBannerIcon}><Ionicons name="briefcase" size={20} color="#fff" /></View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.proBannerTitle}>Passer en compte professionnel</Text>
+              <Text style={styles.proBannerSub}>Vends, ouvre ta boutique, accède aux stats & à l'affiliation.</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color={Afylo.textDim} />
+          </Pressable>
+        )}
+
         {/* Onglets de section */}
         <View style={styles.tabs}>
           <SectionTab icon="grid" active={section === 'posts'} onPress={() => setSection('posts')} />
@@ -163,7 +186,7 @@ export default function Profil() {
         </View>
 
         {section === 'posts' && <PostsGrid />}
-        {section === 'boutique' && <BoutiqueList isOwner={isOwner} />}
+        {section === 'boutique' && (isPro || !isOwner ? <BoutiqueList isOwner={isOwner} /> : <ProUpsell onPress={() => router.push('/upgrade-pro')} what="vendre tes produits" />)}
         {section === 'achats' && <PurchasesList />}
         {section === 'reposts' && <RepostsGrid />}
       </ScrollView>
@@ -173,10 +196,11 @@ export default function Profil() {
         <Pressable style={styles.overlay} onPress={() => setMenuOpen(false)}>
           <SafeAreaView edges={['top']} style={styles.menu}>
             <View style={styles.menuHandle} />
-            <MenuItem icon="repeat" label="Affiliation — produits à revendre" onPress={() => { setMenuOpen(false); router.push('/affiliation'); }} />
-            {isOwner && <MenuItem icon="stats-chart" label="Studio & statistiques" onPress={() => { setMenuOpen(false); router.push('/studio'); }} />}
-            {isOwner && <MenuItem icon="wallet-outline" label="Portefeuille & retraits" onPress={() => { setMenuOpen(false); router.push('/studio'); }} />}
-            {isOwner && <MenuItem icon="bag-add-outline" label="Gérer ma boutique" onPress={() => { setMenuOpen(false); setSection('boutique'); }} />}
+            {isOwner && !isPro && <MenuItem icon="briefcase-outline" label="Passer en compte professionnel" onPress={() => { setMenuOpen(false); router.push('/upgrade-pro'); }} />}
+            {isPro && <MenuItem icon="repeat" label="Affiliation — produits à revendre" onPress={() => { setMenuOpen(false); router.push('/affiliation'); }} />}
+            {isOwner && isPro && <MenuItem icon="stats-chart" label="Studio & statistiques" onPress={() => { setMenuOpen(false); router.push('/studio'); }} />}
+            {isOwner && isPro && <MenuItem icon="wallet-outline" label="Portefeuille & retraits" onPress={() => { setMenuOpen(false); router.push('/studio'); }} />}
+            {isOwner && isPro && <MenuItem icon="bag-add-outline" label="Gérer ma boutique" onPress={() => { setMenuOpen(false); setSection('boutique'); }} />}
             <MenuItem icon="share-social-outline" label="Partager le profil" onPress={() => { setMenuOpen(false); share(); }} />
             <MenuItem icon="bookmark-outline" label="Enregistrements" onPress={() => setMenuOpen(false)} />
             <MenuItem icon="settings-outline" label="Paramètres" onPress={() => { setMenuOpen(false); router.push('/settings'); }} />
@@ -256,6 +280,17 @@ function PurchasesList() {
         );
       })}
       <Text style={styles.purchaseNote}>Paiements sécurisés par XaalisPay — l'argent n'est versé au vendeur qu'après ta confirmation.</Text>
+    </View>
+  );
+}
+
+function ProUpsell({ onPress, what }: { onPress: () => void; what: string }) {
+  return (
+    <View style={styles.upsell}>
+      <View style={styles.upsellIcon}><Ionicons name="briefcase" size={30} color={Afylo.violet} /></View>
+      <Text style={styles.upsellTitle}>Compte professionnel requis</Text>
+      <Text style={styles.upsellSub}>Pour {what}, passe en Pro — ouvre ta boutique, vends en live et accède aux statistiques.</Text>
+      <Pressable onPress={onPress} style={styles.upsellBtn}><Text style={styles.upsellBtnText}>Devenir pro · Gratuit</Text></Pressable>
     </View>
   );
 }
@@ -459,6 +494,16 @@ const styles = StyleSheet.create({
   earnText: { color: Afylo.textDim, fontSize: 13 },
   earnValue: { color: Afylo.gold, fontSize: 13, fontWeight: '800' },
   actions: { flexDirection: 'row', gap: 12, paddingHorizontal: 18, marginTop: 16 },
+  proBanner: { flexDirection: 'row', alignItems: 'center', gap: 12, marginHorizontal: 18, marginTop: 16, padding: 12, borderRadius: Radius.lg, backgroundColor: '#3E5BFF0F', borderWidth: 1, borderColor: '#3E5BFF33' },
+  proBannerIcon: { width: 40, height: 40, borderRadius: 12, backgroundColor: Afylo.violet, alignItems: 'center', justifyContent: 'center' },
+  proBannerTitle: { ...Type.body, fontFamily: Font.semibold, color: Afylo.text },
+  proBannerSub: { ...Type.caption, color: Afylo.textDim, marginTop: 2, lineHeight: 16 },
+  upsell: { alignItems: 'center', paddingHorizontal: 30, paddingVertical: 40, gap: 8 },
+  upsellIcon: { width: 70, height: 70, borderRadius: 22, backgroundColor: '#3E5BFF14', alignItems: 'center', justifyContent: 'center', marginBottom: 8 },
+  upsellTitle: { ...Type.title, fontSize: 18, color: Afylo.text, textAlign: 'center' },
+  upsellSub: { ...Type.body, color: Afylo.textDim, textAlign: 'center', lineHeight: 21 },
+  upsellBtn: { backgroundColor: Afylo.violet, paddingHorizontal: 22, paddingVertical: 13, borderRadius: Radius.pill, marginTop: 12 },
+  upsellBtnText: { color: '#fff', fontFamily: Font.semibold, fontSize: 15 },
 
   tabs: { flexDirection: 'row', marginTop: 22, borderBottomWidth: 1, borderBottomColor: Afylo.surfaceAlt },
   tab: { flex: 1, alignItems: 'center', paddingVertical: 12, borderBottomWidth: 2, borderBottomColor: 'transparent' },

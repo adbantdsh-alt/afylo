@@ -29,6 +29,7 @@ export type ProfileInput = {
   bio?: string;
   avatar_url?: string | null;
   website?: string | null;
+  account_type?: 'creator' | 'merchant' | 'buyer';
 };
 
 export async function updateMyProfile(patch: ProfileInput): Promise<void> {
@@ -36,6 +37,14 @@ export async function updateMyProfile(patch: ProfileInput): Promise<void> {
   const { error } = await supabase.from('profiles').update(patch).eq('id', id);
   if (error) throw error;
 }
+
+/** Passe le compte en professionnel (vendeur/affilié). */
+export async function upgradeToPro(): Promise<void> {
+  await updateMyProfile({ account_type: 'creator' });
+}
+
+/** Un compte 'buyer' est SIMPLE ; tout le reste est PRO (vendeur/affilié). */
+export const isProAccount = (t?: string | null) => !!t && t !== 'buyer';
 
 /** Désactive le compte (données conservées) puis déconnecte. */
 export async function deactivateAccount(): Promise<void> {

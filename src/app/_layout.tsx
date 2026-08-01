@@ -67,6 +67,7 @@ function RootNavigator() {
       <Stack.Screen name="search" />
       <Stack.Screen name="sound/[id]" />
       <Stack.Screen name="live" options={{ animation: 'fade', presentation: 'fullScreenModal' }} />
+      <Stack.Screen name="upgrade-pro" options={{ presentation: 'modal' }} />
       <Stack.Screen name="messages" />
       <Stack.Screen name="chat/[id]" />
       <Stack.Screen name="comments/[id]" options={{ presentation: 'transparentModal', animation: 'slide_from_bottom' }} />
