@@ -217,6 +217,20 @@ export async function listMyOrders(): Promise<Order[]> {
   return (data as Order[]) ?? [];
 }
 
+/** Tous mes posts (pour la grille de profil). [] si non connecté / nouveau compte. */
+export async function getMyPosts(): Promise<{ id: string; media_url: string | null; thumbnail_url: string | null; kind: string; view_count: number }[]> {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return [];
+  const { data } = await supabase
+    .from('posts')
+    .select('id,media_url,thumbnail_url,kind,view_count')
+    .eq('author_id', user.id)
+    .order('created_at', { ascending: false });
+  return data ?? [];
+}
+
 export type ReachStats = {
   followers: number;
   posts: number;

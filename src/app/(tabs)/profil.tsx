@@ -9,12 +9,12 @@ import { Avatar, PillButton } from '@/components/ui-kit';
 import { RepostSheet, MediaPreview } from '@/components/repost-sheet';
 import { Afryko, Font, Radius, Type } from '@/constants/brand';
 import { useAuth } from '@/lib/auth';
-import { deleteProduct, getMyProfile, isProAccount, listMyProducts } from '@/lib/db';
+import { deleteProduct, getMyPosts, getMyProfile, isProAccount, listMyProducts } from '@/lib/db';
 import { EMPTY_WALLET, getWalletSummary, type WalletSummary } from '@/lib/wallet';
 import { useReposts, type Repost } from '@/lib/reposts';
 import { useStories } from '@/lib/stories';
 import { useAlwaysShowTabBar } from '@/lib/tabbar';
-import { myLives, myPosts, myProducts, myProfile, myPurchases, photo, type MyLive, type Purchase } from '@/lib/mock';
+import { myLives, myProducts, myProfile, myPurchases, photo, type MyLive, type Purchase } from '@/lib/mock';
 import type { Profile } from '@/types/db';
 
 /** Format compact : 1234 → "1,2 K", 2_300_000 → "2,3 M". */
@@ -37,6 +37,7 @@ export default function Profil() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [dbProfile, setDbProfile] = useState<Profile | null>(null);
   const [stats, setStats] = useState<WalletSummary>(EMPTY_WALLET);
+  const [myRealPosts, setMyRealPosts] = useState<Awaited<ReturnType<typeof getMyPosts>>>([]);
   const showTabBar = useAlwaysShowTabBar();
   const { myStory } = useStories();
   const openStory = () => (myStory ? router.push({ pathname: '/story/[uid]', params: { uid: myStory.id } }) : router.push('/creer'));
@@ -49,6 +50,7 @@ export default function Profil() {
           setDbProfile(prof);
           getWalletSummary(prof?.id ?? null).then(setStats).catch(() => setStats(EMPTY_WALLET));
         });
+        getMyPosts().then(setMyRealPosts).catch(() => setMyRealPosts([]));
       }
     }, [session, showTabBar]),
   );
@@ -189,7 +191,7 @@ export default function Profil() {
           <SectionTab icon="repeat" active={section === 'reposts'} onPress={() => setSection('reposts')} />
         </View>
 
-        {section === 'posts' && <PostsGrid />}
+        {section === 'posts' && <PostsGrid posts={myRealPosts} />}
         {section === 'boutique' && (isPro || !isOwner ? <BoutiqueList isOwner={isOwner} /> : <ProUpsell onPress={() => router.push('/upgrade-pro')} what="vendre tes produits" />)}
         {section === 'achats' && <PurchasesList />}
         {section === 'reposts' && <RepostsGrid />}
@@ -233,16 +235,25 @@ function SectionTab({ icon, active, onPress }: { icon: keyof typeof Ionicons.gly
   );
 }
 
-function PostsGrid() {
+function PostsGrid({ posts }: { posts: { id: string; media_url: string | null; thumbnail_url: string | null; kind: string; view_count: number }[] }) {
+  if (posts.length === 0) {
+    return (
+      <View style={styles.gridEmpty}>
+        <Ionicons name="camera-outline" size={34} color={Afryko.textFaint} />
+        <Text style={styles.gridEmptyTitle}>Aucune publication</Text>
+        <Text style={styles.gridEmptySub}>Tes vidéos et photos apparaîtront ici.</Text>
+      </View>
+    );
+  }
   return (
     <View style={styles.mediaGrid}>
-      {myPosts.map((p) => (
+      {posts.map((p) => (
         <View key={p.id} style={styles.cell}>
-          <Image source={{ uri: p.image }} style={StyleSheet.absoluteFill} contentFit="cover" transition={200} />
-          {p.video && (
+          <Image source={{ uri: p.thumbnail_url || p.media_url || undefined }} style={StyleSheet.absoluteFill} contentFit="cover" transition={200} />
+          {p.kind === 'video' && (
             <View style={styles.cellTag}>
               <Ionicons name="play" size={11} color="#fff" />
-              <Text style={styles.cellTagText}>{p.views}</Text>
+              <Text style={styles.cellTagText}>{p.view_count > 0 ? p.view_count.toLocaleString('fr-FR') : ''}</Text>
             </View>
           )}
         </View>
@@ -607,6 +618,9 @@ const styles = StyleSheet.create({
   tabActive: { borderBottomColor: Afryko.text },
 
   mediaGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 2, marginTop: 2 },
+  gridEmpty: { alignItems: 'center', paddingVertical: 44, paddingHorizontal: 30 },
+  gridEmptyTitle: { color: Afryko.text, fontSize: 15, fontFamily: Font.bold, marginTop: 12 },
+  gridEmptySub: { color: Afryko.textDim, fontSize: 13, textAlign: 'center', marginTop: 4 },
   cell: { width: '33%', aspectRatio: 0.8, backgroundColor: Afryko.surfaceAlt, flexGrow: 1 },
   cellTag: { position: 'absolute', bottom: 6, left: 6, flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: '#00000088', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 8 },
   repostTag: { position: 'absolute', top: 6, right: 6, width: 22, height: 22, borderRadius: 11, backgroundColor: '#00000088', alignItems: 'center', justifyContent: 'center' },
