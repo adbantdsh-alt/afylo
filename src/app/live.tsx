@@ -11,6 +11,7 @@ import { Avatar } from '@/components/ui-kit';
 import { GiftSheet } from '@/components/gift-sheet';
 import { PaymentSheet } from '@/components/payment-sheet';
 import { Afryko, Font, Radius } from '@/constants/brand';
+import { useMe } from '@/lib/me';
 import { affiliationProducts, avatar, myProducts, video } from '@/lib/mock';
 
 type SellProduct = { id: string; title: string; price: string; image: string; tag: string };
@@ -43,6 +44,7 @@ const SYS: Record<'join' | 'like' | 'share' | 'guest' | 'sale', { icon: keyof ty
 
 export default function Live() {
   const router = useRouter();
+  const me = useMe();
   const { width, height } = useWindowDimensions();
   const params = useLocalSearchParams<{ role?: string; name?: string; avatar?: string }>();
   const isHost = params.role !== 'viewer';
@@ -114,13 +116,13 @@ export default function Live() {
   const sendHeart = () => spawnHearts(width - 38, height - 130, 2); // bouton cœur (bas droite)
 
   const onGiftSent = (amount: number) => {
-    addComment({ name: 'Toi', avatar: avatar(12), text: `a offert ${amount.toLocaleString('fr-FR')} FCFA 🎁`, gift: true });
+    addComment({ name: me.name, avatar: me.avatar, text: `a offert ${amount.toLocaleString('fr-FR')} FCFA 🎁`, gift: true });
     spawnHearts(width / 2, height / 2, 8);
   };
   const share = async () => { try { await Share.share({ message: `${name} est en direct sur Afryko — rejoins !` }); } catch {} };
   const send = () => {
     if (!text.trim()) return;
-    addComment({ name: 'Toi', avatar: avatar(12), text: text.trim() });
+    addComment({ name: me.name, avatar: me.avatar, text: text.trim() });
     setText('');
   };
 
@@ -137,8 +139,8 @@ export default function Live() {
 
   // Vendeur : répondre en envoyant un lien de vente d'un produit
   const sendProductLink = (p: SellProduct) => {
-    const target = linkPicker && linkPicker !== 'Toi' ? `@${linkPicker} ` : '';
-    addComment({ name: 'Toi', avatar: avatar(12), text: `${target}voici le lien 👇`, product: { title: p.title, price: p.price } });
+    const target = linkPicker && linkPicker !== me.name ? `@${linkPicker} ` : '';
+    addComment({ name: me.name, avatar: me.avatar, text: `${target}voici le lien 👇`, product: { title: p.title, price: p.price } });
     setLinkPicker(null);
   };
 
@@ -174,17 +176,17 @@ export default function Live() {
       if (!r?.granted) showToast('Caméra refusée — audio activé');
     }
     const finalMode: GuestMode = mode === 'video' && !permission?.granted ? 'audio' : mode;
-    setGuests((prev) => [...prev, { id: 'me', name: 'Toi', avatar: avatar(12), mode: finalMode, local: true }]);
+    setGuests((prev) => [...prev, { id: 'me', name: me.name, avatar: me.avatar, mode: finalMode, local: true }]);
     setRequested('live');
     setChooser(false);
-    pushEvent('Toi', avatar(12), 'guest', finalMode === 'video' ? 'tu interviens en vidéo 📹' : 'tu interviens en audio 🎤');
+    pushEvent(me.name, me.avatar, 'guest', finalMode === 'video' ? 'tu interviens en vidéo 📹' : 'tu interviens en audio 🎤');
   };
   const leaveStage = () => { setGuests((prev) => prev.filter((g) => !g.local)); setRequested('idle'); };
   const localMode = guests.find((g) => g.local)?.mode;
 
   // Événement d'arrivée
   useEffect(() => {
-    if (phase === 'live') pushEvent('Toi', avatar(12), 'join', 'a rejoint le live');
+    if (phase === 'live') pushEvent(me.name, me.avatar, 'join', 'a rejoint le live');
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phase]);
 
@@ -342,7 +344,7 @@ export default function Live() {
                 <Text style={styles.sysText}><Text style={{ fontFamily: Font.semibold }}>{c.name}</Text> {c.text}</Text>
               </View>
             ) : (
-              <Pressable key={c.id} onLongPress={() => c.name !== 'Toi' && setMod(c)} delayLongPress={280} style={styles.comment}>
+              <Pressable key={c.id} onLongPress={() => c.name !== me.name && setMod(c)} delayLongPress={280} style={styles.comment}>
                 <Avatar uri={c.avatar} size={26} />
                 <View style={[styles.commentBubble, c.gift && styles.giftBubble]}>
                   <Text style={[styles.commentText, c.gift && styles.giftText]}>
@@ -518,7 +520,7 @@ export default function Live() {
         <Pressable style={styles.mOverlay} onPress={() => setLinkPicker(null)}>
           <Pressable style={[styles.mSheet, { maxHeight: height * 0.6 }]} onPress={(e) => e.stopPropagation?.()}>
             <View style={styles.mHandle} />
-            <Text style={styles.mTitle}>Envoyer un lien produit{linkPicker && linkPicker !== 'Toi' ? ` à ${linkPicker}` : ''}</Text>
+            <Text style={styles.mTitle}>Envoyer un lien produit{linkPicker && linkPicker !== me.name ? ` à ${linkPicker}` : ''}</Text>
             <Text style={styles.linkHint}>Le produit s'affiche dans le chat avec un bouton « Acheter ».</Text>
             <ScrollView style={{ maxHeight: height * 0.6 - 130 }} showsVerticalScrollIndicator={false}>
               {(sell.length > 0 ? sell : AVAILABLE).map((p) => (

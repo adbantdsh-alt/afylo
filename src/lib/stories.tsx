@@ -1,5 +1,6 @@
-import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from 'react';
+import { createContext, useContext, useMemo, useState, type ReactNode } from 'react';
 
+import { useMe } from '@/lib/me';
 import { avatar, face } from '@/lib/mock';
 
 export type StoryItem = { type: 'image' | 'video'; uri: string };
@@ -37,6 +38,7 @@ type Ctx = {
 const StoriesCtx = createContext<Ctx | null>(null);
 
 export function StoriesProvider({ children }: { children: ReactNode }) {
+  const me = useMe(); // vrai avatar de l'utilisateur connecté
   const [stories, setStories] = useState<Story[]>(seedStories);
   const [tick, setTick] = useState(0); // pour forcer le recalcul d'expiration si besoin
 
@@ -46,10 +48,10 @@ export function StoriesProvider({ children }: { children: ReactNode }) {
       const mineIdx = prev.findIndex((s) => s.mine);
       if (mineIdx >= 0) {
         const copy = [...prev];
-        copy[mineIdx] = { ...copy[mineIdx], items: [...copy[mineIdx].items, item], createdAt: t, product: product ?? copy[mineIdx].product };
+        copy[mineIdx] = { ...copy[mineIdx], avatar: me.avatar, items: [...copy[mineIdx].items, item], createdAt: t, product: product ?? copy[mineIdx].product };
         return copy;
       }
-      return [{ id: 'st-mine', name: 'Ta story', avatar: face('toi'), mine: true, createdAt: t, items: [item], product }, ...prev];
+      return [{ id: 'st-mine', name: 'Ta story', avatar: me.avatar, mine: true, createdAt: t, items: [item], product }, ...prev];
     });
     setTick((x) => x + 1);
   };
