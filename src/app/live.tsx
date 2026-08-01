@@ -77,7 +77,10 @@ export default function Live() {
   const [requestsOpen, setRequestsOpen] = useState(false); // panneau des demandes (vendeur)
   const [requested, setRequested] = useState<'idle' | 'pending' | 'accepted' | 'live'>('idle'); // côté spectateur
   const [chooser, setChooser] = useState(false); // choix audio/vidéo après acceptation
+  const [endConfirm, setEndConfirm] = useState(false); // confirmation avant de terminer le live (vendeur)
   const lastTap = useRef(0);
+
+  const leave = () => (router.canGoBack() ? router.back() : router.replace('/accueil'));
   const seq = useRef(0); // compteur d'ids (persiste avec l'état, pas de collision au Fast Refresh)
 
   const showToast = (m: string) => { setToast(m); setTimeout(() => setToast((cur) => (cur === m ? null : cur)), 1700); };
@@ -305,7 +308,7 @@ export default function Live() {
             </Pressable>
           )}
           <Pressable onPress={share} style={styles.close}><Ionicons name="share-social" size={18} color="#fff" /></Pressable>
-          <Pressable onPress={() => (router.canGoBack() ? router.back() : router.replace('/accueil'))} style={styles.close}><Ionicons name="close" size={24} color="#fff" /></Pressable>
+          <Pressable onPress={() => (isHost ? setEndConfirm(true) : leave())} style={styles.close}><Ionicons name="close" size={24} color="#fff" /></Pressable>
         </View>
 
         {/* Commentaire épinglé */}
@@ -602,6 +605,21 @@ export default function Live() {
         </Pressable>
       </Modal>
 
+      {/* Confirmation avant de terminer le live (vendeur) */}
+      <Modal visible={endConfirm} transparent animationType="fade" onRequestClose={() => setEndConfirm(false)}>
+        <View style={styles.chooserOverlay}>
+          <View style={styles.chooserCard}>
+            <View style={[styles.chooserIcon, { backgroundColor: Afylo.live }]}><Ionicons name="stop" size={24} color="#fff" /></View>
+            <Text style={styles.chooserTitle}>Terminer le live ?</Text>
+            <Text style={styles.chooserSub}>{Math.max(1, viewers)} spectateur(s) te regardent{sales.length > 0 ? ` · ${sales.length} vente(s)` : ''}. Cette action arrête la diffusion.</Text>
+            <Pressable onPress={() => { setEndConfirm(false); leave(); }} style={styles.endBtn}>
+              <Text style={styles.endBtnText}>Terminer le live</Text>
+            </Pressable>
+            <Pressable onPress={() => setEndConfirm(false)} style={styles.endCancel}><Text style={styles.chooserCancel}>Continuer le live</Text></Pressable>
+          </View>
+        </View>
+      </Modal>
+
       <PaymentSheet visible={payOpen} items={payProducts} onClose={() => setPayOpen(false)} />
       <GiftSheet visible={giftOpen} host={name} onClose={() => setGiftOpen(false)} onSent={onGiftSent} />
     </View>
@@ -781,6 +799,9 @@ const styles = StyleSheet.create({
   chooserBtnVideo: { backgroundColor: Afylo.violet, borderColor: Afylo.violet },
   chooserBtnText: { color: Afylo.text, fontFamily: Font.bold, fontSize: 15 },
   chooserCancel: { color: Afylo.textDim, fontFamily: Font.semibold, fontSize: 15, marginTop: 18 },
+  endBtn: { alignSelf: 'stretch', backgroundColor: Afylo.live, borderRadius: Radius.pill, paddingVertical: 15, alignItems: 'center', marginTop: 22 },
+  endBtnText: { color: '#fff', fontFamily: Font.bold, fontSize: 16 },
+  endCancel: { marginTop: 4 },
 
   modOverlay: { flex: 1, backgroundColor: '#00000088', justifyContent: 'center', paddingHorizontal: 30 },
   modSheet: { backgroundColor: Afylo.surface, borderRadius: 20, padding: 16 },

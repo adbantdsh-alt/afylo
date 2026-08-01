@@ -2,10 +2,11 @@ import { Ionicons } from '@expo/vector-icons';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
+import { useVideoPlayer, VideoView } from 'expo-video';
 import { useFocusEffect, useRouter } from 'expo-router';
-import { useCallback, useRef, useState } from 'react';
-import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import Animated, { useAnimatedStyle, withTiming } from 'react-native-reanimated';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { ActivityIndicator, Modal, PanResponder, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { withTiming } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Afylo, Font, Radius } from '@/constants/brand';
@@ -30,22 +31,45 @@ export default function Creer() {
   const [facing, setFacing] = useState<'front' | 'back'>('back');
   const [media, setMedia] = useState<{ uri: string; type: 'image' | 'video' } | null>(null);
   const [recording, setRecording] = useState(false);
+  const [locked, setLocked] = useState(false);
+  const [recSecs, setRecSecs] = useState(0);
   const [busy, setBusy] = useState(false);
   const [product, setProduct] = useState<StoryProduct | null>(null);
   const [productPicker, setProductPicker] = useState(false);
+
+  // Refs pour les closures du geste (évite les valeurs périmées)
+  const recordingRef = useRef(false);
+  const lockedRef = useRef(false);
+  const modeRef = useRef(mode);
+  modeRef.current = mode;
+  const pressStart = useRef(0);
+  const holdTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Masquer la barre de nav + repartir d'un écran vierge à chaque ouverture
   useFocusEffect(
     useCallback(() => {
       hidden.value = withTiming(1, { duration: 150 });
-      setMedia(null); // ne pas garder l'ancienne capture
+      setMedia(null);
       return () => {
         hidden.value = withTiming(0, { duration: 150 });
       };
     }, [hidden]),
   );
 
-  const barStyle = useAnimatedStyle(() => ({ opacity: 1 })); // (placeholder si besoin futur)
+  // Chrono d'enregistrement
+  useEffect(() => {
+    if (!recording) { setRecSecs(0); return; }
+    const t = setInterval(() => setRecSecs((s) => s + 1), 1000);
+    return () => clearInterval(t);
+  }, [recording]);
+
+  const flip = () => setFacing((f) => (f === 'back' ? 'front' : 'back'));
+  const lastTap = useRef(0);
+  const onCameraTap = () => {
+    const now = Date.now();
+    if (now - lastTap.current < 300) flip(); // double-tap = retourner la caméra
+    lastTap.current = now;
+  };
 
   const pick = async (kind: 'image' | 'video') => {
     const res = await ImagePicker.launchImageLibraryAsync({ mediaTypes: kind === 'video' ? ['videos'] : ['images'], quality: 1 });
@@ -60,25 +84,50 @@ export default function Creer() {
     } catch {}
   };
 
-  const startRecord = async () => {
-    if (!camRef.current || recording) return;
+  const beginRecord = async () => {
+    if (!camRef.current || recordingRef.current) return;
+    recordingRef.current = true;
     setRecording(true);
     try {
-      const v = await camRef.current.recordAsync();
+      const v = await camRef.current.recordAsync({ maxDuration: 60 });
       if (v?.uri) setMedia({ uri: v.uri, type: 'video' });
     } catch {}
+    recordingRef.current = false;
+    lockedRef.current = false;
     setRecording(false);
+    setLocked(false);
   };
-  const stopRecord = () => {
-    if (recording) camRef.current?.stopRecording();
-  };
+  const endRecord = () => { if (recordingRef.current) camRef.current?.stopRecording(); };
+
+  const goLive = () => { if (gate('passer en live')) router.push({ pathname: '/live', params: { role: 'host' } }); };
+
+  // Geste du déclencheur : tap = photo · appui long = vidéo · glisser haut = verrouiller
+  const shutterPan = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: () => true,
+      onPanResponderGrant: () => {
+        if (modeRef.current === 'Live') return;
+        pressStart.current = Date.now();
+        holdTimer.current = setTimeout(() => beginRecord(), 260);
+      },
+      onPanResponderMove: (_e, g) => {
+        if (recordingRef.current && !lockedRef.current && g.dy < -70) { lockedRef.current = true; setLocked(true); }
+      },
+      onPanResponderRelease: () => {
+        if (modeRef.current === 'Live') { goLive(); return; }
+        if (holdTimer.current) clearTimeout(holdTimer.current);
+        const dur = Date.now() - pressStart.current;
+        if (!recordingRef.current && dur < 260) { takePhoto(); return; } // tap rapide = photo
+        if (recordingRef.current && !lockedRef.current) endRecord(); // relâché sans verrou = stop
+        // verrouillé : l'enregistrement continue jusqu'au bouton Stop
+      },
+      onPanResponderTerminate: () => { if (holdTimer.current) clearTimeout(holdTimer.current); },
+    }),
+  ).current;
 
   const publish = async () => {
-    if (!gate(mode === 'Story' ? 'publier une story' : mode === 'Live' ? 'passer en live' : 'publier')) return;
-    if (mode === 'Live') {
-      router.push({ pathname: '/live', params: { role: 'host' } });
-      return;
-    }
+    if (!gate(mode === 'Story' ? 'publier une story' : 'publier')) return;
     if (!media) return;
     if (mode === 'Story') {
       setBusy(true);
@@ -86,89 +135,57 @@ export default function Creer() {
       setBusy(false);
       router.replace('/accueil');
     } else {
-      // Publication / Reel -> compositeur (légende + produits, jusqu'à 5) avec le média capturé
-      router.push({ pathname: '/post-new', params: { kind: mode === 'Reel' ? 'video' : 'image', uri: media.uri } });
+      router.push({ pathname: '/post-new', params: { kind: media.type === 'video' ? 'video' : 'image', uri: media.uri } });
     }
   };
 
   const camDenied = permission && !permission.granted;
 
   return (
-    <Animated.View style={[styles.root, barStyle]}>
-      <SafeAreaView edges={['top']} style={{ flex: 1 }}>
-        {/* En-tête (sans "Suivant") */}
-        <View style={styles.header}>
-          <Pressable onPress={() => (router.canGoBack() ? router.back() : router.replace('/accueil'))} hitSlop={10}>
+    <View style={styles.root}>
+      {/* Caméra / média en PLEIN ÉCRAN */}
+      {media ? (
+        <PreviewMedia media={media} />
+      ) : permission?.granted ? (
+        <>
+          <CameraView key={facing} ref={camRef} style={StyleSheet.absoluteFill} facing={facing} mode="video" />
+          {/* Double-tap n'importe où = retourner la caméra */}
+          <Pressable style={StyleSheet.absoluteFill} onPress={onCameraTap} />
+        </>
+      ) : (
+        <View style={[StyleSheet.absoluteFill, styles.stageEmpty]}>
+          <View style={styles.cameraCircle}><Ionicons name="camera" size={34} color="#fff" /></View>
+          <Text style={styles.stageHint}>{camDenied ? 'Caméra non autorisée' : 'Active la caméra'}</Text>
+          <Pressable onPress={requestPermission} style={styles.allowBtn}><Text style={styles.allowText}>Autoriser la caméra</Text></Pressable>
+          <Text style={styles.stageSub}>ou choisis depuis la galerie ci-dessous</Text>
+        </View>
+      )}
+
+      <SafeAreaView style={StyleSheet.absoluteFill} pointerEvents="box-none">
+        {/* En-tête */}
+        <View style={styles.header} pointerEvents="box-none">
+          <Pressable onPress={() => (router.canGoBack() ? router.back() : router.replace('/accueil'))} style={styles.hIcon} hitSlop={10}>
             <Ionicons name="close" size={28} color="#fff" />
           </Pressable>
-          <Text style={styles.title}>Créer</Text>
-          <Pressable onPress={() => setFacing((f) => (f === 'back' ? 'front' : 'back'))} hitSlop={10}>
-            <Ionicons name="camera-reverse-outline" size={26} color="#fff" />
-          </Pressable>
-        </View>
-
-        {/* Zone caméra / média */}
-        <View style={styles.stage}>
-          {media ? (
-            <Image source={{ uri: media.uri }} style={StyleSheet.absoluteFill} contentFit="cover" />
-          ) : permission?.granted ? (
-            <CameraView key={facing} ref={camRef} style={StyleSheet.absoluteFill} facing={facing} mode="video" />
+          {recording ? (
+            <View style={styles.recPill}><View style={styles.recDot} /><Text style={styles.recText}>{fmtTime(recSecs)}</Text></View>
           ) : (
-            <View style={styles.stageEmpty}>
-              <View style={styles.cameraCircle}>
-                <Ionicons name="camera" size={34} color="#fff" />
-              </View>
-              <Text style={styles.stageHint}>{camDenied ? 'Caméra non autorisée' : 'Active la caméra'}</Text>
-              <Pressable onPress={requestPermission} style={styles.allowBtn}>
-                <Text style={styles.allowText}>Autoriser la caméra</Text>
-              </Pressable>
-              <Text style={styles.stageSub}>ou choisis depuis la galerie ci-dessous</Text>
-            </View>
+            <View />
           )}
-          {recording && (
-            <View style={styles.recPill}>
-              <View style={styles.recDot} />
-              <Text style={styles.recText}>REC</Text>
-            </View>
-          )}
-          {media && (
-            <Pressable onPress={() => setMedia(null)} style={styles.retake}>
-              <Ionicons name="refresh" size={18} color="#fff" />
-              <Text style={styles.retakeText}>Reprendre</Text>
-            </Pressable>
-          )}
-        </View>
-
-        {/* Barre de capture */}
-        <View style={styles.tools}>
-          <Pressable style={styles.tool} onPress={() => pick('image')}>
-            <Ionicons name="images-outline" size={24} color="#fff" />
-            <Text style={styles.toolText}>Galerie</Text>
-          </Pressable>
-
-          {media ? (
-            <Pressable style={styles.shutter} onPress={publish}>
-              {busy ? <ActivityIndicator color="#fff" /> : <Ionicons name="checkmark" size={34} color="#fff" />}
+          {!media ? (
+            <Pressable onPress={flip} style={styles.hIcon} hitSlop={10}>
+              <Ionicons name="camera-reverse-outline" size={26} color="#fff" />
             </Pressable>
           ) : (
-            <Pressable
-              style={[styles.shutterRing, recording && { borderColor: Afylo.live }]}
-              onPress={takePhoto}
-              onLongPress={startRecord}
-              onPressOut={stopRecord}
-              delayLongPress={220}>
-              <View style={[styles.shutterCore, recording && styles.shutterCoreRec]} />
+            <Pressable onPress={() => setMedia(null)} style={styles.hIcon} hitSlop={10}>
+              <Ionicons name="refresh" size={24} color="#fff" />
             </Pressable>
           )}
-
-          <Pressable style={styles.tool} onPress={() => pick('video')}>
-            <Ionicons name="film-outline" size={24} color="#fff" />
-            <Text style={styles.toolText}>Vidéo</Text>
-          </Pressable>
         </View>
-        <Text style={styles.captureHint}>Appuie = photo · Appui long = vidéo</Text>
 
-        {/* Attacher un produit (story ou publication) */}
+        <View style={{ flex: 1 }} pointerEvents="box-none" />
+
+        {/* Produit attaché */}
         <Pressable onPress={() => setProductPicker(true)} style={styles.attachProduct}>
           <Ionicons name="pricetag" size={18} color={product ? Afylo.violet2 : '#ffffffcc'} />
           <Text style={[styles.attachText, product && { color: '#fff' }]} numberOfLines={1}>
@@ -181,23 +198,67 @@ export default function Creer() {
           )}
         </Pressable>
 
-        {/* Onglets de mode */}
-        <View style={styles.modes}>
-          {MODES.map((m) => (
-            <Pressable key={m} onPress={() => setMode(m)}>
-              <Text style={[styles.mode, mode === m && styles.modeActive]}>{m.toUpperCase()}</Text>
+        {media ? (
+          // ---- Aperçu : publier ----
+          <View style={styles.previewBar} pointerEvents="box-none">
+            <Pressable onPress={publish} style={[styles.publishBtn, mode === 'Live' && { backgroundColor: Afylo.live }]}>
+              {busy ? <ActivityIndicator color="#fff" /> : (
+                <>
+                  <Text style={styles.publishText}>{mode === 'Story' ? 'Publier la story' : 'Continuer'}</Text>
+                  <Ionicons name="arrow-forward" size={20} color="#fff" />
+                </>
+              )}
             </Pressable>
-          ))}
-        </View>
+          </View>
+        ) : (
+          // ---- Capture ----
+          <>
+            {/* Indice verrouillage pendant l'enregistrement */}
+            {recording && !locked && (
+              <View style={styles.lockHint} pointerEvents="none">
+                <Ionicons name="chevron-up" size={16} color="#fff" />
+                <Ionicons name="lock-closed" size={14} color="#fff" />
+                <Text style={styles.lockHintText}>Glisse pour verrouiller</Text>
+              </View>
+            )}
 
-        {/* Action */}
-        <View style={{ paddingHorizontal: 20, paddingBottom: 10 }}>
-          <Pressable onPress={publish} disabled={!media && mode !== 'Live'} style={[styles.cta, (!media && mode !== 'Live') && { opacity: 0.4 }, mode === 'Live' && { backgroundColor: Afylo.live }]}>
-            <Text style={styles.ctaText}>
-              {mode === 'Live' ? 'Démarrer le live' : mode === 'Story' ? 'Publier la story' : 'Continuer'}
+            <View style={styles.captureRow} pointerEvents="box-none">
+              <Pressable style={styles.tool} onPress={() => pick('image')} hitSlop={8}>
+                <Ionicons name="images" size={26} color="#fff" />
+              </Pressable>
+
+              {/* Déclencheur */}
+              {locked ? (
+                <Pressable style={[styles.shutterRing, { borderColor: Afylo.live }]} onPress={endRecord}>
+                  <View style={styles.stopCore} />
+                </Pressable>
+              ) : (
+                <View
+                  {...shutterPan.panHandlers}
+                  style={[styles.shutterRing, recording && { borderColor: Afylo.live, transform: [{ scale: 1.15 }] }]}>
+                  <View style={[styles.shutterCore, recording && styles.shutterCoreRec]} />
+                </View>
+              )}
+
+              <Pressable style={styles.tool} onPress={() => pick('video')} hitSlop={8}>
+                <Ionicons name="film" size={26} color="#fff" />
+              </Pressable>
+            </View>
+
+            <Text style={styles.captureHint}>
+              {mode === 'Live' ? 'Appuie pour passer en direct' : 'Appuie = photo · Reste appuyé = vidéo'}
             </Text>
-          </Pressable>
-        </View>
+
+            {/* Onglets de mode */}
+            <View style={styles.modes} pointerEvents="box-none">
+              {MODES.map((m) => (
+                <Pressable key={m} onPress={() => setMode(m)} hitSlop={6}>
+                  <Text style={[styles.mode, mode === m && styles.modeActive]}>{m.toUpperCase()}</Text>
+                </Pressable>
+              ))}
+            </View>
+          </>
+        )}
       </SafeAreaView>
 
       {/* Sélecteur de produit */}
@@ -221,46 +282,62 @@ export default function Creer() {
           </View>
         </Pressable>
       </Modal>
-    </Animated.View>
+    </View>
   );
 }
 
-const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#0B0B0F' },
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 10 },
-  title: { color: '#fff', fontFamily: Font.bold, fontSize: 18 },
+function fmtTime(s: number) {
+  const m = Math.floor(s / 60);
+  const r = s % 60;
+  return `${m}:${r.toString().padStart(2, '0')}`;
+}
 
-  stage: { flex: 1, marginHorizontal: 16, borderRadius: 24, overflow: 'hidden', backgroundColor: '#15151C', alignItems: 'center', justifyContent: 'center' },
-  stageEmpty: { alignItems: 'center', paddingHorizontal: 24, gap: 8 },
+function PreviewMedia({ media }: { media: { uri: string; type: 'image' | 'video' } }) {
+  if (media.type === 'video') return <PreviewVideo uri={media.uri} />;
+  return <Image source={{ uri: media.uri }} style={StyleSheet.absoluteFill} contentFit="cover" />;
+}
+function PreviewVideo({ uri }: { uri: string }) {
+  const player = useVideoPlayer(uri, (p) => { p.loop = true; p.play(); });
+  return <VideoView player={player} style={StyleSheet.absoluteFill} contentFit="cover" nativeControls={false} />;
+}
+
+const styles = StyleSheet.create({
+  root: { flex: 1, backgroundColor: '#000' },
+  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingTop: 8, height: 48 },
+  hIcon: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#00000055', alignItems: 'center', justifyContent: 'center' },
+
+  stageEmpty: { alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: '#0B0B0F' },
   cameraCircle: { width: 74, height: 74, borderRadius: 37, backgroundColor: '#ffffff1A', alignItems: 'center', justifyContent: 'center', marginBottom: 8 },
   stageHint: { color: '#fff', fontFamily: Font.semibold, fontSize: 16 },
   stageSub: { color: '#ffffff88', fontSize: 13, marginTop: 4 },
   allowBtn: { backgroundColor: Afylo.violet, paddingHorizontal: 18, paddingVertical: 10, borderRadius: Radius.pill, marginTop: 8 },
   allowText: { color: '#fff', fontFamily: Font.semibold, fontSize: 14 },
-  recPill: { position: 'absolute', top: 12, alignSelf: 'center', flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#000000AA', paddingHorizontal: 10, paddingVertical: 4, borderRadius: Radius.pill },
+
+  recPill: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#000000AA', paddingHorizontal: 12, paddingVertical: 5, borderRadius: Radius.pill },
   recDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: Afylo.live },
-  recText: { color: '#fff', fontFamily: Font.bold, fontSize: 11 },
-  retake: { position: 'absolute', top: 12, right: 12, flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: '#000000AA', paddingHorizontal: 10, paddingVertical: 6, borderRadius: Radius.pill },
-  retakeText: { color: '#fff', fontSize: 12, fontFamily: Font.medium },
+  recText: { color: '#fff', fontFamily: Font.bold, fontSize: 12 },
 
-  tools: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-around', paddingTop: 16 },
-  tool: { alignItems: 'center', gap: 4, width: 70 },
-  toolText: { color: '#ffffffcc', fontSize: 12, fontFamily: Font.medium },
-  shutter: { width: 72, height: 72, borderRadius: 36, backgroundColor: Afylo.violet, alignItems: 'center', justifyContent: 'center', borderWidth: 4, borderColor: '#ffffff44' },
-  shutterRing: { width: 76, height: 76, borderRadius: 38, borderWidth: 5, borderColor: '#fff', alignItems: 'center', justifyContent: 'center' },
-  shutterCore: { width: 58, height: 58, borderRadius: 29, backgroundColor: '#fff' },
-  shutterCoreRec: { width: 30, height: 30, borderRadius: 8, backgroundColor: Afylo.live },
-  captureHint: { color: '#ffffff77', fontSize: 12, textAlign: 'center', marginTop: 10 },
+  attachProduct: { flexDirection: 'row', alignItems: 'center', gap: 10, marginHorizontal: 16, marginBottom: 12, backgroundColor: '#00000066', borderRadius: Radius.pill, paddingHorizontal: 16, height: 46 },
+  attachText: { flex: 1, color: '#ffffffcc', fontFamily: Font.medium, fontSize: 14 },
 
-  modes: { flexDirection: 'row', justifyContent: 'center', gap: 22, paddingVertical: 14 },
-  mode: { color: '#ffffff77', fontFamily: Font.semibold, fontSize: 13, letterSpacing: 0.5 },
+  lockHint: { flexDirection: 'row', alignItems: 'center', gap: 5, alignSelf: 'center', backgroundColor: '#00000066', paddingHorizontal: 12, paddingVertical: 6, borderRadius: Radius.pill, marginBottom: 12 },
+  lockHintText: { color: '#fff', fontSize: 12, fontFamily: Font.medium },
+
+  captureRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-around', paddingHorizontal: 30 },
+  tool: { width: 54, height: 54, borderRadius: 27, backgroundColor: '#00000055', alignItems: 'center', justifyContent: 'center' },
+  shutterRing: { width: 82, height: 82, borderRadius: 41, borderWidth: 5, borderColor: '#fff', alignItems: 'center', justifyContent: 'center' },
+  shutterCore: { width: 64, height: 64, borderRadius: 32, backgroundColor: '#fff' },
+  shutterCoreRec: { backgroundColor: Afylo.live },
+  stopCore: { width: 30, height: 30, borderRadius: 8, backgroundColor: Afylo.live },
+  captureHint: { color: '#ffffffcc', fontSize: 12, textAlign: 'center', marginTop: 14 },
+
+  modes: { flexDirection: 'row', justifyContent: 'center', gap: 22, paddingTop: 14, paddingBottom: 8 },
+  mode: { color: '#ffffff88', fontFamily: Font.semibold, fontSize: 13, letterSpacing: 0.5 },
   modeActive: { color: '#fff', fontFamily: Font.bold },
 
-  cta: { height: 52, borderRadius: Radius.pill, backgroundColor: Afylo.violet, alignItems: 'center', justifyContent: 'center' },
-  ctaText: { color: '#fff', fontFamily: Font.semibold, fontSize: 16 },
-
-  attachProduct: { flexDirection: 'row', alignItems: 'center', gap: 10, marginHorizontal: 16, marginTop: 12, backgroundColor: '#ffffff14', borderRadius: Radius.pill, paddingHorizontal: 16, height: 46 },
-  attachText: { flex: 1, color: '#ffffffcc', fontFamily: Font.medium, fontSize: 14 },
+  previewBar: { paddingHorizontal: 16, paddingBottom: 14 },
+  publishBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, height: 54, borderRadius: Radius.pill, backgroundColor: Afylo.violet },
+  publishText: { color: '#fff', fontFamily: Font.bold, fontSize: 16 },
 
   pmOverlay: { flex: 1, backgroundColor: '#00000088', justifyContent: 'flex-end' },
   pmSheet: { backgroundColor: '#15151C', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 16, maxHeight: '60%' },
