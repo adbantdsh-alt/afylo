@@ -66,6 +66,30 @@ export async function searchProfiles(q: string): Promise<Profile[]> {
   return (data as Profile[]) ?? [];
 }
 
+export type SearchPost = {
+  id: string;
+  thumbnail_url: string | null;
+  media_url: string | null;
+  caption: string | null;
+  kind: string;
+  author: { display_name: string | null; handle: string | null; avatar_url: string | null } | null;
+};
+
+/** Recherche de vidéos/posts (média) par légende. */
+export async function searchPosts(q: string): Promise<SearchPost[]> {
+  const term = q.trim().replace(/^#/, '').replace(/[,()%*]/g, ' ').trim();
+  let req = supabase
+    .from('posts')
+    .select('id,thumbnail_url,media_url,caption,kind,author:profiles!posts_author_id_fkey(display_name,handle,avatar_url)')
+    .neq('kind', 'text')
+    .limit(40);
+  if (term) req = req.ilike('caption', `%${term}%`);
+  else req = req.order('created_at', { ascending: false });
+  const { data, error } = await req;
+  if (error) return [];
+  return (data as unknown as SearchPost[]) ?? [];
+}
+
 export type CreatorData = {
   profile: Profile;
   posts: { id: string; thumbnail_url: string | null; media_url: string | null; kind: string; view_count: number }[];

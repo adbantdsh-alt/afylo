@@ -7,8 +7,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Avatar } from '@/components/ui-kit';
 import { Afryko, Font, Radius, Type } from '@/constants/brand';
-import { searchProfiles } from '@/lib/db';
-import { face } from '@/lib/mock';
+import { searchPosts, searchProfiles, type SearchPost } from '@/lib/db';
+import { face, photo } from '@/lib/mock';
 import { searchSounds } from '@/lib/sounds';
 import type { Profile } from '@/types/db';
 
@@ -20,23 +20,26 @@ export default function Search() {
   const [q, setQ] = useState('');
   const [tab, setTab] = useState(0);
   const [creators, setCreators] = useState<Profile[]>([]);
+  const [posts, setPosts] = useState<SearchPost[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Recherche RÉELLE des comptes (Supabase), avec léger anti-rebond
+  // Recherche RÉELLE (Supabase) selon l'onglet actif, avec léger anti-rebond
   useEffect(() => {
+    if (tab !== 0 && tab !== 1) return;
     let cancel = false;
     setLoading(true);
     const t = setTimeout(() => {
-      searchProfiles(q)
-        .then((r) => { if (!cancel) setCreators(r); })
-        .catch(() => { if (!cancel) setCreators([]); })
-        .finally(() => { if (!cancel) setLoading(false); });
+      const run = tab === 1 ? searchPosts(q).then((r) => { if (!cancel) setPosts(r); }) : searchProfiles(q).then((r) => { if (!cancel) setCreators(r); });
+      run.catch(() => {}).finally(() => { if (!cancel) setLoading(false); });
     }, 180);
     return () => { cancel = true; clearTimeout(t); };
-  }, [q]);
+  }, [q, tab]);
 
   const openCreator = (p: Profile) =>
     router.push({ pathname: '/creator/[id]', params: { id: p.handle ?? p.id, name: p.display_name ?? '', avatar: p.avatar_url ?? '' } });
+  const openPost = (p: SearchPost) =>
+    router.push({ pathname: '/comments/[id]', params: { id: p.id, image: p.thumbnail_url || p.media_url || '' } });
+  const openTag = (t: string) => { setQ(t.replace('#', '')); setTab(1); };
 
   return (
     <View style={styles.root}>
@@ -62,7 +65,7 @@ export default function Search() {
         {tab === 3 ? (
           <View style={styles.tagWrap}>
             {TAGS.filter((t) => (q ? t.includes(q.toLowerCase()) : true)).map((t) => (
-              <Pressable key={t} style={styles.tagPill}>
+              <Pressable key={t} style={styles.tagPill} onPress={() => openTag(t)}>
                 <Text style={styles.tagText}>{t}</Text>
               </Pressable>
             ))}
@@ -82,6 +85,19 @@ export default function Search() {
           </View>
         ) : loading ? (
           <ActivityIndicator color={Afryko.violet} style={{ marginTop: 30 }} />
+        ) : tab === 1 ? (
+          posts.length === 0 ? (
+            <Text style={styles.emptyText}>Aucune vidéo trouvée{q ? ` pour « ${q} »` : ''}.</Text>
+          ) : (
+            <View style={styles.videoGrid}>
+              {posts.map((p) => (
+                <Pressable key={p.id} style={styles.videoCell} onPress={() => openPost(p)}>
+                  <Image source={{ uri: p.thumbnail_url || p.media_url || photo(p.id, 300, 400) }} style={StyleSheet.absoluteFill} contentFit="cover" transition={150} />
+                  {p.caption ? <View style={styles.videoCap}><Text style={styles.videoCapText} numberOfLines={1}>{p.caption}</Text></View> : null}
+                </Pressable>
+              ))}
+            </View>
+          )
         ) : creators.length === 0 ? (
           <Text style={styles.emptyText}>Aucun compte trouvé{q ? ` pour « ${q} »` : ''}.</Text>
         ) : (
@@ -117,6 +133,10 @@ const styles = StyleSheet.create({
   tabText: { ...Type.small, fontFamily: Font.semibold, color: Afryko.text },
 
   emptyText: { color: Afryko.textDim, fontSize: 14, textAlign: 'center', marginTop: 34 },
+  videoGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 4 },
+  videoCell: { width: '32.4%', aspectRatio: 0.72, borderRadius: 10, overflow: 'hidden', backgroundColor: Afryko.surfaceAlt, justifyContent: 'flex-end' },
+  videoCap: { backgroundColor: '#00000088', paddingHorizontal: 6, paddingVertical: 4 },
+  videoCapText: { color: '#fff', fontSize: 10 },
   resultRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 10 },
   resultNameRow: { flexDirection: 'row', alignItems: 'center', gap: 5 },
   resultName: { ...Type.body, fontFamily: Font.semibold, color: Afryko.text, flexShrink: 1 },
