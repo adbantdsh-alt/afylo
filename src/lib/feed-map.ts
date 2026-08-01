@@ -46,6 +46,7 @@ export function mapFeedPost(fp: FeedPost): Post {
   const isText = fp.kind === 'text' || (!fp.media_url && !fp.thumbnail_url);
   return {
     id: fp.id,
+    authorId: fp.author_id ?? a?.id,
     name: a?.display_name || a?.handle || 'Créateur',
     handle: a?.handle ? `@${a.handle}` : '@afryko',
     avatar: a?.avatar_url || avatar(0),

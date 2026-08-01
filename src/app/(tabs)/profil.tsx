@@ -211,11 +211,11 @@ export default function Profil() {
           </View>
         </View>
 
-        {/* 5 onglets : Posts · Texte · Boutique · Achats · Reposts */}
+        {/* Onglets — Pro : 5 (avec Boutique) · Simple : 4 (pas de Boutique, non vendeur) */}
         <View style={styles.tabs}>
           <SectionTab icon="grid-outline" active={section === 'posts'} onPress={() => setSection('posts')} />
           <SectionTab icon="reader-outline" active={section === 'texte'} onPress={() => setSection('texte')} />
-          <SectionTab icon="bag-handle-outline" active={section === 'boutique'} onPress={() => setSection('boutique')} />
+          {isPro && <SectionTab icon="bag-handle-outline" active={section === 'boutique'} onPress={() => setSection('boutique')} />}
           <SectionTab icon="cart-outline" active={section === 'achats'} onPress={() => setSection('achats')} />
           <SectionTab icon="repeat" active={section === 'reposts'} onPress={() => setSection('reposts')} />
         </View>

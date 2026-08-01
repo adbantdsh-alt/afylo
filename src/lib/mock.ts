@@ -80,6 +80,7 @@ export type Product = { title: string; price: string; commission?: string };
 
 export type Post = {
   id: string;
+  authorId?: string; // id du profil auteur (pour suivre en réel)
   name: string;
   handle: string;
   avatar: string;

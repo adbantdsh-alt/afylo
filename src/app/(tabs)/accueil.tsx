@@ -15,7 +15,7 @@ import { RepostSheet } from '@/components/repost-sheet';
 import { FeedSkeleton } from '@/components/skeleton';
 import { Afryko, Font, Radius, Type } from '@/constants/brand';
 import { useAuthGate } from '@/lib/auth-gate';
-import { createTextPost, deletePost, listFeed, updatePostCaption } from '@/lib/db';
+import { createTextPost, deletePost, followUser, listFeed, unfollowUser, updatePostCaption } from '@/lib/db';
 import { mapFeed } from '@/lib/feed-map';
 import { useMe } from '@/lib/me';
 import { useReposts } from '@/lib/reposts';
@@ -201,7 +201,14 @@ function PostCard({ post, isPro, myHandle, onDeletePost, onEditPost }: { post: P
   const canAffiliate = !!post.product?.commission;
   const reposted = hasReposted(post.id);
 
-  const toggleFollow = () => { if (gate('suivre ce créateur')) setFollowed((v) => !v); };
+  const toggleFollow = () => {
+    if (!gate('suivre ce créateur')) return;
+    const next = !followed;
+    setFollowed(next); // optimiste
+    if (post.authorId) {
+      (next ? followUser(post.authorId) : unfollowUser(post.authorId)).catch(() => setFollowed(!next));
+    }
+  };
   const toggleLike = () => { if (gate('aimer')) setLiked((v) => !v); };
   const buy = () => { if (gate('acheter')) setPayOpen(true); };
   const repost = () => { if (gate('republier')) setRepostOpen(true); };
