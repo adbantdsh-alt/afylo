@@ -8,17 +8,16 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Afryko, Radius } from '@/constants/brand';
 import { listFeed } from '@/lib/db';
 import { mapExplore } from '@/lib/feed-map';
-import { exploreItems, type ExploreItem } from '@/lib/mock';
+import { type ExploreItem } from '@/lib/mock';
 import { useHideOnScroll } from '@/lib/tabbar';
 
 export default function Explore() {
   const router = useRouter();
   const scroll = useHideOnScroll();
-  const [items, setItems] = useState<ExploreItem[]>(exploreItems);
+  const [items, setItems] = useState<ExploreItem[]>([]); // réseau réel — plus de mock
 
-  // Vrai réseau : grille alimentée par Supabase, repli sur le mock
   useEffect(() => {
-    listFeed().then((rows) => { if (rows && rows.length) setItems(mapExplore(rows)); }).catch(() => {});
+    listFeed().then((rows) => setItems(mapExplore(rows ?? []))).catch(() => {});
   }, []);
 
   const col = (mod: number) => items.filter((_, i) => i % 2 === mod);

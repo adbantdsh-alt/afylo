@@ -9,7 +9,8 @@ import { Avatar } from '@/components/ui-kit';
 import { REACTIONS } from '@/components/rate-sheet';
 import { Afryko, Font, Radius, Type } from '@/constants/brand';
 import { useAuthGate } from '@/lib/auth-gate';
-import { avatar, face } from '@/lib/mock';
+import { useMe } from '@/lib/me';
+import { avatar } from '@/lib/mock';
 
 type Comment = {
   id: string;
@@ -21,6 +22,7 @@ type Comment = {
   time: string;
   likes: number;
   liked: boolean;
+  mine?: boolean; // commentaire de l'utilisateur connecté
   replies: Comment[];
 };
 
@@ -39,6 +41,7 @@ export default function Comments() {
   const router = useRouter();
   const params = useLocalSearchParams<{ id: string; owner?: string; image?: string }>();
   const gate = useAuthGate();
+  const meP = useMe();
   const isOwner = params.owner === '1'; // le propriétaire du post peut supprimer n'importe quel commentaire
 
   const [comments, setComments] = useState<Comment[]>(seed);
@@ -56,7 +59,7 @@ export default function Comments() {
     if (!gate('commenter')) return;
     setRecording(false);
     const dur = `0:0${3 + (comments.length % 6)}`;
-    const me: Comment = { id: nid(), name: 'Toi', handle: '@toi', avatar: face('toi'), text: '', voice: dur, time: 'à l\'instant', likes: 0, liked: false, replies: [] };
+    const me: Comment = { id: nid(), name: meP.name, handle: `@${meP.handle}`, avatar: meP.avatar, text: '', voice: dur, time: 'à l\'instant', likes: 0, liked: false, mine: true, replies: [] };
     setComments((prev) => [me, ...prev]);
   };
 
@@ -75,7 +78,7 @@ export default function Comments() {
   const send = () => {
     if (!text.trim()) return;
     if (!gate('commenter')) return;
-    const me: Comment = { id: nid(), name: 'Toi', handle: '@toi', avatar: face('toi'), text: text.trim(), time: 'à l\'instant', likes: 0, liked: false, replies: [] };
+    const me: Comment = { id: nid(), name: meP.name, handle: `@${meP.handle}`, avatar: meP.avatar, text: text.trim(), time: 'à l\'instant', likes: 0, liked: false, mine: true, replies: [] };
     if (replyTo) {
       setComments((prev) => prev.map((c) => (c.id === replyTo.id ? { ...c, replies: [...c.replies, me] } : c)));
     } else {
@@ -123,7 +126,7 @@ export default function Comments() {
               </View>
             )}
             <View style={styles.inputBar}>
-              <Avatar uri={face('toi')} size={34} />
+              <Avatar uri={meP.avatar} size={34} />
               <TextInput
                 style={styles.input}
                 value={text}
@@ -152,7 +155,7 @@ export default function Comments() {
 function CommentRow({ c, isOwner, onLike, onReply, onDelete, depth = 0 }: { c: Comment; isOwner: boolean; onLike: (id: string) => void; onReply: (t: { id: string; handle: string }) => void; onDelete: (id: string) => void; depth?: number }) {
   const [reaction, setReaction] = useState<string | null>(null);
   const [picker, setPicker] = useState(false);
-  const canDelete = isOwner || c.name === 'Toi'; // propriétaire du post OU auteur du commentaire
+  const canDelete = isOwner || !!c.mine; // propriétaire du post OU auteur du commentaire
 
   return (
     <View style={{ marginLeft: depth * 44, marginBottom: 16 }}>

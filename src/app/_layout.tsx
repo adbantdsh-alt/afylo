@@ -18,6 +18,7 @@ import { AuthGateProvider } from '@/lib/auth-gate';
 import { StoriesProvider } from '@/lib/stories';
 import { RepostsProvider } from '@/lib/reposts';
 import { CheckoutProfileProvider } from '@/lib/checkout-profile';
+import { MeProvider } from '@/lib/me';
 
 // Routes accessibles sans être connecté
 const PUBLIC = ['index', 'login'];
@@ -103,13 +104,15 @@ export default function RootLayout() {
       <StatusBar style="dark" />
       <AuthProvider>
         <AuthGateProvider>
-          <StoriesProvider>
-            <RepostsProvider>
-              <CheckoutProfileProvider>
-                <RootNavigator />
-              </CheckoutProfileProvider>
-            </RepostsProvider>
-          </StoriesProvider>
+          <MeProvider>
+            <StoriesProvider>
+              <RepostsProvider>
+                <CheckoutProfileProvider>
+                  <RootNavigator />
+                </CheckoutProfileProvider>
+              </RepostsProvider>
+            </StoriesProvider>
+          </MeProvider>
         </AuthGateProvider>
       </AuthProvider>
     </SafeAreaProvider>

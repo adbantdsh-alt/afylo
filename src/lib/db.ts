@@ -189,6 +189,18 @@ export async function deleteProduct(id: string): Promise<void> {
   if (error) throw error;
 }
 
+/** Supprime un post (RLS : seulement l'auteur). */
+export async function deletePost(id: string): Promise<void> {
+  const { error } = await supabase.from('posts').delete().eq('id', id);
+  if (error) throw error;
+}
+
+/** Met à jour la légende d'un post (RLS : seulement l'auteur). */
+export async function updatePostCaption(id: string, caption: string): Promise<void> {
+  const { error } = await supabase.from('posts').update({ caption }).eq('id', id);
+  if (error) throw error;
+}
+
 // ---- Feed (posts + auteur + produits attachés) ----
 export type FeedPost = Post & {
   author: Profile | null;

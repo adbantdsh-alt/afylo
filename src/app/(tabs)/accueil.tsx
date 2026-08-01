@@ -2,7 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Animated, Modal, Pressable, ScrollView, Share, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Animated, Modal, Pressable, ScrollView, Share, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Avatar, IconButton } from '@/components/ui-kit';
@@ -14,11 +14,12 @@ import { ReportSheet } from '@/components/report-sheet';
 import { RepostSheet } from '@/components/repost-sheet';
 import { Afryko, Font, Radius, Type } from '@/constants/brand';
 import { useAuthGate } from '@/lib/auth-gate';
-import { getMyProfile, isProAccount, listFeed } from '@/lib/db';
+import { deletePost, listFeed, updatePostCaption } from '@/lib/db';
 import { mapFeed } from '@/lib/feed-map';
+import { useMe } from '@/lib/me';
 import { useReposts } from '@/lib/reposts';
 import { useAlwaysShowTabBar } from '@/lib/tabbar';
-import { me, posts, type Post } from '@/lib/mock';
+import { type Post } from '@/lib/mock';
 import { badgeText, totalUnread } from '@/lib/notifs';
 import { useStories } from '@/lib/stories';
 
@@ -29,34 +30,38 @@ export default function Feed() {
   const gate = useAuthGate();
   const { stories, myStory } = useStories();
   const showTabBar = useAlwaysShowTabBar();
-  const [isPro, setIsPro] = useState(false);
-  const [myHandle, setMyHandle] = useState('moi');
-  const [myAvatar, setMyAvatar] = useState(me.avatar); // ton vrai avatar (Supabase), repli sur le mock
-  const [myName, setMyName] = useState(me.name);
-  const [feed, setFeed] = useState<Post[]>(posts); // mock affiché tout de suite, puis remplacé par la base
+  const { avatar: myAvatar, name: myName, handle: myHandle, isPro } = useMe(); // profil connecté, partagé
+  const [feed, setFeed] = useState<Post[]>([]); // réseau réel (Supabase) — plus de données fictives
+  const [loading, setLoading] = useState(true);
   const [composeOpen, setComposeOpen] = useState(false);
   const [composeText, setComposeText] = useState('');
+  const [editingId, setEditingId] = useState<string | null>(null);
 
   const publishText = () => {
     const t = composeText.trim();
     if (!t) return;
-    const post: Post = { id: `txt${Date.now()}`, name: myName, handle: `@${myHandle}`, avatar: myAvatar, time: "à l'instant", image: '', likes: '0', comments: '0', views: '0', shares: '0', caption: t, textOnly: true };
-    setFeed((prev) => [post, ...prev]);
+    if (editingId) {
+      setFeed((prev) => prev.map((x) => (x.id === editingId ? { ...x, caption: t } : x)));
+      if (!editingId.startsWith('txt')) updatePostCaption(editingId, t).catch(() => {});
+    } else {
+      const post: Post = { id: `txt${Date.now()}`, name: myName, handle: `@${myHandle}`, avatar: myAvatar, time: "à l'instant", image: '', likes: '0', comments: '0', views: '0', shares: '0', caption: t, textOnly: true };
+      setFeed((prev) => [post, ...prev]);
+    }
     setComposeText('');
+    setEditingId(null);
     setComposeOpen(false);
   };
+  const removePost = (id: string) => {
+    setFeed((prev) => prev.filter((p) => p.id !== id));
+    if (!id.startsWith('txt')) deletePost(id).catch(() => {});
+  };
+  const editPost = (p: Post) => { setComposeText(p.caption); setEditingId(p.id); setComposeOpen(true); };
 
   // Nav bar persistante sur l'accueil (pas de masquage au scroll)
   useFocusEffect(useCallback(() => { showTabBar(); }, [showTabBar]));
   useEffect(() => {
-    getMyProfile().then((p) => {
-      setIsPro(isProAccount(p?.account_type));
-      if (p?.handle) setMyHandle(p.handle);
-      if (p?.avatar_url) setMyAvatar(p.avatar_url);
-      if (p?.display_name) setMyName(p.display_name);
-    }).catch(() => {});
-    // Vrai réseau : on lit le feed depuis Supabase, repli sur le mock si vide/erreur
-    listFeed().then((rows) => { if (rows && rows.length) setFeed(mapFeed(rows)); }).catch(() => {});
+    // Vrai réseau : uniquement les posts de Supabase (aucune donnée fictive)
+    listFeed().then((rows) => setFeed(mapFeed(rows ?? []))).catch(() => {}).finally(() => setLoading(false));
   }, []);
 
   return (
@@ -122,9 +127,19 @@ export default function Feed() {
           ))}
         </ScrollView>
 
-        {feed.map((p) => (
-          <PostCard key={p.id} post={p} isPro={isPro} myHandle={myHandle} />
-        ))}
+        {loading && feed.length === 0 ? (
+          <View style={styles.feedState}><ActivityIndicator color={Afryko.violet} size="large" /></View>
+        ) : feed.length === 0 ? (
+          <View style={styles.feedState}>
+            <Ionicons name="planet-outline" size={44} color={Afryko.textFaint} />
+            <Text style={styles.feedEmptyTitle}>Ton feed est vide</Text>
+            <Text style={styles.feedEmptySub}>Suis des créateurs ou publie ta première vidéo pour lancer ton réseau.</Text>
+          </View>
+        ) : (
+          feed.map((p) => (
+            <PostCard key={p.id} post={p} isPro={isPro} myHandle={myHandle} onDeletePost={removePost} onEditPost={editPost} />
+          ))
+        )}
       </ScrollView>
 
       {/* Composer une publication texte (façon X) */}
@@ -156,7 +171,7 @@ export default function Feed() {
   );
 }
 
-function PostCard({ post, isPro, myHandle }: { post: Post; isPro: boolean; myHandle: string }) {
+function PostCard({ post, isPro, myHandle, onDeletePost, onEditPost }: { post: Post; isPro: boolean; myHandle: string; onDeletePost: (id: string) => void; onEditPost: (p: Post) => void }) {
   const router = useRouter();
   const gate = useAuthGate();
   const { addRepost, hasReposted } = useReposts();
@@ -315,12 +330,15 @@ function PostCard({ post, isPro, myHandle }: { post: Post; isPro: boolean; myHan
       <PostOptionsSheet
         visible={optionsOpen}
         saved={saved}
+        isOwner={owns}
         onClose={() => setOptionsOpen(false)}
         onShare={share}
         onInterested={() => setLiked(true)}
         onNotInterested={() => setHidden(true)}
         onSave={() => setSaved((v) => !v)}
         onReport={() => setReportOpen(true)}
+        onEdit={() => onEditPost(post)}
+        onDelete={() => onDeletePost(post.id)}
       />
 
       <RateSheet
@@ -391,6 +409,9 @@ const styles = StyleSheet.create({
   brand: { color: Afryko.text, fontFamily: Font.bold, fontSize: 24, letterSpacing: -0.6 },
   bellBadge: { position: 'absolute', top: -4, right: -4, minWidth: 18, height: 18, paddingHorizontal: 4, borderRadius: 9, backgroundColor: Afryko.live, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: Afryko.bg },
   bellBadgeText: { color: '#fff', fontFamily: Font.bold, fontSize: 10 },
+  feedState: { alignItems: 'center', justifyContent: 'center', paddingVertical: 80, paddingHorizontal: 40, gap: 12 },
+  feedEmptyTitle: { color: Afryko.text, fontFamily: Font.bold, fontSize: 18 },
+  feedEmptySub: { color: Afryko.textDim, fontSize: 14, textAlign: 'center', lineHeight: 20 },
 
   livesRow: { paddingHorizontal: 16, paddingVertical: 12, gap: 16 },
   liveItem: { alignItems: 'center', width: 72 },

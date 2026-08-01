@@ -10,23 +10,29 @@ import { Afryko, Font, Radius, Type } from '@/constants/brand';
 export function PostOptionsSheet({
   visible,
   saved,
+  isOwner,
   onClose,
   onShare,
   onInterested,
   onNotInterested,
   onSave,
   onReport,
+  onEdit,
+  onDelete,
 }: {
   visible: boolean;
   saved: boolean;
+  isOwner?: boolean; // accès propriétaire (auteur du post) ≠ accès viewer
   onClose: () => void;
   onShare: () => void;
   onInterested: () => void;
   onNotInterested: () => void;
   onSave: () => void;
   onReport: () => void;
+  onEdit?: () => void;
+  onDelete?: () => void;
 }) {
-  const act = (fn: () => void) => { onClose(); setTimeout(fn, 10); };
+  const act = (fn?: () => void) => { onClose(); if (fn) setTimeout(fn, 10); };
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
@@ -34,25 +40,37 @@ export function PostOptionsSheet({
         <Pressable style={styles.sheet} onPress={(e) => e.stopPropagation?.()}>
           <View style={styles.grip} />
 
-          {/* Affiner l'algo — mis en avant */}
-          <View style={styles.algoRow}>
-            <Pressable style={styles.algoBtn} onPress={() => act(onInterested)}>
-              <View style={[styles.algoIcon, { backgroundColor: '#16A34A18' }]}><Ionicons name="thumbs-up" size={22} color="#16A34A" /></View>
-              <Text style={styles.algoText}>Ça m'intéresse</Text>
-              <Text style={styles.algoSub}>Plus de ce contenu</Text>
-            </Pressable>
-            <Pressable style={styles.algoBtn} onPress={() => act(onNotInterested)}>
-              <View style={[styles.algoIcon, { backgroundColor: Afryko.surfaceAlt }]}><Ionicons name="thumbs-down" size={22} color={Afryko.textDim} /></View>
-              <Text style={styles.algoText}>Pas intéressé</Text>
-              <Text style={styles.algoSub}>Moins de ce contenu</Text>
-            </Pressable>
-          </View>
+          {isOwner ? (
+            // ---- Accès PROPRIÉTAIRE (auteur du post) ----
+            <View style={styles.list}>
+              <Row icon="create-outline" label="Modifier" onPress={() => act(onEdit)} />
+              <Row icon="share-social-outline" label="Partager" onPress={() => act(onShare)} />
+              <Row icon={saved ? 'bookmark' : 'bookmark-outline'} label={saved ? 'Retirer des enregistrements' : 'Enregistrer'} onPress={() => act(onSave)} />
+              <Row icon="trash-outline" label="Supprimer" danger onPress={() => act(onDelete)} last />
+            </View>
+          ) : (
+            // ---- Accès VIEWER ----
+            <>
+              <View style={styles.algoRow}>
+                <Pressable style={styles.algoBtn} onPress={() => act(onInterested)}>
+                  <View style={[styles.algoIcon, { backgroundColor: '#16A34A18' }]}><Ionicons name="thumbs-up" size={22} color="#16A34A" /></View>
+                  <Text style={styles.algoText}>Ça m'intéresse</Text>
+                  <Text style={styles.algoSub}>Plus de ce contenu</Text>
+                </Pressable>
+                <Pressable style={styles.algoBtn} onPress={() => act(onNotInterested)}>
+                  <View style={[styles.algoIcon, { backgroundColor: Afryko.surfaceAlt }]}><Ionicons name="thumbs-down" size={22} color={Afryko.textDim} /></View>
+                  <Text style={styles.algoText}>Pas intéressé</Text>
+                  <Text style={styles.algoSub}>Moins de ce contenu</Text>
+                </Pressable>
+              </View>
 
-          <View style={styles.list}>
-            <Row icon="share-social-outline" label="Partager" onPress={() => act(onShare)} />
-            <Row icon={saved ? 'bookmark' : 'bookmark-outline'} label={saved ? 'Retirer des enregistrements' : 'Enregistrer'} onPress={() => act(onSave)} />
-            <Row icon="flag-outline" label="Signaler" danger onPress={() => act(onReport)} last />
-          </View>
+              <View style={styles.list}>
+                <Row icon="share-social-outline" label="Partager" onPress={() => act(onShare)} />
+                <Row icon={saved ? 'bookmark' : 'bookmark-outline'} label={saved ? 'Retirer des enregistrements' : 'Enregistrer'} onPress={() => act(onSave)} />
+                <Row icon="flag-outline" label="Signaler" danger onPress={() => act(onReport)} last />
+              </View>
+            </>
+          )}
 
           <Pressable style={styles.cancel} onPress={onClose}><Text style={styles.cancelText}>Annuler</Text></Pressable>
         </Pressable>
