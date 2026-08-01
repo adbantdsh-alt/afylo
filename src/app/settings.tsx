@@ -8,10 +8,11 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Afylo, Font, Radius, Type } from '@/constants/brand';
 import { useAuth } from '@/lib/auth';
 import { changeEmail, changePassword, deactivateAccount, deleteAccount, getAccountInfo } from '@/lib/db';
+import { maskCard, useCheckoutProfile, type PayMethod } from '@/lib/checkout-profile';
 import { face } from '@/lib/mock';
 
 type ToggleKey = 'private' | 'push' | 'likes' | 'comments' | 'sales' | 'twofa' | 'dataSaver';
-type DetailKey = 'personal' | 'linked' | 'blocked' | 'hide' | 'messages' | 'password' | 'devices' | 'language' | 'theme';
+type DetailKey = 'personal' | 'payment' | 'linked' | 'blocked' | 'hide' | 'messages' | 'password' | 'devices' | 'language' | 'theme';
 
 type Row = {
   icon: keyof typeof Ionicons.glyphMap;
@@ -37,6 +38,8 @@ export default function Settings() {
   const [confirm, setConfirm] = useState<'deactivate' | 'delete' | null>(null);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+
+  const { isComplete: paySet } = useCheckoutProfile();
 
   // Réglages ouverts en panneau
   const [detail, setDetail] = useState<DetailKey | null>(null);
@@ -80,6 +83,7 @@ export default function Settings() {
       rows: [
         { icon: 'person-outline', label: 'Modifier le profil', sub: 'Photo, nom, bio, lien', route: '/edit-profile' },
         { icon: 'id-card-outline', label: 'Informations personnelles', sub: 'Email, téléphone', detail: 'personal' },
+        { icon: 'card-outline', label: 'Profil de paiement', sub: paySet ? 'Configuré · achat 1-clic' : 'Configure ton achat 1-clic', detail: 'payment' },
         { icon: 'link-outline', label: 'Comptes liés', sub: Object.values(linked).filter(Boolean).length + ' connecté(s)', detail: 'linked' },
       ],
     },
@@ -263,6 +267,7 @@ type PanelState = {
 
 const TITLES: Record<DetailKey, string> = {
   personal: 'Informations personnelles',
+  payment: 'Profil de paiement',
   linked: 'Comptes liés',
   blocked: 'Comptes bloqués',
   hide: 'Masquer stories & lives',
@@ -288,6 +293,7 @@ function DetailPanel({ which, onClose, hasSession, state }: { which: DetailKey |
         </SafeAreaView>
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 16, paddingBottom: 40 }}>
           {which === 'personal' && <PersonalPanel hasSession={hasSession} onClose={onClose} />}
+          {which === 'payment' && <PaymentProfilePanel onClose={onClose} />}
           {which === 'password' && <PasswordPanel hasSession={hasSession} onClose={onClose} />}
           {which === 'linked' && <LinkedPanel linked={state.linked} setLinked={state.setLinked} />}
           {which === 'blocked' && <BlockedPanel blocked={state.blocked} setBlocked={state.setBlocked} />}
@@ -349,6 +355,38 @@ function PersonalPanel({ hasSession, onClose }: { hasSession: boolean; onClose: 
       <Field label="Téléphone" value={phone} onChangeText={setPhone} keyboardType="phone-pad" placeholder="+221 ..." />
       {msg && <Text style={styles.panelNote}>{msg}</Text>}
       <PrimaryBtn label="Enregistrer" busy={busy} onPress={save} />
+    </>
+  );
+}
+
+const OP_LABELS: Record<PayMethod, string> = { wave: 'Wave', om: 'Orange Money', card: 'Carte bancaire' };
+function PaymentProfilePanel({ onClose }: { onClose: () => void }) {
+  const { profile, setProfile } = useCheckoutProfile();
+  const [name, setName] = useState(profile.name);
+  const [phone, setPhone] = useState(profile.phone);
+  const [card, setCard] = useState(profile.card);
+  const [pref, setPref] = useState<PayMethod>(profile.preferred);
+  const [msg, setMsg] = useState<string | null>(null);
+
+  const labelToId = (l: string): PayMethod => (Object.keys(OP_LABELS) as PayMethod[]).find((k) => OP_LABELS[k] === l) ?? 'wave';
+  const save = () => {
+    setProfile({ name: name.trim(), phone: phone.trim(), card: card.replace(/\s/g, ''), preferred: pref });
+    setMsg('Profil de paiement enregistré — achat en 1 clic activé.');
+    setTimeout(onClose, 900);
+  };
+
+  return (
+    <>
+      <Text style={styles.panelNote}>Renseigne tes infos une fois : ensuite, achat en 1 clic partout dans l'app (mobile money ou carte via XaalisPay).</Text>
+      <View style={{ height: 14 }} />
+      <Field label="Nom complet" value={name} onChangeText={setName} placeholder="Ton nom complet" autoCapitalize="words" />
+      <Field label="Numéro mobile money" value={phone} onChangeText={setPhone} keyboardType="phone-pad" placeholder="77 123 45 67" />
+      <Field label="Carte bancaire (optionnel)" value={card} onChangeText={setCard} keyboardType="number-pad" placeholder="1234 5678 9012 3456" />
+      {card.replace(/\D/g, '').length >= 4 && <Text style={styles.panelNote}>Enregistrée : {maskCard(card)} · sécurisée par XaalisPay.</Text>}
+      <View style={{ height: 6 }} />
+      <Choice title="Moyen de paiement par défaut" options={['Wave', 'Orange Money', 'Carte bancaire']} value={OP_LABELS[pref]} onChange={(l) => setPref(labelToId(l))} />
+      {msg && <Text style={styles.panelNote}>{msg}</Text>}
+      <PrimaryBtn label="Enregistrer" onPress={save} />
     </>
   );
 }

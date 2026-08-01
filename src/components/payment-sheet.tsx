@@ -1,11 +1,12 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useState } from 'react';
-import { Linking, Modal, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { useEffect, useState } from 'react';
+import { Linking, Modal, Pressable, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
 
 import { Afylo, Font, Radius, Type } from '@/constants/brand';
+import { maskCard, maskPhone, useCheckoutProfile, type PayMethod } from '@/lib/checkout-profile';
 
-// Moyens de paiement mobile money par pays (extensible)
-const METHODS: Record<string, { id: string; name: string; color: string }[]> = {
+// Moyens mobile money par pays + carte bancaire (via XaalisPay, universel)
+const MOBILE: Record<string, { id: string; name: string; color: string }[]> = {
   Sénégal: [
     { id: 'wave', name: 'Wave', color: '#1DC3F0' },
     { id: 'om', name: 'Orange Money', color: '#FF7900' },
@@ -32,33 +33,36 @@ export function PaymentSheet({
   items: { title: string; price: string }[];
   onClose: () => void;
 }) {
+  const { profile, isComplete, setProfile } = useCheckoutProfile();
   const [country] = useState('Sénégal');
-  const [method, setMethod] = useState<string | null>('wave');
-  const [phone, setPhone] = useState('');
-  const [name, setName] = useState('');
+  const [method, setMethod] = useState<string>(profile.preferred);
+  const [phone, setPhone] = useState(profile.phone);
+  const [name, setName] = useState(profile.name);
+  const [remember, setRemember] = useState(true);
   const [status, setStatus] = useState<Status>('form');
   const [chosen, setChosen] = useState<number | null>(items.length > 1 ? null : 0);
+
+  // Réaligne sur le profil enregistré à chaque ouverture
+  useEffect(() => {
+    if (visible) { setName(profile.name); setPhone(profile.phone); setMethod(profile.preferred); setStatus('form'); setChosen(items.length > 1 ? null : 0); }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [visible]);
 
   const item = items[chosen ?? 0] ?? { title: 'Produit', price: '' };
   const title = item.title;
   const price = item.price;
-  const methods = METHODS[country] ?? METHODS['Sénégal'];
-  const canPay = method && phone.trim().length >= 6 && name.trim().length >= 2;
+  const methods = [...(MOBILE[country] ?? MOBILE['Sénégal']), { id: 'card', name: 'Carte bancaire', color: Afylo.violet }];
+  const methodName = methods.find((m) => m.id === method)?.name ?? 'l\'opérateur';
+  const cardReady = method !== 'card' || !!profile.card;
+  const canPay = !!method && cardReady && (method === 'card' ? true : phone.trim().length >= 6) && name.trim().length >= 2;
 
-  const reset = () => {
-    setStatus('form');
-    setPhone('');
-    setName('');
-    setChosen(items.length > 1 ? null : 0);
-  };
-  const close = () => {
-    reset();
-    onClose();
-  };
+  const reset = () => { setStatus('form'); setChosen(items.length > 1 ? null : 0); };
+  const close = () => { reset(); onClose(); };
   const pay = () => {
     if (!canPay) return;
+    if (remember && !isComplete) setProfile({ name: name.trim(), phone: phone.trim(), preferred: method as PayMethod });
     setStatus('processing');
-    // Simulation : l'intégration réelle passera par l'API XaalisPay
+    // Simulation : l'intégration réelle passera par l'API XaalisPay (redirection opérateur / carte)
     setTimeout(() => setStatus('done'), 1600);
   };
 
@@ -118,42 +122,58 @@ export function PaymentSheet({
                 <Text style={styles.productPrice}>{price}</Text>
               </View>
 
+              {/* Identité enregistrée (achat 1-clic) */}
+              {isComplete && (
+                <View style={styles.identity}>
+                  <View style={styles.identityIcon}><Ionicons name="flash" size={16} color={Afylo.violet} /></View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.identityName}>{profile.name}</Text>
+                    <Text style={styles.identitySub}>{method === 'card' && profile.card ? maskCard(profile.card) : maskPhone(profile.phone)} · achat 1-clic</Text>
+                  </View>
+                  <Ionicons name="checkmark-circle" size={20} color={Afylo.green} />
+                </View>
+              )}
+
               {/* Moyens de paiement */}
-              <Text style={styles.section}>Moyen de paiement · {country}</Text>
+              <Text style={styles.section}>{isComplete ? 'Payer avec' : `Moyen de paiement · ${country}`}</Text>
               <View style={styles.methods}>
-                {methods.map((m) => (
-                  <Pressable key={m.id} onPress={() => setMethod(m.id)} style={[styles.method, method === m.id && { borderColor: m.color, borderWidth: 2 }]}>
-                    <View style={[styles.methodDot, { backgroundColor: m.color }]}>
-                      <Text style={styles.methodDotText}>{m.name[0]}</Text>
-                    </View>
-                    <Text style={styles.methodName}>{m.name}</Text>
-                    {method === m.id && <Ionicons name="checkmark-circle" size={20} color={m.color} />}
-                  </Pressable>
-                ))}
+                {methods.map((m) => {
+                  const dis = m.id === 'card' && !profile.card;
+                  return (
+                    <Pressable key={m.id} onPress={() => !dis && setMethod(m.id)} style={[styles.method, method === m.id && { borderColor: m.color, borderWidth: 2 }, dis && { opacity: 0.5 }]}>
+                      <View style={[styles.methodDot, { backgroundColor: m.color }]}>
+                        {m.id === 'card' ? <Ionicons name="card" size={16} color="#fff" /> : <Text style={styles.methodDotText}>{m.name[0]}</Text>}
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.methodName}>{m.name}</Text>
+                        {m.id === 'card' && <Text style={styles.methodHint}>{profile.card ? maskCard(profile.card) : 'À ajouter dans Paramètres'}</Text>}
+                      </View>
+                      {method === m.id && <Ionicons name="checkmark-circle" size={20} color={m.color} />}
+                    </Pressable>
+                  );
+                })}
               </View>
 
-              {/* Coordonnées */}
-              <TextInput
-                style={styles.input}
-                value={phone}
-                onChangeText={setPhone}
-                placeholder="Numéro mobile money (ex : 77 123 45 67)"
-                placeholderTextColor={Afylo.textFaint}
-                keyboardType="phone-pad"
-              />
-              <TextInput
-                style={styles.input}
-                value={name}
-                onChangeText={setName}
-                placeholder="Nom complet"
-                placeholderTextColor={Afylo.textFaint}
-              />
+              {/* Coordonnées — seulement si pas de profil enregistré et paiement mobile money */}
+              {!isComplete && method !== 'card' && (
+                <>
+                  <TextInput style={styles.input} value={phone} onChangeText={setPhone} placeholder="Numéro mobile money (ex : 77 123 45 67)" placeholderTextColor={Afylo.textFaint} keyboardType="phone-pad" />
+                  <TextInput style={styles.input} value={name} onChangeText={setName} placeholder="Nom complet" placeholderTextColor={Afylo.textFaint} />
+                  <View style={styles.rememberRow}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.rememberText}>Enregistrer pour la prochaine fois</Text>
+                      <Text style={styles.rememberSub}>Achat en 1 clic ensuite (modifiable dans Paramètres).</Text>
+                    </View>
+                    <Switch value={remember} onValueChange={setRemember} trackColor={{ true: Afylo.violet }} />
+                  </View>
+                </>
+              )}
 
               <Pressable onPress={pay} disabled={!canPay || status === 'processing'} style={[styles.payBtn, (!canPay || status === 'processing') && { opacity: 0.5 }]}>
                 {status === 'processing' ? (
-                  <Text style={styles.payText}>Paiement en cours…</Text>
+                  <Text style={styles.payText}>{method === 'card' ? 'Paiement carte sécurisé…' : `Redirection vers ${methodName}…`}</Text>
                 ) : (
-                  <Text style={styles.payText}>Payer {price}</Text>
+                  <Text style={styles.payText}>{isComplete ? `Payer ${price} en 1 clic` : `Payer ${price}`}</Text>
                 )}
               </Pressable>
 
@@ -193,7 +213,17 @@ const styles = StyleSheet.create({
   method: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: Afylo.surface, borderRadius: Radius.md, borderWidth: 1, borderColor: Afylo.border, padding: 12 },
   methodDot: { width: 34, height: 34, borderRadius: 17, alignItems: 'center', justifyContent: 'center' },
   methodDotText: { color: '#fff', fontFamily: Font.bold, fontSize: 15 },
-  methodName: { ...Type.body, fontFamily: Font.semibold, color: Afylo.text, flex: 1 },
+  methodName: { ...Type.body, fontFamily: Font.semibold, color: Afylo.text },
+  methodHint: { ...Type.caption, color: Afylo.textDim, marginTop: 1 },
+
+  identity: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: '#3E5BFF0F', borderWidth: 1, borderColor: '#3E5BFF33', borderRadius: Radius.md, padding: 12, marginBottom: 16 },
+  identityIcon: { width: 36, height: 36, borderRadius: 18, backgroundColor: '#3E5BFF1A', alignItems: 'center', justifyContent: 'center' },
+  identityName: { ...Type.body, fontFamily: Font.bold, color: Afylo.text },
+  identitySub: { ...Type.caption, color: Afylo.textDim, marginTop: 1 },
+
+  rememberRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 2, marginBottom: 8 },
+  rememberText: { ...Type.body, fontFamily: Font.semibold, color: Afylo.text },
+  rememberSub: { ...Type.caption, color: Afylo.textDim, marginTop: 1 },
 
   input: { backgroundColor: Afylo.surface, borderRadius: Radius.md, borderWidth: 1, borderColor: Afylo.border, color: Afylo.text, ...Type.body, paddingHorizontal: 16, height: 52, marginBottom: 12 },
 
