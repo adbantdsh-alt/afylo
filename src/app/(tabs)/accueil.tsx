@@ -185,19 +185,20 @@ function PostCard({ post, isPro, myHandle }: { post: Post; isPro: boolean; myHan
 
       {/* Stats */}
       <View style={styles.stats}>
-        {/* Notation /10 (nouveau) — juste avant le like */}
-        <Pressable onPress={() => { if (gate('noter')) setRateOpen(true); }} style={styles.rate}>
+        {/* Réaction fusionnée — tap = j'aime · appui long = note /10 (remplace like + Noter) */}
+        <Pressable
+          onPress={toggleLike}
+          onLongPress={() => { if (gate('noter')) setRateOpen(true); }}
+          delayLongPress={260}
+          style={styles.rate}>
           {reaction ? (
             <Text style={styles.rateEmoji}>{reaction}</Text>
           ) : (
-            <Ionicons name="star" size={18} color={rating > 0 ? Afylo.gold : Afylo.inkDim} />
+            <Ionicons name={liked || rating > 0 ? 'star' : 'star-outline'} size={19} color={liked || rating > 0 ? Afylo.gold : Afylo.inkDim} />
           )}
-          <Text style={[styles.statText, rating > 0 && { color: Afylo.gold, fontFamily: Font.bold }]}>
-            {rating > 0 ? `${rating}/10` : 'Noter'}
+          <Text style={[styles.statText, (liked || rating > 0 || reaction) && { color: Afylo.gold, fontFamily: Font.bold }]}>
+            {rating > 0 ? `${rating}/10` : bumpLike(post.likes, liked)}
           </Text>
-        </Pressable>
-        <Pressable onPress={toggleLike}>
-          <Stat icon={liked ? 'heart' : 'heart-outline'} label={bumpLike(post.likes, liked)} color={liked ? Afylo.live : Afylo.inkDim} />
         </Pressable>
         <Pressable onPress={openComments}>
           <Stat icon="chatbubble-ellipses" label={post.comments} />

@@ -8,6 +8,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Afylo, Font, Radius } from '@/constants/brand';
 import { studioDays, studioKpis, studioTopPosts, wallet, walletTx, type WalletTx } from '@/lib/mock';
+import { useReposts } from '@/lib/reposts';
 
 const fmt = (n: number) => Math.round(Math.abs(n)).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
 const signed = (n: number) => (n >= 0 ? '+' : '−') + fmt(Math.abs(n));
@@ -52,12 +53,33 @@ export default function Portefeuille() {
 /* ---------------- Portefeuille ---------------- */
 
 function WalletTab({ onWithdraw }: { onWithdraw: () => void }) {
+  const { reposts } = useReposts();
+  // Commissions générées par tes repartages (affiliation)
+  const repostEarned = reposts.reduce((s, r) => s + (r.affiliate?.earned ?? 0), 0);
+  const repostSales = reposts.reduce((s, r) => s + (r.affiliate?.sales ?? 0), 0);
+  const repostTx: WalletTx[] = reposts
+    .filter((r) => r.affiliate && r.affiliate.sales > 0)
+    .map((r) => ({
+      id: `rt-${r.id}`,
+      kind: 'affiliation',
+      label: `Repartage · ${r.post.product?.title ?? 'produit'}`,
+      sub: `${r.affiliate!.sales} vente(s) · ${r.affiliate!.commission} de commission`,
+      amount: r.affiliate!.earned,
+      date: 'récent',
+    }));
+  const available = wallet.available + repostEarned;
+  const breakdown = repostEarned > 0
+    ? [...wallet.breakdown.slice(0, -1), { label: 'Commissions repartages', value: repostEarned }, wallet.breakdown[wallet.breakdown.length - 1]]
+    : wallet.breakdown;
+  const net = breakdown.reduce((s, b) => s + b.value, 0);
+  const txs = [...repostTx, ...walletTx];
+
   return (
     <>
       {/* Carte solde */}
       <LinearGradient colors={[Afylo.violet, Afylo.violet2]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.balanceCard}>
         <Text style={styles.balanceLabel}>Solde disponible</Text>
-        <Text style={styles.balanceValue}>{fmt(wallet.available)} <Text style={styles.balanceCur}>{wallet.currency}</Text></Text>
+        <Text style={styles.balanceValue}>{fmt(available)} <Text style={styles.balanceCur}>{wallet.currency}</Text></Text>
 
         <View style={styles.pendingRow}>
           <Ionicons name="lock-closed" size={13} color="#ffffffcc" />
@@ -94,24 +116,36 @@ function WalletTab({ onWithdraw }: { onWithdraw: () => void }) {
           <Text style={styles.cardTitle}>Revenus · 7 jours</Text>
           <Text style={styles.link}>Exporter</Text>
         </View>
-        {wallet.breakdown.map((b, i) => (
+        {breakdown.map((b: { label: string; value: number; dim?: boolean }, i: number) => (
           <View key={i} style={styles.line}>
             <Text style={[styles.lineLabel, b.dim && { color: Afylo.textFaint }]}>{b.label}</Text>
-            <Text style={[styles.lineValue, b.dim && { color: Afylo.textFaint }]}>{b.value < 0 ? '−' : ''}{fmt(Math.abs(b.value))} F</Text>
+            <Text style={[styles.lineValue, b.dim && { color: Afylo.textFaint }, b.label === 'Commissions repartages' && { color: '#16A34A' }]}>{b.value < 0 ? '−' : ''}{fmt(Math.abs(b.value))} F</Text>
           </View>
         ))}
         <View style={styles.divider} />
         <View style={styles.line}>
           <Text style={styles.netLabel}>Net perçu</Text>
-          <Text style={styles.netValue}>{fmt(wallet.breakdown.reduce((s, b) => s + b.value, 0))} F</Text>
+          <Text style={styles.netValue}>{fmt(net)} F</Text>
         </View>
       </View>
+
+      {/* Résumé affiliation repartages */}
+      {repostEarned > 0 && (
+        <View style={styles.card}>
+          <View style={styles.rowBetween}>
+            <Text style={styles.cardTitle}>Tes repartages</Text>
+            <Ionicons name="repeat" size={18} color="#16A34A" />
+          </View>
+          <Text style={styles.methodSub}>{repostSales} vente(s) générée(s) via tes liens d'affiliation.</Text>
+          <Text style={[styles.netValue, { color: '#16A34A', fontSize: 22, marginTop: 6 }]}>{fmt(repostEarned)} F <Text style={{ color: Afylo.textDim, fontSize: 13, fontFamily: Font.medium }}>de commissions</Text></Text>
+        </View>
+      )}
 
       {/* Historique */}
       <Text style={styles.sectionTitle}>Transactions</Text>
       <View style={styles.card}>
-        {walletTx.map((t, i) => (
-          <TxRow key={t.id} tx={t} last={i === walletTx.length - 1} />
+        {txs.map((t, i) => (
+          <TxRow key={t.id} tx={t} last={i === txs.length - 1} />
         ))}
       </View>
     </>

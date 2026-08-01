@@ -287,7 +287,7 @@ function ProUpsell({ onPress, what }: { onPress: () => void; what: string }) {
 const fmtCfa = (n: number) => n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ') + ' FCFA';
 
 function RepostsGrid() {
-  const { reposts, updateRepost, removeRepost, registerSale } = useReposts();
+  const { reposts, updateRepost, removeRepost } = useReposts();
   const [openId, setOpenId] = useState<string | null>(null);
   const [editing, setEditing] = useState<Repost | null>(null);
   const open = reposts.find((r) => r.id === openId) ?? null; // live : se met à jour avec le store
@@ -366,14 +366,9 @@ function RepostsGrid() {
                       <View style={styles.affDivider} />
                       <View style={styles.affStat}><Text style={[styles.affStatV, { color: '#16A34A' }]}>{fmtCfa(open.affiliate.earned)}</Text><Text style={styles.affStatL}>gagnés</Text></View>
                     </View>
-                    <View style={styles.affActions}>
-                      <Pressable style={styles.affShare} onPress={() => Share.share({ message: `Découvre ${open.post.product?.title ?? 'ce produit'} sur Afylo 👉 ${open.affiliate!.link}` }).catch(() => {})}>
-                        <Ionicons name="share-social" size={16} color="#fff" /><Text style={styles.affShareText}>Partager le lien</Text>
-                      </Pressable>
-                      <Pressable style={styles.affTest} onPress={() => registerSale(open.id)}>
-                        <Ionicons name="flask-outline" size={15} color={Afylo.textDim} /><Text style={styles.affTestText}>Simuler une vente</Text>
-                      </Pressable>
-                    </View>
+                    <Pressable style={styles.affShare} onPress={() => Share.share({ message: `Découvre ${open.post.product?.title ?? 'ce produit'} sur Afylo 👉 ${open.affiliate!.link}` }).catch(() => {})}>
+                      <Ionicons name="share-social" size={16} color="#fff" /><Text style={styles.affShareText}>Partager le lien</Text>
+                    </Pressable>
                   </View>
                 )}
                 <View style={{ height: 10 }} />
@@ -631,11 +626,8 @@ const styles = StyleSheet.create({
   affStatV: { color: Afylo.text, fontFamily: Font.bold, fontSize: 18 },
   affStatL: { color: Afylo.textDim, fontSize: 12, marginTop: 1 },
   affDivider: { width: 1, height: 28, backgroundColor: Afylo.border },
-  affActions: { flexDirection: 'row', gap: 10, marginTop: 12 },
-  affShare: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, height: 44, borderRadius: Radius.pill, backgroundColor: Afylo.violet },
+  affShare: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, height: 46, borderRadius: Radius.pill, backgroundColor: Afylo.violet, marginTop: 12 },
   affShareText: { color: '#fff', fontFamily: Font.semibold, fontSize: 14 },
-  affTest: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5, height: 44, paddingHorizontal: 14, borderRadius: Radius.pill, backgroundColor: Afylo.surfaceAlt },
-  affTestText: { color: Afylo.textDim, fontFamily: Font.semibold, fontSize: 13 },
 
   purchaseRow: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: Afylo.surface, borderRadius: Radius.md, borderWidth: 1, borderColor: Afylo.border, padding: 10 },
   purchaseImg: { width: 60, height: 60, borderRadius: 10, backgroundColor: Afylo.surfaceAlt },

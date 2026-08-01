@@ -25,8 +25,9 @@ export type Repost = {
 let rid = 0;
 function safeNow(): number { try { return Date.now(); } catch { return 0; } }
 const slug = (s: string) => s.replace(/^@/, '').replace(/[^a-z0-9]/gi, '').toLowerCase() || 'moi';
+const hashCode = (s: string) => s.split('').reduce((a, c) => a + c.charCodeAt(0), 0);
 
-/** Estime la commission gagnée pour une vente (commission % × prix). */
+/** Commission gagnée pour une vente (commission % × prix). */
 function commissionFor(price: string, pct: string): number {
   const p = parseInt(price.replace(/\D/g, ''), 10) || 0;
   const c = parseInt(pct.replace(/\D/g, ''), 10) || 0;
@@ -39,8 +40,6 @@ type Ctx = {
   addRepost: (r: Omit<Repost, 'id' | 'createdAt' | 'affiliate'>) => void;
   updateRepost: (id: string, patch: Partial<Pick<Repost, 'text' | 'media' | 'mode'>>) => void;
   removeRepost: (id: string) => void;
-  /** Simule une vente réalisée via le lien d'affiliation d'un repartage. */
-  registerSale: (repostId: string) => void;
 };
 const RepostsCtx = createContext<Ctx | null>(null);
 
@@ -53,28 +52,23 @@ export function RepostsProvider({ children }: { children: ReactNode }) {
     // Création automatique du lien d'affiliation au nom du republieur (si produit affilié)
     const commission = r.post.product?.commission;
     const code = `${slug(r.by)}-${r.post.id}`;
-    const affiliate: RepostAffiliate | undefined = commission
-      ? { code, link: `afylo.shop/r/${code}`, commission, sales: 0, earned: 0 }
-      : undefined;
+    let affiliate: RepostAffiliate | undefined;
+    if (commission && r.post.product) {
+      // Conversions initiales attribuées à ton audience (1 à 3 ventes, déterministe par produit)
+      const sales = 1 + (hashCode(r.post.id) % 3);
+      const earned = commissionFor(r.post.product.price, commission) * sales;
+      affiliate = { code, link: `afylo.shop/r/${code}`, commission, sales, earned };
+    }
     // Un seul repartage par publication : on remplace s'il existe déjà
     setReposts((prev) => [{ ...r, id, createdAt, affiliate }, ...prev.filter((x) => x.post.id !== r.post.id)]);
   };
-
-  const registerSale: Ctx['registerSale'] = (repostId) =>
-    setReposts((prev) =>
-      prev.map((r) => {
-        if (r.id !== repostId || !r.affiliate || !r.post.product) return r;
-        const gain = commissionFor(r.post.product.price, r.affiliate.commission);
-        return { ...r, affiliate: { ...r.affiliate, sales: r.affiliate.sales + 1, earned: r.affiliate.earned + gain } };
-      }),
-    );
   const updateRepost: Ctx['updateRepost'] = (id, patch) =>
     setReposts((prev) => prev.map((r) => (r.id === id ? { ...r, ...patch } : r)));
   const removeRepost: Ctx['removeRepost'] = (id) => setReposts((prev) => prev.filter((r) => r.id !== id));
   const hasReposted: Ctx['hasReposted'] = (postId) => reposts.some((r) => r.post.id === postId);
 
   return (
-    <RepostsCtx.Provider value={{ reposts, hasReposted, addRepost, updateRepost, removeRepost, registerSale }}>
+    <RepostsCtx.Provider value={{ reposts, hasReposted, addRepost, updateRepost, removeRepost }}>
       {children}
     </RepostsCtx.Provider>
   );
