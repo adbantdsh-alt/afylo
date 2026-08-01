@@ -19,6 +19,7 @@ import { mapFeed } from '@/lib/feed-map';
 import { useReposts } from '@/lib/reposts';
 import { useAlwaysShowTabBar } from '@/lib/tabbar';
 import { me, posts, type Post } from '@/lib/mock';
+import { badgeText, totalUnread } from '@/lib/notifs';
 import { useStories } from '@/lib/stories';
 
 const REPOSTED_COLOR = '#16A34A'; // vert vif, bien visible une fois republié
@@ -30,6 +31,8 @@ export default function Feed() {
   const showTabBar = useAlwaysShowTabBar();
   const [isPro, setIsPro] = useState(false);
   const [myHandle, setMyHandle] = useState('moi');
+  const [myAvatar, setMyAvatar] = useState(me.avatar); // ton vrai avatar (Supabase), repli sur le mock
+  const [myName, setMyName] = useState(me.name);
   const [feed, setFeed] = useState<Post[]>(posts); // mock affiché tout de suite, puis remplacé par la base
   const [composeOpen, setComposeOpen] = useState(false);
   const [composeText, setComposeText] = useState('');
@@ -37,7 +40,7 @@ export default function Feed() {
   const publishText = () => {
     const t = composeText.trim();
     if (!t) return;
-    const post: Post = { id: `txt${Date.now()}`, name: me.name, handle: `@${myHandle}`, avatar: me.avatar, time: "à l'instant", image: '', likes: '0', comments: '0', views: '0', shares: '0', caption: t, textOnly: true };
+    const post: Post = { id: `txt${Date.now()}`, name: myName, handle: `@${myHandle}`, avatar: myAvatar, time: "à l'instant", image: '', likes: '0', comments: '0', views: '0', shares: '0', caption: t, textOnly: true };
     setFeed((prev) => [post, ...prev]);
     setComposeText('');
     setComposeOpen(false);
@@ -46,7 +49,12 @@ export default function Feed() {
   // Nav bar persistante sur l'accueil (pas de masquage au scroll)
   useFocusEffect(useCallback(() => { showTabBar(); }, [showTabBar]));
   useEffect(() => {
-    getMyProfile().then((p) => { setIsPro(isProAccount(p?.account_type)); if (p?.handle) setMyHandle(p.handle); }).catch(() => {});
+    getMyProfile().then((p) => {
+      setIsPro(isProAccount(p?.account_type));
+      if (p?.handle) setMyHandle(p.handle);
+      if (p?.avatar_url) setMyAvatar(p.avatar_url);
+      if (p?.display_name) setMyName(p.display_name);
+    }).catch(() => {});
     // Vrai réseau : on lit le feed depuis Supabase, repli sur le mock si vide/erreur
     listFeed().then((rows) => { if (rows && rows.length) setFeed(mapFeed(rows)); }).catch(() => {});
   }, []);
@@ -61,7 +69,14 @@ export default function Feed() {
           <View style={{ flexDirection: 'row', gap: 10 }}>
             <IconButton name="create-outline" onPress={() => { if (gate('publier')) setComposeOpen(true); }} />
             <IconButton name="search" onPress={() => router.push('/search')} />
-            <IconButton name="notifications-outline" onPress={() => router.push('/notifications')} />
+            <View>
+              <IconButton name="notifications-outline" onPress={() => router.push('/notifications')} />
+              {totalUnread > 0 && (
+                <View style={styles.bellBadge} pointerEvents="none">
+                  <Text style={styles.bellBadgeText}>{badgeText(totalUnread)}</Text>
+                </View>
+              )}
+            </View>
           </View>
         </View>
       </SafeAreaView>
@@ -77,7 +92,7 @@ export default function Feed() {
             style={styles.liveItem}
             onPress={() => (myStory ? router.push({ pathname: '/story/[uid]', params: { uid: myStory.id } }) : router.push('/creer'))}>
             <View>
-              <Avatar uri={myStory?.avatar ?? me.avatar} size={64} ring={!!myStory} />
+              <Avatar uri={myStory?.avatar ?? myAvatar} size={64} ring={!!myStory} />
               {!myStory && (
                 <View style={styles.plusBadge}>
                   <Ionicons name="add" size={14} color="#fff" />
@@ -122,7 +137,7 @@ export default function Feed() {
             </Pressable>
           </View>
           <View style={styles.composeBody}>
-            <Avatar uri={me.avatar} size={44} />
+            <Avatar uri={myAvatar} size={44} />
             <TextInput
               style={styles.composeInput}
               value={composeText}
@@ -374,6 +389,8 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
   },
   brand: { color: Afryko.text, fontFamily: Font.bold, fontSize: 24, letterSpacing: -0.6 },
+  bellBadge: { position: 'absolute', top: -4, right: -4, minWidth: 18, height: 18, paddingHorizontal: 4, borderRadius: 9, backgroundColor: Afryko.live, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: Afryko.bg },
+  bellBadgeText: { color: '#fff', fontFamily: Font.bold, fontSize: 10 },
 
   livesRow: { paddingHorizontal: 16, paddingVertical: 12, gap: 16 },
   liveItem: { alignItems: 'center', width: 72 },
