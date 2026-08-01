@@ -20,3 +20,14 @@ body,
 #root {
   font-family: var(--font-display);
 }
+
+/* Pas de cadre orange/bleu au focus des champs (on gère nous-mêmes la bordure) */
+input:focus,
+textarea:focus,
+select:focus,
+[contenteditable]:focus,
+div[tabindex]:focus,
+*:focus-visible {
+  outline: none !important;
+  box-shadow: none !important;
+}

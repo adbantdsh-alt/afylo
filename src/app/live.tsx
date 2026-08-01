@@ -14,10 +14,14 @@ import { Afylo, Font, Radius } from '@/constants/brand';
 import { affiliationProducts, avatar, myProducts, video } from '@/lib/mock';
 
 type SellProduct = { id: string; title: string; price: string; image: string; tag: string };
-type Comment = { id: string; name: string; avatar: string; text: string; gift?: boolean; system?: 'join' | 'like' | 'share' | 'guest' };
+type Comment = { id: string; name: string; avatar: string; text: string; gift?: boolean; system?: 'join' | 'like' | 'share' | 'guest' | 'sale'; product?: { title: string; price: string } };
 type GuestMode = 'audio' | 'video';
 type Guest = { id: string; name: string; avatar: string; mode: GuestMode; local?: boolean };
 type Heart = { id: number; x: number; y: number; color: string; size: number };
+type Sale = { id: string; buyer: string; avatar: string; title: string; price: string };
+
+const priceNum = (s: string) => parseInt(s.replace(/\D/g, ''), 10) || 0;
+const fmtF = (n: number) => n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ') + ' FCFA';
 
 // Produits disponibles pour le vendeur : les siens + ceux en affiliation
 const AVAILABLE: SellProduct[] = [
@@ -29,13 +33,13 @@ const CHATTERS = ['Awa', 'Modou', 'Sokhna', 'Cheikh', 'Mariama', 'Ibou', 'Aïda'
 const MSGS = ['Trop belle 😍', 'Ça coûte combien ?', 'Livraison à Thiès ?', '🔥🔥🔥', "J'achète !", 'Bravo 👏', "Tu as d'autres couleurs ?", 'Première fois ici 🙌', 'Salut de Dakar', 'Le lien du produit ?', 'Magnifique'];
 const GIFTS = [500, 1000, 2000, 5000];
 const HEART_COLORS = ['#E11D48', '#FF4D8D', '#FF7AB8', '#B8791F', '#6E80FF', '#FF5A5F', '#FF2D55'];
-const SYS: Record<'join' | 'like' | 'share' | 'guest', { icon: keyof typeof Ionicons.glyphMap; color: string }> = {
+const SYS: Record<'join' | 'like' | 'share' | 'guest' | 'sale', { icon: keyof typeof Ionicons.glyphMap; color: string }> = {
   join: { icon: 'enter-outline', color: '#7EC8FF' },
   like: { icon: 'heart', color: Afylo.live },
   share: { icon: 'arrow-redo', color: '#fff' },
   guest: { icon: 'mic', color: Afylo.violet2 },
+  sale: { icon: 'bag-check', color: '#37D67A' },
 };
-let cid = 0;
 
 export default function Live() {
   const router = useRouter();
@@ -60,6 +64,10 @@ export default function Live() {
   const [followed, setFollowed] = useState(false);
   const [payOpen, setPayOpen] = useState(false);
   const [giftOpen, setGiftOpen] = useState(false);
+  const [sales, setSales] = useState<Sale[]>([]); // ventes reçues pendant le live (vendeur)
+  const [salesOpen, setSalesOpen] = useState(false);
+  const [payProducts, setPayProducts] = useState<{ title: string; price: string }[]>([]); // panier ouvert
+  const [linkPicker, setLinkPicker] = useState<string | null>(null); // envoie un lien produit à ce nom
   const [pinned, setPinned] = useState<Comment | null>(null);
   const [blocked, setBlocked] = useState<string[]>([]);
   const [mod, setMod] = useState<Comment | null>(null);
@@ -70,10 +78,15 @@ export default function Live() {
   const [requested, setRequested] = useState<'idle' | 'pending' | 'accepted' | 'live'>('idle'); // côté spectateur
   const [chooser, setChooser] = useState(false); // choix audio/vidéo après acceptation
   const lastTap = useRef(0);
+  const seq = useRef(0); // compteur d'ids (persiste avec l'état, pas de collision au Fast Refresh)
 
   const showToast = (m: string) => { setToast(m); setTimeout(() => setToast((cur) => (cur === m ? null : cur)), 1700); };
-  const pushEvent = (nm: string, av: string, system: NonNullable<Comment['system']>, txt: string) =>
-    setComments((prev) => [...prev.slice(-30), { id: `e${cid++}`, name: nm, avatar: av, text: txt, system }]);
+  const nid = (p: string) => `${p}${seq.current++}`; // id calculé UNE fois, hors updater
+  const addComment = (c: Omit<Comment, 'id'>) => { const id = nid('c'); setComments((prev) => [...prev.slice(-50), { id, ...c }]); };
+  const pushEvent = (nm: string, av: string, system: NonNullable<Comment['system']>, txt: string) => {
+    const id = nid('e');
+    setComments((prev) => [...prev.slice(-50), { id, name: nm, avatar: av, text: txt, system }]);
+  };
 
   const viewerPlayer = useVideoPlayer(video(3), (p) => { p.loop = true; p.muted = true; if (!isHost) p.play(); });
 
@@ -81,32 +94,30 @@ export default function Live() {
 
   // ---- LIKES spectaculaires ----
   const spawnHearts = (x: number, y: number, count = 1) => {
-    setHearts((h) => [
-      ...h.slice(-44),
-      ...Array.from({ length: count }, () => ({
-        id: cid++,
-        x: x + (Math.random() * 46 - 23),
-        y: y + (Math.random() * 20 - 10),
-        color: HEART_COLORS[Math.floor(Math.random() * HEART_COLORS.length)],
-        size: 20 + Math.random() * 26,
-      })),
-    ]);
+    const additions = Array.from({ length: count }, () => ({
+      id: seq.current++,
+      x: x + (Math.random() * 46 - 23),
+      y: y + (Math.random() * 20 - 10),
+      color: HEART_COLORS[Math.floor(Math.random() * HEART_COLORS.length)],
+      size: 20 + Math.random() * 26,
+    }));
+    setHearts((h) => [...h.slice(-44), ...additions]);
   };
   const bigPop = (x: number, y: number) => {
-    const id = cid++;
+    const id = seq.current++;
     setPops((p) => [...p, { id, x, y }]);
     setTimeout(() => setPops((p) => p.filter((z) => z.id !== id)), 700);
   };
   const sendHeart = () => spawnHearts(width - 38, height - 130, 2); // bouton cœur (bas droite)
 
   const onGiftSent = (amount: number) => {
-    setComments((prev) => [...prev.slice(-30), { id: `g${cid++}`, name: 'Toi', avatar: avatar(12), text: `a offert ${amount.toLocaleString('fr-FR')} FCFA 🎁`, gift: true }]);
+    addComment({ name: 'Toi', avatar: avatar(12), text: `a offert ${amount.toLocaleString('fr-FR')} FCFA 🎁`, gift: true });
     spawnHearts(width / 2, height / 2, 8);
   };
   const share = async () => { try { await Share.share({ message: `${name} est en direct sur Afylo — rejoins !` }); } catch {} };
   const send = () => {
     if (!text.trim()) return;
-    setComments((prev) => [...prev.slice(-30), { id: `c${cid++}`, name: 'Toi', avatar: avatar(12), text: text.trim() }]);
+    addComment({ name: 'Toi', avatar: avatar(12), text: text.trim() });
     setText('');
   };
 
@@ -116,6 +127,17 @@ export default function Live() {
   const pinComment = (c: Comment) => { setPinned(c); setMod(null); };
   const replyTo = (n: string) => { setText((t) => `@${n} ${t}`); setMod(null); };
   const reportComment = () => { setMod(null); showToast('Merci, commentaire signalé'); };
+
+  // Achat : panier complet (bouton) ou un seul produit (lien envoyé dans le chat)
+  const openBuyAll = () => { setPayProducts(sell.map((p) => ({ title: p.title, price: p.price }))); setPayOpen(true); };
+  const openBuyOne = (prod: { title: string; price: string }) => { setPayProducts([prod]); setPayOpen(true); };
+
+  // Vendeur : répondre en envoyant un lien de vente d'un produit
+  const sendProductLink = (p: SellProduct) => {
+    const target = linkPicker && linkPicker !== 'Toi' ? `@${linkPicker} ` : '';
+    addComment({ name: 'Toi', avatar: avatar(12), text: `${target}voici le lien 👇`, product: { title: p.title, price: p.price } });
+    setLinkPicker(null);
+  };
 
   // Aller sur le profil du live
   const openHostProfile = () => router.push({ pathname: '/creator/[id]', params: { id: name, name, avatar: hostAvatar } });
@@ -168,23 +190,31 @@ export default function Live() {
     if (phase !== 'live') return;
     const t = setInterval(() => {
       const nm = CHATTERS[Math.floor((Date.now() / 1000) % CHATTERS.length)];
-      const av = avatar(9 + (cid % 40));
+      const av = avatar(9 + (seq.current % 40));
       if (!blocked.includes(nm)) {
         const roll = Math.round(Date.now() / 1000) % 6;
-        if (roll === 0) setComments((prev) => [...prev.slice(-30), { id: `c${cid++}`, name: nm, avatar: av, text: `a offert ${GIFTS[cid % GIFTS.length].toLocaleString('fr-FR')} FCFA 🎁`, gift: true }]);
+        if (roll === 0) addComment({ name: nm, avatar: av, text: `a offert ${GIFTS[seq.current % GIFTS.length].toLocaleString('fr-FR')} FCFA 🎁`, gift: true });
         else if (roll === 1) pushEvent(nm, av, 'join', 'a rejoint le live');
         else if (roll === 2) { pushEvent(nm, av, 'like', 'a aimé'); spawnHearts(width - 38, height - 130, 1); }
         else if (roll === 3) pushEvent(nm, av, 'share', 'a partagé');
-        else setComments((prev) => [...prev.slice(-30), { id: `c${cid++}`, name: nm, avatar: av, text: MSGS[cid % MSGS.length] }]);
+        else addComment({ name: nm, avatar: av, text: MSGS[seq.current % MSGS.length] });
       }
       setViewers((v) => v + (Math.round(Date.now() / 1000) % 3) - 1);
       if (isHost && Math.round(Date.now() / 1000) % 7 === 0) {
-        setRequests((prev) => (prev.length >= 3 ? prev : [...prev, { id: `r${cid++}`, name: nm, avatar: av, mode: 'audio' }]));
+        const rid = nid('r');
+        setRequests((prev) => (prev.length >= 3 ? prev : [...prev, { id: rid, name: nm, avatar: av, mode: 'audio' }]));
+      }
+      // Ventes reçues en direct (uniquement si le vendeur a mis des produits)
+      if (isHost && sell.length > 0 && Math.round(Date.now() / 1000) % 5 === 0) {
+        const prod = sell[seq.current % sell.length];
+        const sid = nid('s');
+        setSales((prev) => [{ id: sid, buyer: nm, avatar: av, title: prod.title, price: prod.price }, ...prev].slice(0, 60));
+        pushEvent(nm, av, 'sale', `a acheté ${prod.title}`);
       }
     }, 2200);
     return () => clearInterval(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [phase, blocked, isHost, width, height]);
+  }, [phase, blocked, isHost, sell, width, height]);
 
   // ---------- VUE VENDEUR : préparation du live ----------
   if (isHost && phase === 'setup') {
@@ -207,8 +237,11 @@ export default function Live() {
           </View>
           <View style={{ flex: 1 }} />
           <View style={styles.setupPanel}>
-            <Text style={styles.panelTitle}>Que veux-tu vendre en live ?</Text>
-            <Text style={styles.panelSub}>Sélectionne tes produits (ma boutique + affiliation). {sell.length} sélectionné(s).</Text>
+            <View style={styles.panelHead}>
+              <Text style={styles.panelTitle}>Produits à vendre</Text>
+              <Text style={styles.optTag}>Optionnel</Text>
+            </View>
+            <Text style={styles.panelSub}>Tu peux lancer ton live sans produit. {sell.length > 0 ? `${sell.length} sélectionné(s).` : 'Ajoute-en quand tu veux pendant le live.'}</Text>
             <ScrollView style={{ maxHeight: 240 }} showsVerticalScrollIndicator={false}>
               {AVAILABLE.map((p) => {
                 const on = !!sell.find((x) => x.id === p.id);
@@ -261,6 +294,11 @@ export default function Live() {
           <View style={styles.viewersPill}><Ionicons name="eye" size={13} color="#fff" /><Text style={styles.viewersText}>{Math.max(1, viewers)}</Text></View>
           <View style={{ flex: 1 }} />
           {isHost && (
+            <Pressable onPress={() => setFacing((f) => (f === 'front' ? 'back' : 'front'))} style={styles.close}>
+              <Ionicons name="camera-reverse-outline" size={20} color="#fff" />
+            </Pressable>
+          )}
+          {isHost && (
             <Pressable onPress={() => setRequestsOpen(true)} style={styles.close}>
               <Ionicons name="people" size={19} color="#fff" />
               {requests.length > 0 && <View style={styles.reqBadge}><Text style={styles.reqBadgeText}>{requests.length}</Text></View>}
@@ -288,9 +326,13 @@ export default function Live() {
 
         <View style={{ flex: 1 }} />
 
-        {/* Commentaires — appui long pour agir */}
-        <View style={styles.commentsWrap} pointerEvents="box-none">
-          {comments.slice(-7).map((c) =>
+        {/* Commentaires — scrollables, appui long pour agir */}
+        <ScrollView
+          style={styles.commentsScroll}
+          contentContainerStyle={styles.commentsContent}
+          showsVerticalScrollIndicator={false}
+          pointerEvents="box-none">
+          {comments.map((c) =>
             c.system ? (
               <View key={c.id} style={styles.sysRow}>
                 <Ionicons name={SYS[c.system].icon} size={13} color={SYS[c.system].color} />
@@ -300,33 +342,44 @@ export default function Live() {
               <Pressable key={c.id} onLongPress={() => c.name !== 'Toi' && setMod(c)} delayLongPress={280} style={styles.comment}>
                 <Avatar uri={c.avatar} size={26} />
                 <View style={[styles.commentBubble, c.gift && styles.giftBubble]}>
-                  <Text style={[styles.commentName, c.gift && { color: '#fff' }]}>{c.name}</Text>
-                  <Text style={[styles.commentText, c.gift && styles.giftText]}>{c.text}</Text>
+                  <Text style={[styles.commentText, c.gift && styles.giftText]}>
+                    <Text style={[styles.commentName, c.gift && { color: '#fff' }]}>{c.name}  </Text>
+                    {c.text}
+                  </Text>
+                  {c.product && (
+                    <Pressable onPress={() => openBuyOne(c.product!)} style={styles.linkChip}>
+                      <Ionicons name="bag-handle" size={13} color="#fff" />
+                      <Text style={styles.linkChipTitle} numberOfLines={1}>{c.product.title}</Text>
+                      <Text style={styles.linkChipPrice}>{c.product.price}</Text>
+                      <View style={styles.linkChipCta}><Text style={styles.linkChipCtaText}>Acheter</Text></View>
+                    </Pressable>
+                  )}
                 </View>
               </Pressable>
             ),
           )}
-        </View>
+        </ScrollView>
 
         {/* Barre du bas */}
         <View style={styles.bottom}>
-          {!isHost ? (
-            <View style={styles.inputBar}>
-              <TextInput style={styles.input} value={text} onChangeText={setText} placeholder="Ajoute un commentaire…" placeholderTextColor="#ffffff99" onSubmitEditing={send} returnKeyType="send" />
-            </View>
-          ) : (
-            <Pressable onPress={() => setFacing((f) => (f === 'front' ? 'back' : 'front'))} style={styles.circleBtn}>
-              <Ionicons name="camera-reverse-outline" size={24} color="#fff" />
-            </Pressable>
-          )}
+          <View style={styles.inputBar}>
+            <TextInput
+              style={styles.input}
+              value={text}
+              onChangeText={setText}
+              placeholder={isHost ? 'Réponds à ta communauté…' : 'Ajoute un commentaire…'}
+              placeholderTextColor="#ffffff99"
+              onSubmitEditing={send}
+              returnKeyType="send"
+              blurOnSubmit={false}
+            />
+          </View>
 
-          {isHost && (
+          {isHost ? (
             <Pressable onPress={() => setProductPicker(true)} style={styles.circleBtn}>
               <Ionicons name="pricetags" size={22} color="#fff" />
             </Pressable>
-          )}
-
-          {!isHost && (
+          ) : (
             <Pressable
               onPress={requested === 'live' ? leaveStage : requestJoin}
               style={[styles.circleBtn, requested !== 'idle' && { backgroundColor: Afylo.violet }]}>
@@ -338,10 +391,17 @@ export default function Live() {
             </Pressable>
           )}
 
-          <Pressable onPress={() => setPayOpen(true)} style={styles.sellBtn}>
-            <Ionicons name="bag-handle" size={18} color="#fff" />
-            <Text style={styles.sellText}>{isHost ? `Vente (${sell.length})` : `Acheter (${sell.length})`}</Text>
-          </Pressable>
+          {isHost ? (
+            <Pressable onPress={() => setSalesOpen(true)} style={styles.sellBtn}>
+              <Ionicons name="cart" size={18} color="#fff" />
+              <Text style={styles.sellText}>Ventes ({sales.length})</Text>
+            </Pressable>
+          ) : (
+            <Pressable onPress={openBuyAll} style={styles.sellBtn}>
+              <Ionicons name="bag-handle" size={18} color="#fff" />
+              <Text style={styles.sellText}>Acheter ({sell.length})</Text>
+            </Pressable>
+          )}
 
           {!isHost && (
             <Pressable onPress={() => setGiftOpen(true)} style={styles.circleBtn}><Ionicons name="gift" size={24} color={Afylo.gold} /></Pressable>
@@ -450,6 +510,29 @@ export default function Live() {
         </Pressable>
       </Modal>
 
+      {/* Choisir un produit à envoyer comme lien de vente dans le chat (vendeur) */}
+      <Modal visible={!!linkPicker} transparent animationType="slide" onRequestClose={() => setLinkPicker(null)}>
+        <Pressable style={styles.mOverlay} onPress={() => setLinkPicker(null)}>
+          <Pressable style={[styles.mSheet, { maxHeight: height * 0.6 }]} onPress={(e) => e.stopPropagation?.()}>
+            <View style={styles.mHandle} />
+            <Text style={styles.mTitle}>Envoyer un lien produit{linkPicker && linkPicker !== 'Toi' ? ` à ${linkPicker}` : ''}</Text>
+            <Text style={styles.linkHint}>Le produit s'affiche dans le chat avec un bouton « Acheter ».</Text>
+            <ScrollView style={{ maxHeight: height * 0.6 - 130 }} showsVerticalScrollIndicator={false}>
+              {(sell.length > 0 ? sell : AVAILABLE).map((p) => (
+                <Pressable key={p.id} onPress={() => sendProductLink(p)} style={styles.pRow}>
+                  <Image source={{ uri: p.image }} style={styles.pImg} contentFit="cover" />
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.pName} numberOfLines={1}>{p.title}</Text>
+                    <Text style={styles.pMeta}>{p.price} · {p.tag}</Text>
+                  </View>
+                  <Ionicons name="send" size={20} color={Afylo.violet2} />
+                </Pressable>
+              ))}
+            </ScrollView>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
       {/* Menu commentaire (appui long) — hôte modère, spectateur répond/signale */}
       <Modal visible={!!mod} transparent animationType="fade" onRequestClose={() => setMod(null)}>
         <Pressable style={styles.modOverlay} onPress={() => setMod(null)}>
@@ -460,6 +543,7 @@ export default function Live() {
               <>
                 <Pressable style={styles.modItem} onPress={() => mod && pinComment(mod)}><Ionicons name="pin-outline" size={20} color={Afylo.text} /><Text style={styles.modItemText}>Épingler</Text></Pressable>
                 <Pressable style={styles.modItem} onPress={() => mod && replyTo(mod.name)}><Ionicons name="return-up-back-outline" size={20} color={Afylo.text} /><Text style={styles.modItemText}>Répondre</Text></Pressable>
+                <Pressable style={styles.modItem} onPress={() => { const n = mod?.name ?? null; setMod(null); setLinkPicker(n); }}><Ionicons name="pricetag-outline" size={20} color={Afylo.violet} /><Text style={[styles.modItemText, { color: Afylo.violet }]}>Répondre avec un lien produit</Text></Pressable>
                 <Pressable style={styles.modItem} onPress={() => mod && deleteComment(mod.id)}><Ionicons name="trash-outline" size={20} color={Afylo.live} /><Text style={[styles.modItemText, { color: Afylo.live }]}>Supprimer</Text></Pressable>
                 <Pressable style={styles.modItem} onPress={() => mod && blockUser(mod.name)}><Ionicons name="ban-outline" size={20} color={Afylo.live} /><Text style={[styles.modItemText, { color: Afylo.live }]}>Bloquer {mod?.name}</Text></Pressable>
               </>
@@ -475,7 +559,50 @@ export default function Live() {
         </Pressable>
       </Modal>
 
-      <PaymentSheet visible={payOpen} items={sell.map((p) => ({ title: p.title, price: p.price }))} onClose={() => setPayOpen(false)} />
+      {/* Ventes reçues en direct (vendeur) */}
+      <Modal visible={salesOpen} transparent animationType="slide" onRequestClose={() => setSalesOpen(false)}>
+        <Pressable style={styles.mOverlay} onPress={() => setSalesOpen(false)}>
+          <Pressable style={[styles.mSheet, { maxHeight: height * 0.52 }]} onPress={(e) => e.stopPropagation?.()}>
+            <View style={styles.mHandle} />
+            <Text style={styles.mTitle}>Ventes en direct</Text>
+
+            <View style={styles.salesStats}>
+              <View style={styles.salesStat}>
+                <Text style={styles.salesStatValue}>{sales.length}</Text>
+                <Text style={styles.salesStatLabel}>ventes</Text>
+              </View>
+              <View style={styles.salesDivider} />
+              <View style={styles.salesStat}>
+                <Text style={[styles.salesStatValue, { color: '#37D67A' }]}>{fmtF(sales.reduce((s, x) => s + priceNum(x.price), 0))}</Text>
+                <Text style={styles.salesStatLabel}>encaissé</Text>
+              </View>
+            </View>
+
+            {sales.length === 0 ? (
+              <View style={styles.salesEmpty}>
+                <Ionicons name="cart-outline" size={40} color="#ffffff55" />
+                <Text style={styles.salesEmptyText}>Aucune vente pour l'instant.</Text>
+                <Text style={styles.salesEmptySub}>{sell.length === 0 ? 'Ajoute des produits avec l’icône 🏷️ pour vendre en live.' : 'Anime ton live, les ventes s’afficheront ici en temps réel.'}</Text>
+              </View>
+            ) : (
+              <ScrollView style={{ maxHeight: height * 0.52 - 190 }} showsVerticalScrollIndicator={false}>
+                {sales.map((s) => (
+                  <View key={s.id} style={styles.saleRow}>
+                    <Avatar uri={s.avatar} size={38} />
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.saleTitle} numberOfLines={1}>{s.title}</Text>
+                      <Text style={styles.saleBuyer}>{s.buyer}</Text>
+                    </View>
+                    <Text style={styles.salePrice}>{s.price}</Text>
+                  </View>
+                ))}
+              </ScrollView>
+            )}
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      <PaymentSheet visible={payOpen} items={payProducts} onClose={() => setPayOpen(false)} />
       <GiftSheet visible={giftOpen} host={name} onClose={() => setGiftOpen(false)} onSent={onGiftSent} />
     </View>
   );
@@ -555,7 +682,9 @@ const styles = StyleSheet.create({
   setupHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 12, paddingTop: 8 },
   setupTitle: { color: '#fff', fontFamily: Font.bold, fontSize: 17 },
   setupPanel: { backgroundColor: '#15151C', margin: 12, borderRadius: 20, padding: 16 },
+  panelHead: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   panelTitle: { color: '#fff', fontFamily: Font.bold, fontSize: 17 },
+  optTag: { color: '#ffffffcc', fontFamily: Font.semibold, fontSize: 11, backgroundColor: '#ffffff1f', paddingHorizontal: 8, paddingVertical: 3, borderRadius: Radius.pill, overflow: 'hidden' },
   panelSub: { color: '#ffffffaa', fontSize: 13, marginTop: 4, marginBottom: 10 },
   pRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 8, paddingHorizontal: 8, borderRadius: 12 },
   pRowOn: { backgroundColor: '#ffffff10' },
@@ -589,19 +718,26 @@ const styles = StyleSheet.create({
   guestNameBar: { position: 'absolute', left: 0, right: 0, bottom: 0, flexDirection: 'row', alignItems: 'center', gap: 3, paddingHorizontal: 5, paddingVertical: 3, backgroundColor: '#00000088' },
   guestName: { color: '#fff', fontFamily: Font.semibold, fontSize: 10, flex: 1 },
 
-  commentsWrap: { paddingHorizontal: 12, gap: 8, marginBottom: 8, maxWidth: '82%' },
-  comment: { flexDirection: 'row', alignItems: 'flex-end', gap: 8 },
-  commentBubble: { backgroundColor: '#00000055', borderRadius: 16, paddingHorizontal: 12, paddingVertical: 6 },
-  commentName: { color: '#ffffffcc', fontFamily: Font.semibold, fontSize: 11 },
-  commentText: { color: '#fff', fontSize: 14 },
+  commentsScroll: { maxHeight: 260, marginBottom: 8 },
+  commentsContent: { paddingHorizontal: 12, gap: 8, paddingTop: 20 },
+  comment: { flexDirection: 'row', alignItems: 'flex-end', gap: 8, maxWidth: '86%' },
+  commentBubble: { backgroundColor: '#00000066', borderRadius: 16, paddingHorizontal: 12, paddingVertical: 7 },
+  commentName: { color: '#ffffffcc', fontFamily: Font.semibold, fontSize: 13 },
+  commentText: { color: '#fff', fontSize: 14, lineHeight: 19 },
+  linkChip: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 7, backgroundColor: '#ffffff1f', borderWidth: 1, borderColor: '#ffffff33', borderRadius: Radius.pill, paddingLeft: 10, paddingRight: 5, paddingVertical: 5 },
+  linkChipTitle: { color: '#fff', fontFamily: Font.semibold, fontSize: 12, maxWidth: 120 },
+  linkChipPrice: { color: '#FFD98A', fontFamily: Font.bold, fontSize: 12 },
+  linkChipCta: { backgroundColor: Afylo.violet, borderRadius: Radius.pill, paddingHorizontal: 12, paddingVertical: 5 },
+  linkChipCtaText: { color: '#fff', fontFamily: Font.semibold, fontSize: 12 },
+  linkHint: { color: '#ffffff99', fontSize: 13, marginBottom: 10, marginTop: -4 },
   giftBubble: { backgroundColor: '#B8791Fee', borderWidth: 1, borderColor: '#FFD98A' },
   giftText: { color: '#fff', fontFamily: Font.bold },
   sysRow: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingLeft: 4 },
   sysText: { color: '#ffffffcc', fontSize: 13 },
 
   bottom: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 12, paddingBottom: 8 },
-  inputBar: { flex: 1, backgroundColor: '#00000055', borderRadius: Radius.pill, borderWidth: 1, borderColor: '#ffffff44', paddingHorizontal: 16, height: 44, justifyContent: 'center' },
-  input: { color: '#fff', fontSize: 15 },
+  inputBar: { flex: 1, flexDirection: 'row', alignItems: 'center', backgroundColor: '#00000066', borderRadius: Radius.pill, borderWidth: 1, borderColor: '#ffffff33', paddingHorizontal: 16, height: 44, overflow: 'hidden' },
+  input: { flex: 1, color: '#fff', fontSize: 15, height: '100%' },
   circleBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#00000055', alignItems: 'center', justifyContent: 'center' },
   sellBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: Afylo.violet, paddingHorizontal: 16, height: 44, borderRadius: Radius.pill, marginLeft: 'auto' },
   sellText: { color: '#fff', fontFamily: Font.semibold, fontSize: 14 },
@@ -615,6 +751,18 @@ const styles = StyleSheet.create({
   mHandle: { width: 40, height: 4, borderRadius: 2, backgroundColor: '#ffffff33', alignSelf: 'center', marginBottom: 12 },
   mTitle: { color: '#fff', fontFamily: Font.bold, fontSize: 17, marginBottom: 8 },
   emptyReq: { color: '#ffffff88', fontSize: 14, paddingVertical: 16, textAlign: 'center' },
+  salesStats: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#ffffff10', borderRadius: 16, paddingVertical: 16, marginBottom: 10 },
+  salesStat: { flex: 1, alignItems: 'center' },
+  salesStatValue: { color: '#fff', fontFamily: Font.bold, fontSize: 22 },
+  salesStatLabel: { color: '#ffffff99', fontSize: 12, marginTop: 2 },
+  salesDivider: { width: 1, height: 34, backgroundColor: '#ffffff1f' },
+  salesEmpty: { alignItems: 'center', paddingVertical: 30, gap: 8 },
+  salesEmptyText: { color: '#fff', fontFamily: Font.semibold, fontSize: 15 },
+  salesEmptySub: { color: '#ffffff88', fontSize: 13, textAlign: 'center', paddingHorizontal: 20 },
+  saleRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 9, borderBottomWidth: 1, borderBottomColor: '#ffffff12' },
+  saleTitle: { color: '#fff', fontFamily: Font.semibold, fontSize: 14 },
+  saleBuyer: { color: '#ffffff99', fontSize: 12, marginTop: 1 },
+  salePrice: { color: '#37D67A', fontFamily: Font.bold, fontSize: 14 },
   reqRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 8 },
   reqName: { color: '#fff', fontFamily: Font.semibold, fontSize: 14 },
   reqSub: { color: '#ffffff99', fontSize: 12, marginTop: 1 },
