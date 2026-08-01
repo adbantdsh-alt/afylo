@@ -373,13 +373,14 @@ function PaymentProfilePanel({ onClose }: { onClose: () => void }) {
   const { profile, setProfile } = useCheckoutProfile();
   const [name, setName] = useState(profile.name);
   const [phone, setPhone] = useState(profile.phone);
+  const [address, setAddress] = useState(profile.address);
   const [card, setCard] = useState(profile.card);
   const [pref, setPref] = useState<PayMethod>(profile.preferred);
   const [msg, setMsg] = useState<string | null>(null);
 
   const labelToId = (l: string): PayMethod => (Object.keys(OP_LABELS) as PayMethod[]).find((k) => OP_LABELS[k] === l) ?? 'wave';
   const save = () => {
-    setProfile({ name: name.trim(), phone: phone.trim(), card: card.replace(/\s/g, ''), preferred: pref });
+    setProfile({ name: name.trim(), phone: phone.trim(), address: address.trim(), card: card.replace(/\s/g, ''), preferred: pref });
     setMsg('Profil de paiement enregistré — achat en 1 clic activé.');
     setTimeout(onClose, 900);
   };
@@ -390,6 +391,7 @@ function PaymentProfilePanel({ onClose }: { onClose: () => void }) {
       <View style={{ height: 14 }} />
       <Field label="Nom complet" value={name} onChangeText={setName} placeholder="Ton nom complet" autoCapitalize="words" />
       <Field label="Numéro mobile money" value={phone} onChangeText={setPhone} keyboardType="phone-pad" placeholder="77 123 45 67" />
+      <Field label="Adresse de livraison" value={address} onChangeText={setAddress} placeholder="Quartier, rue, ville, point de repère" autoCapitalize="sentences" />
       <Field label="Carte bancaire (optionnel)" value={card} onChangeText={setCard} keyboardType="number-pad" placeholder="1234 5678 9012 3456" />
       {card.replace(/\D/g, '').length >= 4 && <Text style={styles.panelNote}>Enregistrée : {maskCard(card)} · sécurisée par XaalisPay.</Text>}
       <View style={{ height: 6 }} />

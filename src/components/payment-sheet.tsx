@@ -38,13 +38,14 @@ export function PaymentSheet({
   const [method, setMethod] = useState<string>(profile.preferred);
   const [phone, setPhone] = useState(profile.phone);
   const [name, setName] = useState(profile.name);
+  const [address, setAddress] = useState(profile.address);
   const [remember, setRemember] = useState(true);
   const [status, setStatus] = useState<Status>('form');
   const [chosen, setChosen] = useState<number | null>(items.length > 1 ? null : 0);
 
   // Réaligne sur le profil enregistré à chaque ouverture
   useEffect(() => {
-    if (visible) { setName(profile.name); setPhone(profile.phone); setMethod(profile.preferred); setStatus('form'); setChosen(items.length > 1 ? null : 0); }
+    if (visible) { setName(profile.name); setPhone(profile.phone); setAddress(profile.address); setMethod(profile.preferred); setStatus('form'); setChosen(items.length > 1 ? null : 0); }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [visible]);
 
@@ -60,7 +61,7 @@ export function PaymentSheet({
   const close = () => { reset(); onClose(); };
   const pay = () => {
     if (!canPay) return;
-    if (remember && !isComplete) setProfile({ name: name.trim(), phone: phone.trim(), preferred: method as PayMethod });
+    if (remember) setProfile({ name: name.trim(), phone: phone.trim(), address: address.trim(), preferred: method as PayMethod });
     setStatus('processing');
     // Simulation : l'intégration réelle passera par l'API XaalisPay (redirection opérateur / carte)
     setTimeout(() => setStatus('done'), 1600);
@@ -159,6 +160,7 @@ export function PaymentSheet({
                 <>
                   <TextInput style={styles.input} value={phone} onChangeText={setPhone} placeholder="Numéro mobile money (ex : 77 123 45 67)" placeholderTextColor={Afryko.textFaint} keyboardType="phone-pad" />
                   <TextInput style={styles.input} value={name} onChangeText={setName} placeholder="Nom complet" placeholderTextColor={Afryko.textFaint} />
+                  <TextInput style={styles.input} value={address} onChangeText={setAddress} placeholder="Adresse de livraison (quartier, rue, ville)" placeholderTextColor={Afryko.textFaint} />
                   <View style={styles.rememberRow}>
                     <View style={{ flex: 1 }}>
                       <Text style={styles.rememberText}>Enregistrer pour la prochaine fois</Text>

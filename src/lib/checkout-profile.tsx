@@ -4,11 +4,12 @@ export type PayMethod = 'wave' | 'om' | 'card';
 export type CheckoutProfile = {
   name: string;
   phone: string;
+  address: string; // adresse de livraison (produits physiques)
   card: string; // n° de carte (pour paiement carte via XaalisPay) — stocké localement, affiché masqué
   preferred: PayMethod;
 };
 
-const EMPTY: CheckoutProfile = { name: '', phone: '', card: '', preferred: 'wave' };
+const EMPTY: CheckoutProfile = { name: '', phone: '', address: '', card: '', preferred: 'wave' };
 
 type Ctx = {
   profile: CheckoutProfile;

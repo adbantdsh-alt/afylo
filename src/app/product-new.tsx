@@ -24,6 +24,7 @@ export default function ProductNew() {
   const [kind, setKind] = useState<'physical' | 'digital'>('physical');
   const [images, setImages] = useState<string[]>([]);
   const [file, setFile] = useState<{ uri: string; name: string } | null>(null);
+  const [hadFile, setHadFile] = useState(false); // le produit digital a déjà un fichier (édition)
   const [title, setTitle] = useState('');
   const [price, setPrice] = useState('');
   const [promo, setPromo] = useState('');
@@ -48,6 +49,8 @@ export default function ProductNew() {
         setPromo(p.promo_cfa ? String(p.promo_cfa) : '');
         setStock(String(p.stock));
         setImages(p.images?.length ? p.images : p.image_url ? [p.image_url] : []);
+        setHadFile(!!p.digital_file_url);
+        if (p.digital_file_url) setFile({ uri: p.digital_file_url, name: 'Fichier actuel' });
         setDescription(p.description ?? '');
         if (p.commission_pct > 0) { setAffiliationOn(true); setCommission(String(p.commission_pct)); }
         setTiers((p.quantity_tiers ?? []).map((t) => ({ qty: String(t.qty), price: String(t.price_cfa) })));
@@ -80,7 +83,7 @@ export default function ProductNew() {
     if (!title.trim() || !price.trim()) return setError('Le nom et le prix sont obligatoires.');
     const modo = classifyProduct(title, description);
     if (modo.level === 'blocked') return setError(`🚫 Produit refusé : ${modo.reason}`);
-    if (kind === 'digital' && !file) return setError('Ajoute le fichier que recevra l\'acheteur.');
+    if (kind === 'digital' && !file && !hadFile) return setError('Ajoute le fichier que recevra l\'acheteur.');
     const priceN = parseInt(price.replace(/\D/g, ''), 10) || 0;
     const promoN = promo.trim() ? parseInt(promo.replace(/\D/g, ''), 10) : null;
     if (promoN && promoN >= priceN) return setError('Le prix promo doit être inférieur au prix normal.');
@@ -100,7 +103,8 @@ export default function ProductNew() {
       const urls: string[] = [];
       for (const uri of images) urls.push(/^https?:\/\//.test(uri) ? uri : await uploadImage('products', uri));
       let digital_file_url: string | null = null;
-      if (kind === 'digital' && file) digital_file_url = await uploadFile(file.uri, file.name);
+      // fichier déjà en ligne (édition) → on le garde ; sinon on uploade le nouveau
+      if (kind === 'digital' && file) digital_file_url = /^https?:\/\//.test(file.uri) ? file.uri : await uploadFile(file.uri, file.name);
 
       const payload = {
         title: title.trim(),
