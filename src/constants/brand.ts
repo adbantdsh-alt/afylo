@@ -52,12 +52,12 @@ const darkPalette: Palette = {
   card: '#16181C',
   border: '#2A2E35',
 
-  // Texte
-  text: '#F5F6F7',
-  textDim: '#9BA1A8',
-  textFaint: '#6B7178',
-  ink: '#F5F6F7',
-  inkDim: '#9BA1A8',
+  // Texte — clair, contrasté (lisibilité renforcée sur fond noir)
+  text: '#F7F8FA',
+  textDim: '#B4BCC6', // secondaire bien lisible (compteurs, sous-titres)
+  textFaint: '#8B939F', // tertiaire
+  ink: '#F7F8FA',
+  inkDim: '#B4BCC6',
 
   // Accent — bleu légèrement éclairci pour le contraste sur fond noir
   violet: '#5B79FF',
