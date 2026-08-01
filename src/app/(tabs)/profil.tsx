@@ -165,18 +165,6 @@ export default function Profil() {
           )}
         </View>
 
-        {/* Bannière : passer en compte professionnel (comptes Simple) */}
-        {isOwner && !isPro && (
-          <Pressable onPress={() => router.push('/upgrade-pro')} style={styles.proBanner}>
-            <View style={styles.proBannerIcon}><Ionicons name="briefcase" size={20} color="#fff" /></View>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.proBannerTitle}>Passer en compte professionnel</Text>
-              <Text style={styles.proBannerSub}>Vends, ouvre ta boutique, accède aux stats & à l'affiliation.</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={18} color={Afylo.textDim} />
-          </Pressable>
-        )}
-
         {/* Onglets de section */}
         <View style={styles.tabs}>
           <SectionTab icon="grid" active={section === 'posts'} onPress={() => setSection('posts')} />

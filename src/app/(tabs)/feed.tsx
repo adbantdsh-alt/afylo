@@ -16,7 +16,7 @@ export default function Explore() {
   const [active, setActive] = useState(0);
   const scroll = useHideOnScroll();
   const col = (mod: number) => exploreItems.filter((_, i) => i % 2 === mod);
-  const open = (it: ExploreItem) => router.push({ pathname: '/creator/[id]', params: { id: it.name, name: it.name, avatar: it.image } });
+  const open = (it: ExploreItem) => router.push(`/watch/${exploreItems.indexOf(it)}`);
 
   return (
     <View style={styles.root}>
