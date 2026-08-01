@@ -1,7 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
-import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -9,11 +8,8 @@ import { Afylo, Radius } from '@/constants/brand';
 import { exploreItems, type ExploreItem } from '@/lib/mock';
 import { useHideOnScroll } from '@/lib/tabbar';
 
-const FILTERS = ['Créateurs', 'Vidéos courtes', 'Produits', 'Lives'];
-
 export default function Explore() {
   const router = useRouter();
-  const [active, setActive] = useState(0);
   const scroll = useHideOnScroll();
   const col = (mod: number) => exploreItems.filter((_, i) => i % 2 === mod);
   const open = (it: ExploreItem) => router.push(`/watch/${exploreItems.indexOf(it)}`);
@@ -25,13 +21,6 @@ export default function Explore() {
           <Ionicons name="search" size={18} color={Afylo.textDim} />
           <Text style={styles.searchPlaceholder}>Chercher un créateur, une vidéo, un produit</Text>
         </Pressable>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filters}>
-          {FILTERS.map((f, i) => (
-            <Pressable key={f} onPress={() => setActive(i)} style={[styles.chip, active === i && styles.chipActive]}>
-              <Text style={[styles.chipText, active === i && styles.chipTextActive]}>{f}</Text>
-            </Pressable>
-          ))}
-        </ScrollView>
       </SafeAreaView>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.grid} {...scroll}>

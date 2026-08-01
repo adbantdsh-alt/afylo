@@ -7,6 +7,7 @@ import { useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { PaymentSheet } from '@/components/payment-sheet';
 import { Afylo, Font, Radius } from '@/constants/brand';
 import { useAuthGate } from '@/lib/auth-gate';
 import { exploreItems, type ExploreItem, video } from '@/lib/mock';
@@ -58,7 +59,9 @@ function Slide({ item, index, active, height, width }: { item: ExploreItem; inde
 
   const [liked, setLiked] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [payOpen, setPayOpen] = useState(false);
   const like = () => { if (gate('aimer')) setLiked((v) => !v); };
+  const buy = () => { if (gate('acheter')) setPayOpen(true); };
 
   const openProfile = () => router.push({ pathname: '/creator/[id]', params: { id: item.name, name: item.name, avatar: item.image } });
 
@@ -90,7 +93,18 @@ function Slide({ item, index, active, height, width }: { item: ExploreItem; inde
           {item.live && <View style={styles.liveTag}><Text style={styles.liveText}>LIVE</Text></View>}
         </Pressable>
         <Text style={styles.caption}>{item.label} · {isVideo ? 'vidéo' : 'photo'} recommandée pour toi</Text>
+
+        {item.product && (
+          <Pressable onPress={buy} style={styles.buyBar}>
+            <Ionicons name="bag-handle" size={18} color="#fff" />
+            <Text style={styles.buyTitle} numberOfLines={1}>{item.product.title}</Text>
+            <Text style={styles.buyPrice}>{item.product.price}</Text>
+            <View style={styles.buyCta}><Text style={styles.buyCtaText}>Acheter</Text></View>
+          </Pressable>
+        )}
       </SafeAreaView>
+
+      <PaymentSheet visible={payOpen} items={item.product ? [item.product] : []} onClose={() => setPayOpen(false)} />
     </View>
   );
 }
@@ -121,4 +135,10 @@ const styles = StyleSheet.create({
   liveTag: { backgroundColor: Afylo.live, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6 },
   liveText: { color: '#fff', fontFamily: Font.bold, fontSize: 10 },
   caption: { color: '#fff', fontSize: 14, width: '80%' },
+  buyBar: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#ffffff26', borderWidth: 1, borderColor: '#ffffff44', borderRadius: Radius.pill, paddingLeft: 12, paddingRight: 6, paddingVertical: 6, marginTop: 12, width: '86%' },
+  buyTitle: { color: '#fff', fontFamily: Font.semibold, fontSize: 13, flex: 1 },
+  buyPrice: { color: Afylo.gold, fontFamily: Font.bold, fontSize: 13 },
+  buyCta: { backgroundColor: Afylo.violet, paddingHorizontal: 16, paddingVertical: 8, borderRadius: Radius.pill },
+  buyCtaText: { color: '#fff', fontFamily: Font.semibold, fontSize: 13 },
 });
+

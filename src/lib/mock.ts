@@ -159,14 +159,15 @@ export type ExploreItem = {
   image: string;
   tall?: boolean;
   live?: boolean;
+  product?: { title: string; price: string }; // produit épinglé (achetable)
 };
 
 export const exploreItems: ExploreItem[] = [
-  { id: 'e1', name: 'Danielle', label: 'Créatrice', image: face('afx1', 500, 700), tall: true, live: true },
-  { id: 'e2', name: 'Jiwoo', label: 'Mode', image: face('afx2', 500, 500) },
-  { id: 'e3', name: 'Aïcha', label: 'Beauté', image: face('afx3', 500, 640) },
+  { id: 'e1', name: 'Danielle', label: 'Créatrice', image: face('afx1', 500, 700), tall: true, live: true, product: { title: 'Ensemble wax premium', price: '18 500 FCFA' } },
+  { id: 'e2', name: 'Jiwoo', label: 'Mode', image: face('afx2', 500, 500), product: { title: 'Boubou brodé main', price: '35 000 FCFA' } },
+  { id: 'e3', name: 'Aïcha', label: 'Beauté', image: face('afx3', 500, 640), product: { title: 'Coffret soin visage', price: '12 000 FCFA' } },
   { id: 'e4', name: 'Ibou', label: 'Tech', image: face('afx4', 500, 560), tall: true },
-  { id: 'e5', name: 'Mariama', label: 'Cuisine', image: face('afx5', 500, 500), live: true },
+  { id: 'e5', name: 'Mariama', label: 'Cuisine', image: face('afx5', 500, 500), live: true, product: { title: 'Épices maison (lot)', price: '6 500 FCFA' } },
   { id: 'e6', name: 'Serigne', label: 'Sport', image: face('afx6', 500, 680) },
 ];
 
