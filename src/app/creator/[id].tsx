@@ -2,122 +2,217 @@ import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { Avatar, PillButton } from '@/components/ui-kit';
-import { Afryko, Font, Type } from '@/constants/brand';
-import { getCreatorData, type CreatorData } from '@/lib/db';
+import { Avatar } from '@/components/ui-kit';
+import { Afryko, Font, Radius, Type } from '@/constants/brand';
+import { followUser, getCreatorData, isFollowing, unfollowUser, type CreatorData } from '@/lib/db';
 import { fmtCount } from '@/lib/feed-map';
-import { face, myPosts, photo } from '@/lib/mock';
+import { useMe } from '@/lib/me';
+import { face, photo } from '@/lib/mock';
 
-/** Profil VISITEUR (celui d'un autre créateur, ouvert depuis une publication). */
+const DEFAULT_BANNER = require('@/assets/images/default-banner.png');
+
+/** Badge de certification bleu façon X. */
+function BadgeVerified({ size = 18 }: { size?: number }) {
+  return (
+    <View style={[styles.badge, { width: size, height: size, borderRadius: size / 2 }]}>
+      <Ionicons name="checkmark-sharp" size={size * 0.62} color="#fff" />
+    </View>
+  );
+}
+
+/** Profil VISITEUR (le compte d'un autre créateur, même design que ton profil). */
 export default function CreatorProfile() {
   const router = useRouter();
-  const params = useLocalSearchParams<{ id: string; name?: string; avatar?: string; badge?: string }>();
-  const [followed, setFollowed] = useState(false);
+  const me = useMe();
+  const params = useLocalSearchParams<{ id: string; name?: string; avatar?: string }>();
   const [data, setData] = useState<CreatorData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [followed, setFollowed] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [bump, setBump] = useState(0); // ajustement optimiste du nombre d'abonnés
 
-  // Vrai profil depuis Supabase (repli sur les params passés depuis le feed)
   useEffect(() => {
-    if (params.id) getCreatorData(params.id).then(setData).catch(() => {});
+    if (!params.id) return;
+    setLoading(true);
+    setBump(0);
+    getCreatorData(params.id)
+      .then((d) => {
+        setData(d);
+        if (d?.profile?.id) isFollowing(d.profile.id).then(setFollowed).catch(() => {});
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
   }, [params.id]);
 
   const p = data?.profile;
   const name = p?.display_name || params.name || 'Créateur';
   const handle = p?.handle ? `@${p.handle}` : params.id?.startsWith('@') ? params.id : `@${params.id ?? 'afryko'}`;
-  const avatar = p?.avatar_url || params.avatar || face(params.id ?? 'afryko');
-  const bio = p?.bio || 'Créateur Afryko · Contenu, boutique et lives. Suis pour ne rien rater 🔥';
+  const avatarUri = p?.avatar_url || params.avatar || face(params.id ?? 'afryko');
+  const bio = p?.bio || '';
+  const website = p?.website || null;
+  const banner = p?.banner_url || null;
+  const bannerPos = p?.banner_position ?? 50;
   const verified = p?.is_verified === true;
-  const gridPosts = data?.posts?.length
-    ? data.posts.map((x) => ({ id: x.id, image: x.thumbnail_url || x.media_url || photo(x.id, 300, 380), video: x.kind === 'video', views: fmtCount(x.view_count) }))
-    : myPosts;
+  const isSelf = !!p?.id && !!me.id && p.id === me.id;
+  const followers = Math.max(0, (data?.followers ?? 0) + bump);
+  const posts = data?.posts ?? [];
+
+  const toggleFollow = async () => {
+    if (!p?.id || isSelf || busy) return;
+    const next = !followed;
+    setBusy(true);
+    setFollowed(next);
+    setBump((b) => b + (next ? 1 : -1));
+    try {
+      if (next) await followUser(p.id);
+      else await unfollowUser(p.id);
+    } catch {
+      setFollowed(!next); // rollback
+      setBump((b) => b + (next ? -1 : 1));
+    } finally {
+      setBusy(false);
+    }
+  };
 
   return (
     <View style={styles.root}>
-      <SafeAreaView edges={['top']} style={{ backgroundColor: Afryko.bg }}>
-        <View style={styles.topbar}>
-          <Pressable onPress={() => (router.canGoBack() ? router.back() : router.replace('/accueil'))} style={styles.iconBtn}>
-            <Ionicons name="chevron-back" size={26} color={Afryko.text} />
-          </Pressable>
-          <Text style={styles.topHandle} numberOfLines={1}>{handle}</Text>
-          <Pressable style={styles.iconBtn}>
-            <Ionicons name="ellipsis-horizontal" size={22} color={Afryko.text} />
-          </Pressable>
-        </View>
-      </SafeAreaView>
-
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 110 }}>
-        <View style={styles.head}>
-          <Avatar uri={avatar} size={88} ring />
-          <View style={styles.statsRow}>
-            <Stat value={data ? fmtCount(data.followers) : '24 K'} label="Abonnés" />
-            <Stat value={data ? String(data.posts.length) : '128'} label="Posts" />
-            <Stat value={data ? fmtCount(data.views) : '410 K'} label="Vues" />
-          </View>
+        {/* Bannière */}
+        <View style={styles.banner}>
+          <Image source={banner ? { uri: banner } : DEFAULT_BANNER} style={StyleSheet.absoluteFill} contentFit="cover" contentPosition={{ left: '50%', top: `${bannerPos}%` }} transition={200} />
+          <SafeAreaView edges={['top']} style={styles.bannerBar}>
+            <Pressable onPress={() => (router.canGoBack() ? router.back() : router.replace('/accueil'))} style={styles.roundBtn}>
+              <Ionicons name="chevron-back" size={20} color="#fff" />
+            </Pressable>
+            <View style={{ flex: 1 }} />
+            <Pressable style={styles.roundBtn}>
+              <Ionicons name="ellipsis-horizontal" size={20} color="#fff" />
+            </Pressable>
+          </SafeAreaView>
         </View>
 
+        {/* Avatar chevauchant + actions */}
+        <View style={styles.identityRow}>
+          <View style={styles.avatarOnBanner}>
+            <Avatar uri={avatarUri} size={82} ring />
+          </View>
+          <View style={{ flex: 1 }} />
+          {isSelf ? (
+            <Pressable style={styles.editBtn} onPress={() => router.replace('/profil')}>
+              <Text style={styles.editBtnText}>Voir mon profil</Text>
+            </Pressable>
+          ) : (
+            <View style={styles.actionRow}>
+              <Pressable style={styles.msgBtn} onPress={() => router.push('/messages')}>
+                <Ionicons name="chatbubble-outline" size={18} color={Afryko.text} />
+              </Pressable>
+              <Pressable style={[styles.followBtn, followed && styles.followBtnOn]} onPress={toggleFollow} disabled={busy}>
+                {followed && <Ionicons name="checkmark" size={15} color={Afryko.text} />}
+                <Text style={[styles.followText, followed && styles.followTextOn]}>{followed ? 'Abonné' : 'Suivre'}</Text>
+              </Pressable>
+            </View>
+          )}
+        </View>
+
+        {/* Nom + badge */}
         <View style={styles.nameRow}>
           <Text style={styles.name}>{name}</Text>
-          {verified && <Ionicons name="checkmark-circle" size={18} color={Afryko.violet} />}
+          {verified && <BadgeVerified />}
         </View>
-        <Text style={styles.bio}>{bio}</Text>
+        <Text style={styles.handleText}>{handle}</Text>
 
-        {/* Actions VISITEUR */}
-        <View style={styles.actions}>
-          <PillButton
-            label={followed ? 'Suivi' : 'Suivre'}
-            variant={followed ? 'ghost' : 'primary'}
-            icon={followed ? 'checkmark' : undefined}
-            onPress={() => setFollowed((v) => !v)}
-            style={{ flex: 1, height: 46 }}
-          />
-          <PillButton label="Message" variant="ghost" icon="chatbubble-outline" style={{ flex: 1, height: 46 }} />
+        {/* Compteurs (avant la bio) */}
+        <View style={styles.countsRow}>
+          <View style={styles.count}><Text style={styles.countN}>{fmtCount(followers)}</Text><Text style={styles.countL}> Abonnés</Text></View>
+          <View style={styles.count}><Text style={styles.countN}>{fmtCount(posts.length)}</Text><Text style={styles.countL}> Posts</Text></View>
+          <View style={styles.count}><Text style={styles.countN}>{fmtCount(data?.views ?? 0)}</Text><Text style={styles.countL}> Vues</Text></View>
         </View>
 
-        {/* Grille de posts */}
-        <View style={styles.grid}>
-          {gridPosts.map((gp) => (
-            <View key={gp.id} style={styles.cell}>
-              <Image source={{ uri: gp.image }} style={StyleSheet.absoluteFill} contentFit="cover" transition={200} />
-              {gp.video && (
-                <View style={styles.cellTag}>
-                  <Ionicons name="play" size={11} color="#fff" />
-                  <Text style={styles.cellTagText}>{gp.views}</Text>
-                </View>
-              )}
+        {!!bio && <Text style={styles.bio}>{bio}</Text>}
+
+        {(website || p?.handle) && (
+          <View style={styles.metaRow}>
+            {website && (
+              <Pressable style={styles.meta} onPress={() => Linking.openURL(website.startsWith('http') ? website : `https://${website}`)}>
+                <Ionicons name="link-outline" size={15} color={Afryko.violet} />
+                <Text style={[styles.metaText, { color: Afryko.violet }]}>{website}</Text>
+              </Pressable>
+            )}
+            <View style={styles.meta}>
+              <Ionicons name="location-outline" size={15} color={Afryko.textDim} />
+              <Text style={styles.metaText}>Dakar, Sénégal</Text>
             </View>
-          ))}
-        </View>
-      </ScrollView>
-    </View>
-  );
-}
+          </View>
+        )}
 
-function Stat({ value, label }: { value: string; label: string }) {
-  return (
-    <View style={{ alignItems: 'center' }}>
-      <Text style={[Type.statNumber, { color: Afryko.text }]}>{value}</Text>
-      <Text style={[Type.statLabel, { color: Afryko.textDim, marginTop: 4 }]}>{label}</Text>
+        {/* Grille de posts (réelle) */}
+        {loading ? (
+          <ActivityIndicator color={Afryko.violet} style={{ marginTop: 34 }} />
+        ) : posts.length === 0 ? (
+          <View style={styles.gridEmpty}>
+            <Ionicons name="camera-outline" size={30} color={Afryko.textFaint} />
+            <Text style={styles.gridEmptyText}>Aucune publication</Text>
+          </View>
+        ) : (
+          <View style={styles.grid}>
+            {posts.map((x) => (
+              <View key={x.id} style={styles.cell}>
+                <Image source={{ uri: x.thumbnail_url || x.media_url || photo(x.id, 300, 380) }} style={StyleSheet.absoluteFill} contentFit="cover" transition={200} />
+                {x.kind === 'video' && (
+                  <View style={styles.cellTag}>
+                    <Ionicons name="play" size={11} color="#fff" />
+                    <Text style={styles.cellTagText}>{fmtCount(x.view_count)}</Text>
+                  </View>
+                )}
+              </View>
+            ))}
+          </View>
+        )}
+      </ScrollView>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: Afryko.bg },
-  topbar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 8, paddingVertical: 6 },
-  iconBtn: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
-  topHandle: { ...Type.subtitle, color: Afryko.text, flex: 1, textAlign: 'center' },
 
-  head: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 18, marginTop: 12, gap: 20 },
-  statsRow: { flex: 1, flexDirection: 'row', justifyContent: 'space-around' },
-  nameRow: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 18, marginTop: 18 },
+  banner: { height: 150, backgroundColor: Afryko.surfaceAlt },
+  bannerBar: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 14, paddingTop: 6 },
+  roundBtn: { width: 34, height: 34, borderRadius: 17, backgroundColor: '#00000055', alignItems: 'center', justifyContent: 'center' },
+
+  identityRow: { flexDirection: 'row', alignItems: 'flex-end', paddingHorizontal: 16, marginTop: -40 },
+  avatarOnBanner: { borderRadius: 46, borderWidth: 4, borderColor: Afryko.bg, backgroundColor: Afryko.bg },
+  actionRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 6 },
+  msgBtn: { width: 40, height: 40, borderRadius: 20, borderWidth: 1, borderColor: Afryko.border, alignItems: 'center', justifyContent: 'center' },
+  followBtn: { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: Afryko.violet, borderRadius: Radius.pill, paddingHorizontal: 20, height: 38, justifyContent: 'center' },
+  followBtnOn: { backgroundColor: 'transparent', borderWidth: 1, borderColor: Afryko.border },
+  followText: { color: '#fff', fontFamily: Font.bold, fontSize: 14 },
+  followTextOn: { color: Afryko.text },
+  editBtn: { borderWidth: 1, borderColor: Afryko.border, borderRadius: Radius.pill, paddingHorizontal: 16, height: 38, alignItems: 'center', justifyContent: 'center', marginBottom: 6 },
+  editBtnText: { color: Afryko.text, fontFamily: Font.bold, fontSize: 14 },
+
+  nameRow: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 18, marginTop: 12 },
   name: { ...Type.name, color: Afryko.text },
-  bio: { ...Type.bio, color: Afryko.text, opacity: 0.9, paddingHorizontal: 18, marginTop: 8 },
-  actions: { flexDirection: 'row', gap: 12, paddingHorizontal: 18, marginTop: 18 },
+  badge: { backgroundColor: '#1D9BF0', alignItems: 'center', justifyContent: 'center' },
+  handleText: { color: Afryko.textDim, fontSize: 15, paddingHorizontal: 18, marginTop: 1 },
 
-  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 2, marginTop: 22 },
+  countsRow: { flexDirection: 'row', gap: 20, paddingHorizontal: 18, marginTop: 14 },
+  count: { flexDirection: 'row', alignItems: 'baseline' },
+  countN: { color: Afryko.text, fontFamily: Font.bold, fontSize: 15 },
+  countL: { color: Afryko.textDim, fontSize: 14 },
+
+  bio: { ...Type.bio, color: Afryko.text, opacity: 0.92, paddingHorizontal: 18, marginTop: 10 },
+  metaRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 14, paddingHorizontal: 18, marginTop: 10 },
+  meta: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  metaText: { ...Type.small, color: Afryko.textDim },
+
+  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 2, marginTop: 18 },
   cell: { width: '33%', aspectRatio: 0.8, backgroundColor: Afryko.surfaceAlt, flexGrow: 1 },
   cellTag: { position: 'absolute', bottom: 6, left: 6, flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: '#00000088', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 8 },
   cellTagText: { color: '#fff', fontFamily: Font.medium, fontSize: 10 },
+  gridEmpty: { alignItems: 'center', paddingVertical: 44 },
+  gridEmptyText: { color: Afryko.textDim, fontSize: 14, marginTop: 10 },
 });

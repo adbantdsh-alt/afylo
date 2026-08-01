@@ -66,6 +66,36 @@ export async function searchProfiles(q: string): Promise<Profile[]> {
   return (data as Profile[]) ?? [];
 }
 
+// ---- Suivi (follow / unfollow) ----
+/** Est-ce que je suis ce compte ? false si non connecté / soi-même. */
+export async function isFollowing(targetId: string): Promise<boolean> {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user || user.id === targetId) return false;
+  const { count } = await supabase
+    .from('follows')
+    .select('*', { count: 'exact', head: true })
+    .eq('follower_id', user.id)
+    .eq('following_id', targetId);
+  return (count ?? 0) > 0;
+}
+
+/** Suivre un compte (idempotent). */
+export async function followUser(targetId: string): Promise<void> {
+  const me = await requireUserId();
+  if (me === targetId) return;
+  const { error } = await supabase.from('follows').upsert({ follower_id: me, following_id: targetId }, { onConflict: 'follower_id,following_id' });
+  if (error) throw error;
+}
+
+/** Ne plus suivre un compte. */
+export async function unfollowUser(targetId: string): Promise<void> {
+  const me = await requireUserId();
+  const { error } = await supabase.from('follows').delete().eq('follower_id', me).eq('following_id', targetId);
+  if (error) throw error;
+}
+
 export type SearchPost = {
   id: string;
   thumbnail_url: string | null;
