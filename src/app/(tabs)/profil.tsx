@@ -657,6 +657,7 @@ function BoutiqueList({ isOwner }: { isOwner: boolean }) {
 }
 
 function ProductCard({ p, isOwner, onDelete }: { p: DisplayProduct; isOwner: boolean; onDelete?: () => void }) {
+  const shareProduct = () => { Share.share({ message: `${p.title} — ${p.price} F sur Afryko 🛍️` }).catch(() => {}); };
   return (
     <View style={styles.prodCard}>
       <View style={styles.prodImg}>
@@ -671,16 +672,20 @@ function ProductCard({ p, isOwner, onDelete }: { p: DisplayProduct; isOwner: boo
       <Text style={styles.prodPrice}>{p.price} F</Text>
       {isOwner ? (
         <View style={styles.prodMeta}>
-          <Text style={styles.prodStat}>{p.sold} vendus · {p.stock} en stock</Text>
+          <Text style={styles.prodStat} numberOfLines={1}>{p.sold} vendus · {p.stock} en stock</Text>
           <View style={styles.prodActions}>
-            <Pressable style={styles.prodAction}><Ionicons name="create-outline" size={17} color={Afryko.textDim} /></Pressable>
+            <Pressable style={styles.prodAction}><Ionicons name="create-outline" size={16} color={Afryko.textDim} /></Pressable>
+            <Pressable style={styles.prodAction} onPress={shareProduct}><Ionicons name="share-social-outline" size={16} color={Afryko.textDim} /></Pressable>
             <Pressable style={styles.prodAction} onPress={onDelete} disabled={!onDelete}>
-              <Ionicons name="trash-outline" size={17} color={onDelete ? Afryko.live : Afryko.textFaint} />
+              <Ionicons name="trash-outline" size={16} color={onDelete ? Afryko.live : Afryko.textFaint} />
             </Pressable>
           </View>
         </View>
       ) : (
-        <Pressable style={styles.buyBtn}><Text style={styles.buyBtnText}>Acheter</Text></Pressable>
+        <View style={styles.buyRow}>
+          <Pressable style={styles.buyBtn}><Text style={styles.buyBtnText}>Acheter</Text></Pressable>
+          <Pressable style={styles.shareBtnSm} onPress={shareProduct}><Ionicons name="share-social-outline" size={16} color={Afryko.violet} /></Pressable>
+        </View>
       )}
     </View>
   );
@@ -891,8 +896,8 @@ const styles = StyleSheet.create({
   createText: { color: Afryko.violet, fontWeight: '700', fontSize: 14 },
   emptyText: { color: Afryko.textDim, fontSize: 14, textAlign: 'center', paddingVertical: 24, paddingHorizontal: 20, lineHeight: 20 },
   demoNote: { color: Afryko.textFaint, fontSize: 12, textAlign: 'center', marginBottom: 12 },
-  prodGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
-  prodCard: { width: '46%', flexGrow: 1, backgroundColor: Afryko.surface, borderRadius: Radius.md, padding: 8 },
+  prodGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+  prodCard: { width: '48%', backgroundColor: Afryko.surface, borderWidth: 1, borderColor: Afryko.border, borderRadius: Radius.md, padding: 8 },
   prodImg: { aspectRatio: 1, borderRadius: Radius.sm, overflow: 'hidden', backgroundColor: Afryko.surfaceAlt, marginBottom: 8 },
   inactive: { ...StyleSheet.absoluteFillObject, backgroundColor: '#000000AA', alignItems: 'center', justifyContent: 'center' },
   inactiveText: { color: '#fff', fontWeight: '800', fontSize: 13 },
@@ -900,10 +905,12 @@ const styles = StyleSheet.create({
   prodPrice: { color: Afryko.gold, fontSize: 15, fontWeight: '800', paddingHorizontal: 2, marginTop: 2 },
   prodMeta: { marginTop: 8, paddingHorizontal: 2 },
   prodStat: { color: Afryko.textDim, fontSize: 11 },
-  prodActions: { flexDirection: 'row', gap: 8, marginTop: 8 },
+  prodActions: { flexDirection: 'row', gap: 6, marginTop: 8 },
   prodAction: { flex: 1, alignItems: 'center', paddingVertical: 7, backgroundColor: Afryko.surfaceAlt, borderRadius: 8 },
-  buyBtn: { backgroundColor: Afryko.violet, borderRadius: Radius.pill, paddingVertical: 9, alignItems: 'center', marginTop: 8 },
+  buyRow: { flexDirection: 'row', gap: 6, marginTop: 8 },
+  buyBtn: { flex: 1, backgroundColor: Afryko.violet, borderRadius: Radius.pill, paddingVertical: 9, alignItems: 'center' },
   buyBtnText: { color: '#fff', fontWeight: '800', fontSize: 13 },
+  shareBtnSm: { width: 38, alignItems: 'center', justifyContent: 'center', borderRadius: Radius.pill, backgroundColor: Afryko.surfaceAlt },
 
   liveRow: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: Afryko.surface, borderRadius: Radius.md, padding: 8 },
   liveThumb: { width: 96, height: 64, borderRadius: 10, overflow: 'hidden', backgroundColor: Afryko.surfaceAlt, alignItems: 'center', justifyContent: 'center' },
