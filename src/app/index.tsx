@@ -101,9 +101,50 @@ export default function Landing() {
             </Pressable>
           </LinearGradient>
 
-          <Text style={styles.footer}>Là où l'Afrique crée, vend et gagne. · © 2026 Afryko</Text>
+          {/* Télécharger l'app */}
+          <Text style={styles.dlTitle}>Bientôt sur mobile</Text>
+          <View style={styles.dlRow}>
+            <View style={styles.dlBadge}><Ionicons name="logo-apple" size={22} color={Afryko.text} /><View><Text style={styles.dlSmall}>Bientôt sur</Text><Text style={styles.dlBig}>App Store</Text></View></View>
+            <View style={styles.dlBadge}><Ionicons name="logo-google-playstore" size={20} color={Afryko.text} /><View><Text style={styles.dlSmall}>Bientôt sur</Text><Text style={styles.dlBig}>Google Play</Text></View></View>
+          </View>
+        </View>
+
+        {/* Pied de page — façon site web */}
+        <View style={styles.footerWrap}>
+          <View style={styles.footerInner}>
+            <View style={styles.footerCols}>
+              <FooterCol title="Afryko" items={[['À propos', () => go('/legal/about')], ['Creator Rewards', login], ['Live Shopping', login], ['Trend', login]]} />
+              <FooterCol title="Créateurs" items={[['Devenir créateur', login], ['Affiliation', login], ['Studio & stats', login], ['Portefeuille', login]]} />
+              <FooterCol title="Aide" items={[['Centre d\'aide', () => mail()], ['Règles de la communauté', () => go('/legal/guidelines')], ['Signaler un problème', () => mail()], ['Nous contacter', () => mail()]]} />
+              <FooterCol title="Légal" items={[['Conditions d\'utilisation', () => go('/legal/terms')], ['Politique de confidentialité', () => go('/legal/privacy')], ['Cookies', () => go('/legal/privacy')], ['Mentions légales', () => go('/legal/about')]]} />
+            </View>
+
+            <View style={styles.footerBar}>
+              <View style={styles.footerSocial}>
+                <Ionicons name="logo-instagram" size={18} color={Afryko.textFaint} />
+                <Ionicons name="logo-tiktok" size={18} color={Afryko.textFaint} />
+                <Ionicons name="logo-youtube" size={18} color={Afryko.textFaint} />
+                <Ionicons name="logo-whatsapp" size={18} color={Afryko.textFaint} />
+              </View>
+              <Text style={styles.footerCopy}>Français  ·  © 2026 Afryko  ·  Là où l'Afrique crée, vend et gagne.</Text>
+            </View>
+          </View>
         </View>
       </ScrollView>
+    </View>
+  );
+
+  function go(path: string) { router.push(path as any); }
+  function mail() { if (typeof window !== 'undefined') window.location.href = 'mailto:support@afryko.app'; }
+}
+
+function FooterCol({ title, items }: { title: string; items: [string, () => void][] }) {
+  return (
+    <View style={styles.footerCol}>
+      <Text style={styles.footerColTitle}>{title}</Text>
+      {items.map(([label, onPress]) => (
+        <Text key={label} style={styles.footerLink} onPress={onPress}>{label}</Text>
+      ))}
     </View>
   );
 }
@@ -159,5 +200,19 @@ const styles = StyleSheet.create({
   ctaGhost: { paddingVertical: 12, marginTop: 4 },
   ctaGhostText: { color: '#ffffffee', fontFamily: Font.semibold, fontSize: 14 },
 
-  footer: { color: Afryko.textFaint, fontSize: 12, textAlign: 'center', marginTop: 30 },
+  dlTitle: { color: Afryko.textDim, fontFamily: Font.semibold, fontSize: 13, marginTop: 40, marginBottom: 12, textAlign: 'center' },
+  dlRow: { flexDirection: 'row', justifyContent: 'center', flexWrap: 'wrap', gap: 12 },
+  dlBadge: { flexDirection: 'row', alignItems: 'center', gap: 10, borderWidth: 1, borderColor: Afryko.border, borderRadius: 12, paddingHorizontal: 16, paddingVertical: 10, backgroundColor: Afryko.surface },
+  dlSmall: { color: Afryko.textDim, fontSize: 10 },
+  dlBig: { color: Afryko.text, fontFamily: Font.bold, fontSize: 15 },
+
+  footerWrap: { width: '100%', backgroundColor: '#0B0C16', marginTop: 48, paddingVertical: 40, alignItems: 'center' },
+  footerInner: { width: '100%', maxWidth: 900, paddingHorizontal: 24 },
+  footerCols: { flexDirection: 'row', flexWrap: 'wrap', gap: 28 },
+  footerCol: { minWidth: 130, flexGrow: 1, flexBasis: 130 },
+  footerColTitle: { color: '#fff', fontFamily: Font.bold, fontSize: 14, marginBottom: 12 },
+  footerLink: { color: '#A9AEC6', fontSize: 13.5, paddingVertical: 6 },
+  footerBar: { borderTopWidth: 1, borderTopColor: '#23263A', marginTop: 28, paddingTop: 20, flexDirection: 'row', flexWrap: 'wrap', gap: 14, alignItems: 'center', justifyContent: 'space-between' },
+  footerSocial: { flexDirection: 'row', gap: 16 },
+  footerCopy: { color: '#6E7288', fontSize: 12 },
 });
