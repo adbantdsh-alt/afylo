@@ -2,7 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useState } from 'react';
-import { KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { PillButton } from '@/components/ui-kit';
@@ -66,10 +66,14 @@ export default function Login() {
     <View style={styles.root}>
       <LinearGradient colors={['#EEF1FF', '#FFFFFF', '#FFFFFF']} style={StyleSheet.absoluteFill} />
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
-        <SafeAreaView style={styles.safe}>
-          <Pressable onPress={() => (router.canGoBack() ? router.back() : router.replace('/accueil'))} style={styles.back}>
-            <Ionicons name="chevron-back" size={26} color={Afryko.text} />
-          </Pressable>
+        <SafeAreaView style={{ flex: 1 }}>
+         <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+          <View style={styles.formWrap}>
+          {router.canGoBack() && (
+            <Pressable onPress={() => router.back()} style={styles.back}>
+              <Ionicons name="chevron-back" size={26} color={Afryko.text} />
+            </Pressable>
+          )}
 
           <Text style={styles.brand}>
             Afryko<Text style={{ color: Afryko.violet }}>.</Text>
@@ -119,6 +123,33 @@ export default function Login() {
           <Text style={styles.legal}>
             En continuant, tu acceptes les Conditions d'utilisation et la Politique de confidentialité d'Afryko.
           </Text>
+
+          {/* Télécharger l'app + petit footer (façon instagram.com) */}
+          <View style={styles.bottomBlock}>
+            <Text style={styles.dlLabel}>Bientôt disponible sur mobile</Text>
+            <View style={styles.dlRow}>
+              <View style={styles.dlBadge}>
+                <Ionicons name="logo-apple" size={20} color={Afryko.text} />
+                <View><Text style={styles.dlSmall}>Bientôt sur</Text><Text style={styles.dlBig}>App Store</Text></View>
+              </View>
+              <View style={styles.dlBadge}>
+                <Ionicons name="logo-google-playstore" size={18} color={Afryko.text} />
+                <View><Text style={styles.dlSmall}>Bientôt sur</Text><Text style={styles.dlBig}>Google Play</Text></View>
+              </View>
+            </View>
+            <View style={styles.miniFooter}>
+              <Text style={styles.footLink} onPress={() => router.push('/legal/about')}>À propos</Text>
+              <Text style={styles.footDot}>·</Text>
+              <Text style={styles.footLink} onPress={() => router.push('/legal/terms')}>Conditions</Text>
+              <Text style={styles.footDot}>·</Text>
+              <Text style={styles.footLink} onPress={() => router.push('/legal/privacy')}>Confidentialité</Text>
+              <Text style={styles.footDot}>·</Text>
+              <Text style={styles.footLink} onPress={() => router.push('/legal/guidelines')}>Règles</Text>
+            </View>
+            <Text style={styles.footCopy}>© 2026 Afryko · Là où l'Afrique crée, vend et gagne.</Text>
+          </View>
+          </View>
+         </ScrollView>
         </SafeAreaView>
       </KeyboardAvoidingView>
     </View>
@@ -175,6 +206,19 @@ function traduire(msg: string): string {
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: Afryko.bg },
   safe: { flex: 1, paddingHorizontal: 24 },
+  scroll: { flexGrow: 1, alignItems: 'center', paddingHorizontal: 24, paddingBottom: 24 },
+  formWrap: { width: '100%', maxWidth: 440 },
+
+  bottomBlock: { marginTop: 30, alignItems: 'center' },
+  dlLabel: { color: Afryko.textDim, fontSize: 12, fontWeight: '600', marginBottom: 10 },
+  dlRow: { flexDirection: 'row', gap: 10, flexWrap: 'wrap', justifyContent: 'center' },
+  dlBadge: { flexDirection: 'row', alignItems: 'center', gap: 9, borderWidth: 1, borderColor: Afryko.border, borderRadius: 11, paddingHorizontal: 14, paddingVertical: 8, backgroundColor: Afryko.surface },
+  dlSmall: { color: Afryko.textDim, fontSize: 9 },
+  dlBig: { color: Afryko.text, fontWeight: '800', fontSize: 14 },
+  miniFooter: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', alignItems: 'center', gap: 8, marginTop: 22 },
+  footLink: { color: Afryko.textDim, fontSize: 13, fontWeight: '600' },
+  footDot: { color: Afryko.textFaint, fontSize: 13 },
+  footCopy: { color: Afryko.textFaint, fontSize: 11.5, textAlign: 'center', marginTop: 12 },
   back: { width: 40, height: 40, justifyContent: 'center', marginTop: 4, marginLeft: -8 },
   brand: { color: Afryko.text, fontSize: 24, fontWeight: '800', marginTop: 8 },
   title: { color: Afryko.text, fontSize: 28, fontWeight: '800', marginTop: 24, letterSpacing: -0.5 },
