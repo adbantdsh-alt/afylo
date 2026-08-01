@@ -8,6 +8,8 @@ import { Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } fr
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { PaymentSheet } from '@/components/payment-sheet';
+import { RateSheet } from '@/components/rate-sheet';
+import { RatingStar } from '@/components/rating-star';
 import { Afylo, Font, Radius } from '@/constants/brand';
 import { useAuthGate } from '@/lib/auth-gate';
 import { exploreItems, type ExploreItem, video } from '@/lib/mock';
@@ -60,7 +62,11 @@ function Slide({ item, index, active, height, width }: { item: ExploreItem; inde
   const [liked, setLiked] = useState(false);
   const [saved, setSaved] = useState(false);
   const [payOpen, setPayOpen] = useState(false);
+  const [rating, setRating] = useState(0);
+  const [reaction, setReaction] = useState<string | null>(null);
+  const [rateOpen, setRateOpen] = useState(false);
   const like = () => { if (gate('aimer')) setLiked((v) => !v); };
+  const rate = () => { if (gate('noter')) setRateOpen(true); };
   const buy = () => { if (gate('acheter')) setPayOpen(true); };
 
   const openProfile = () => router.push({ pathname: '/creator/[id]', params: { id: item.name, name: item.name, avatar: item.image } });
@@ -79,7 +85,12 @@ function Slide({ item, index, active, height, width }: { item: ExploreItem; inde
 
       {/* Rail d'actions */}
       <View style={styles.rail}>
-        <Act icon={liked ? 'heart' : 'heart-outline'} color={liked ? Afylo.live : '#fff'} label="12,4k" onPress={like} />
+        <Act
+          node={reaction ? <Text style={{ fontSize: 30 }}>{reaction}</Text> : <RatingStar fill={rating > 0 ? rating / 10 : liked ? 1 : 0} size={32} color={Afylo.violet2} empty="#fff" />}
+          label={rating > 0 ? `${rating}/10` : liked ? 'Aimé' : 'Noter'}
+          onPress={like}
+          onLongPress={rate}
+        />
         <Act icon="chatbubble-ellipses" label="340" onPress={() => router.push({ pathname: '/comments/[id]', params: { id: item.id } })} />
         <Act icon={saved ? 'bookmark' : 'bookmark-outline'} color={saved ? Afylo.gold : '#fff'} label="Enreg." onPress={() => setSaved((v) => !v)} />
         <Act icon="arrow-redo" label="88" />
@@ -105,14 +116,15 @@ function Slide({ item, index, active, height, width }: { item: ExploreItem; inde
       </SafeAreaView>
 
       <PaymentSheet visible={payOpen} items={item.product ? [item.product] : []} onClose={() => setPayOpen(false)} />
+      <RateSheet visible={rateOpen} rating={rating} reaction={reaction} onRate={setRating} onReact={(e) => setReaction((r) => (r === e ? null : e))} onClose={() => setRateOpen(false)} />
     </View>
   );
 }
 
-function Act({ icon, label, color = '#fff', onPress }: { icon: keyof typeof Ionicons.glyphMap; label: string; color?: string; onPress?: () => void }) {
+function Act({ icon, node, label, color = '#fff', onPress, onLongPress }: { icon?: keyof typeof Ionicons.glyphMap; node?: React.ReactNode; label: string; color?: string; onPress?: () => void; onLongPress?: () => void }) {
   return (
-    <Pressable style={styles.act} onPress={onPress} hitSlop={6}>
-      <Ionicons name={icon} size={32} color={color} />
+    <Pressable style={styles.act} onPress={onPress} onLongPress={onLongPress} delayLongPress={260} hitSlop={6}>
+      {node ?? <Ionicons name={icon!} size={32} color={color} />}
       <Text style={styles.actLabel}>{label}</Text>
     </Pressable>
   );

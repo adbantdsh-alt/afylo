@@ -8,6 +8,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Avatar, IconButton } from '@/components/ui-kit';
 import { PaymentSheet } from '@/components/payment-sheet';
 import { RateSheet } from '@/components/rate-sheet';
+import { RatingStar } from '@/components/rating-star';
 import { ReportSheet } from '@/components/report-sheet';
 import { RepostSheet } from '@/components/repost-sheet';
 import { Afylo, Font, Radius, Type } from '@/constants/brand';
@@ -194,9 +195,9 @@ function PostCard({ post, isPro, myHandle }: { post: Post; isPro: boolean; myHan
           {reaction ? (
             <Text style={styles.rateEmoji}>{reaction}</Text>
           ) : (
-            <Ionicons name={liked || rating > 0 ? 'star' : 'star-outline'} size={19} color={liked || rating > 0 ? Afylo.gold : Afylo.inkDim} />
+            <RatingStar fill={rating > 0 ? rating / 10 : liked ? 1 : 0} size={19} color={Afylo.violet} empty={Afylo.inkDim} />
           )}
-          <Text style={[styles.statText, (liked || rating > 0 || reaction) && { color: Afylo.gold, fontFamily: Font.bold }]}>
+          <Text style={[styles.statText, (liked || rating > 0 || reaction) && { color: Afylo.violet, fontFamily: Font.bold }]}>
             {rating > 0 ? `${rating}/10` : bumpLike(post.likes, liked)}
           </Text>
         </Pressable>

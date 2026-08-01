@@ -10,6 +10,7 @@ import { useVideoPlayer, VideoView } from 'expo-video';
 import { Avatar } from '@/components/ui-kit';
 import { PaymentSheet } from '@/components/payment-sheet';
 import { RateSheet } from '@/components/rate-sheet';
+import { RatingStar } from '@/components/rating-star';
 import { ReportSheet } from '@/components/report-sheet';
 import { Afylo, Font, Radius, Type } from '@/constants/brand';
 import { NICHES, rankPosts } from '@/lib/algo';
@@ -187,8 +188,13 @@ function Reel({ post, index, active, height, width, onNotInterested }: { post: P
         <View style={{ marginBottom: 6 }}>
           <Avatar uri={post.avatar} size={48} ring />
         </View>
-        <Action icon={reaction ? 'star' : 'star-outline'} label={rating > 0 ? `${rating}/10` : 'Noter'} color={rating > 0 ? Afylo.gold : '#fff'} onPress={rate} />
-        <Action icon={liked ? 'heart' : 'heart-outline'} label={post.likes} color={liked ? Afylo.live : '#fff'} onPress={like} />
+        <Action
+          node={reaction ? <Text style={{ fontSize: 30 }}>{reaction}</Text> : <RatingStar fill={rating > 0 ? rating / 10 : liked ? 1 : 0} size={32} color={Afylo.violet2} empty="#fff" />}
+          label={rating > 0 ? `${rating}/10` : liked ? 'Aimé' : 'Noter'}
+          color={rating > 0 || liked ? Afylo.violet2 : '#fff'}
+          onPress={like}
+          onLongPress={rate}
+        />
         <Action icon="chatbubble-ellipses" label={post.comments} onPress={openComments} />
         <Action icon={saved ? 'bookmark' : 'bookmark-outline'} label="Enreg." color={saved ? Afylo.gold : '#fff'} onPress={save} />
         <Action icon="arrow-redo" label={reposted ? 'Republié' : post.shares} color={reposted ? Afylo.green : '#fff'} onPress={share} />
@@ -283,10 +289,10 @@ function OptItem({ icon, label, onPress }: { icon: keyof typeof Ionicons.glyphMa
   );
 }
 
-function Action({ icon, label, color = '#fff', onPress }: { icon: keyof typeof Ionicons.glyphMap; label: string; color?: string; onPress?: () => void }) {
+function Action({ icon, node, label, color = '#fff', onPress, onLongPress }: { icon?: keyof typeof Ionicons.glyphMap; node?: React.ReactNode; label: string; color?: string; onPress?: () => void; onLongPress?: () => void }) {
   return (
-    <Pressable style={styles.action} onPress={onPress} hitSlop={6}>
-      <Ionicons name={icon} size={32} color={color} />
+    <Pressable style={styles.action} onPress={onPress} onLongPress={onLongPress} delayLongPress={260} hitSlop={6}>
+      {node ?? <Ionicons name={icon!} size={32} color={color} />}
       <Text style={styles.actionLabel}>{label}</Text>
     </Pressable>
   );
