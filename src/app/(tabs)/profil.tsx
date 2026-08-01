@@ -2,16 +2,18 @@ import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { ActivityIndicator, Linking, Pressable, ScrollView, Share, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Linking, Modal, Pressable, ScrollView, Share, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Avatar, PillButton } from '@/components/ui-kit';
+import { RepostSheet, MediaPreview } from '@/components/repost-sheet';
 import { Afylo, Font, Radius, Type } from '@/constants/brand';
 import { useAuth } from '@/lib/auth';
 import { deleteProduct, getMyProfile, isProAccount, listMyProducts } from '@/lib/db';
+import { useReposts, type Repost } from '@/lib/reposts';
 import { useStories } from '@/lib/stories';
 import { useAlwaysShowTabBar } from '@/lib/tabbar';
-import { exploreItems, myLives, myPosts, myProducts, myProfile, myPurchases, photo, type MyLive, type Purchase } from '@/lib/mock';
+import { myLives, myPosts, myProducts, myProfile, myPurchases, photo, type MyLive, type Purchase } from '@/lib/mock';
 import type { Profile } from '@/types/db';
 
 /** Forme d'affichage commune (produit réel ou démo). */
@@ -283,17 +285,87 @@ function ProUpsell({ onPress, what }: { onPress: () => void; what: string }) {
 }
 
 function RepostsGrid() {
+  const { reposts, updateRepost, removeRepost } = useReposts();
+  const [open, setOpen] = useState<Repost | null>(null);
+  const [editing, setEditing] = useState<Repost | null>(null);
+
+  if (reposts.length === 0) {
+    return (
+      <View style={{ alignItems: 'center', paddingVertical: 40 }}>
+        <Ionicons name="repeat" size={40} color={Afylo.textFaint} />
+        <Text style={styles.emptyText}>Aucun repartage pour l'instant.{'\n'}Repartage un produit en affiliation depuis l'accueil pour le retrouver ici.</Text>
+      </View>
+    );
+  }
+
   return (
-    <View style={styles.mediaGrid}>
-      {exploreItems.map((it) => (
-        <View key={it.id} style={styles.cell}>
-          <Image source={{ uri: it.image }} style={StyleSheet.absoluteFill} contentFit="cover" transition={200} />
-          <View style={styles.repostTag}>
-            <Ionicons name="repeat" size={12} color="#fff" />
-          </View>
-        </View>
-      ))}
-    </View>
+    <>
+      <View style={styles.mediaGrid}>
+        {reposts.map((r) => (
+          <Pressable key={r.id} style={styles.cell} onPress={() => setOpen(r)}>
+            <Image source={{ uri: r.post.image }} style={StyleSheet.absoluteFill} contentFit="cover" transition={200} />
+            <View style={styles.repostTag}><Ionicons name="repeat" size={12} color="#fff" /></View>
+            {r.media && (
+              <View style={styles.repostMediaTag}>
+                <Ionicons name={r.media.kind === 'vocal' ? 'mic' : r.media.kind === 'video' ? 'videocam' : 'image'} size={11} color="#fff" />
+              </View>
+            )}
+            {r.text ? (
+              <View style={styles.repostQuoteBar}><Text style={styles.repostQuoteText} numberOfLines={2}>{r.text}</Text></View>
+            ) : null}
+          </Pressable>
+        ))}
+      </View>
+
+      {/* Détail d'un repartage */}
+      <Modal visible={!!open} transparent animationType="slide" onRequestClose={() => setOpen(null)}>
+        <Pressable style={styles.rdOverlay} onPress={() => setOpen(null)}>
+          <Pressable style={styles.rdSheet} onPress={(e) => e.stopPropagation?.()}>
+            <View style={styles.rdHandle} />
+            {open && (
+              <>
+                <View style={styles.rdHeader}>
+                  <View style={styles.rdMe}><Ionicons name="repeat" size={14} color={Afylo.green} /><Text style={styles.rdMeText}>Tu as republié</Text></View>
+                  <View style={{ flex: 1 }} />
+                  <Pressable onPress={() => { const r = open; setOpen(null); setEditing(r); }} style={styles.rdAction}><Ionicons name="create-outline" size={20} color={Afylo.text} /></Pressable>
+                  <Pressable onPress={() => { removeRepost(open.id); setOpen(null); }} style={styles.rdAction}><Ionicons name="trash-outline" size={20} color={Afylo.live} /></Pressable>
+                </View>
+
+                {open.text ? <Text style={styles.rdQuote}>{open.text}</Text> : null}
+                {open.media ? <MediaPreview media={open.media} /> : null}
+
+                <View style={styles.rdQuoted}>
+                  <Image source={{ uri: open.post.avatar }} style={styles.rdAvatar} contentFit="cover" />
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.rdName}>{open.post.name}</Text>
+                    <Text style={styles.rdCaption} numberOfLines={2}>{open.post.caption}</Text>
+                    {open.post.product && (
+                      <View style={styles.rdProduct}>
+                        <Ionicons name="bag-handle" size={12} color={Afylo.violet} />
+                        <Text style={styles.rdProductText} numberOfLines={1}>{open.post.product.title} · {open.post.product.price}</Text>
+                      </View>
+                    )}
+                  </View>
+                  <Image source={{ uri: open.post.image }} style={styles.rdThumb} contentFit="cover" />
+                </View>
+              </>
+            )}
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      {/* Édition */}
+      <RepostSheet
+        visible={!!editing}
+        editing
+        isPro
+        post={editing?.post ?? null}
+        initial={{ text: editing?.text, media: editing?.media }}
+        onClose={() => setEditing(null)}
+        onUpgrade={() => {}}
+        onPublish={(p) => { if (editing) updateRepost(editing.id, { text: p.text, media: p.media, mode: 'quote' }); }}
+      />
+    </>
   );
 }
 
@@ -500,7 +572,26 @@ const styles = StyleSheet.create({
   cell: { width: '33%', aspectRatio: 0.8, backgroundColor: Afylo.surfaceAlt, flexGrow: 1 },
   cellTag: { position: 'absolute', bottom: 6, left: 6, flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: '#00000088', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 8 },
   repostTag: { position: 'absolute', top: 6, right: 6, width: 22, height: 22, borderRadius: 11, backgroundColor: '#00000088', alignItems: 'center', justifyContent: 'center' },
+  repostMediaTag: { position: 'absolute', top: 6, left: 6, width: 22, height: 22, borderRadius: 11, backgroundColor: '#00000088', alignItems: 'center', justifyContent: 'center' },
+  repostQuoteBar: { position: 'absolute', left: 0, right: 0, bottom: 0, backgroundColor: '#000000aa', paddingHorizontal: 6, paddingVertical: 5 },
+  repostQuoteText: { color: '#fff', fontSize: 10, lineHeight: 13 },
   cellTagText: { color: '#fff', fontSize: 10, fontWeight: '700' },
+
+  rdOverlay: { flex: 1, backgroundColor: '#00000066', justifyContent: 'flex-end' },
+  rdSheet: { backgroundColor: Afylo.bg, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 20, paddingBottom: 30 },
+  rdHandle: { width: 40, height: 4, borderRadius: 2, backgroundColor: Afylo.border, alignSelf: 'center', marginBottom: 16 },
+  rdHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 12 },
+  rdMe: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  rdMeText: { color: Afylo.green, fontFamily: Font.semibold, fontSize: 13 },
+  rdAction: { width: 40, height: 40, borderRadius: 20, backgroundColor: Afylo.surfaceAlt, alignItems: 'center', justifyContent: 'center', marginLeft: 8 },
+  rdQuote: { color: Afylo.text, fontSize: 15, lineHeight: 21, marginBottom: 12 },
+  rdQuoted: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: Afylo.surface, borderWidth: 1, borderColor: Afylo.border, borderRadius: Radius.lg, padding: 10, marginTop: 12 },
+  rdAvatar: { width: 34, height: 34, borderRadius: 17, backgroundColor: Afylo.surfaceAlt },
+  rdName: { color: Afylo.text, fontFamily: Font.bold, fontSize: 13 },
+  rdCaption: { color: Afylo.textDim, fontSize: 12, marginTop: 1 },
+  rdProduct: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 4 },
+  rdProductText: { color: Afylo.violet, fontFamily: Font.semibold, fontSize: 11, flex: 1 },
+  rdThumb: { width: 46, height: 46, borderRadius: 10, backgroundColor: Afylo.surfaceAlt },
 
   purchaseRow: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: Afylo.surface, borderRadius: Radius.md, borderWidth: 1, borderColor: Afylo.border, padding: 10 },
   purchaseImg: { width: 60, height: 60, borderRadius: 10, backgroundColor: Afylo.surfaceAlt },

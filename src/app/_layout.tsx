@@ -16,6 +16,7 @@ import '../global.css';
 import { AuthProvider, useAuth } from '@/lib/auth';
 import { AuthGateProvider } from '@/lib/auth-gate';
 import { StoriesProvider } from '@/lib/stories';
+import { RepostsProvider } from '@/lib/reposts';
 
 // Routes accessibles sans être connecté
 const PUBLIC = ['index', 'login'];
@@ -101,7 +102,9 @@ export default function RootLayout() {
       <AuthProvider>
         <AuthGateProvider>
           <StoriesProvider>
-            <RootNavigator />
+            <RepostsProvider>
+              <RootNavigator />
+            </RepostsProvider>
           </StoriesProvider>
         </AuthGateProvider>
       </AuthProvider>

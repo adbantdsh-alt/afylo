@@ -13,6 +13,7 @@ import { RepostSheet } from '@/components/repost-sheet';
 import { Afylo, Font, Radius, Type } from '@/constants/brand';
 import { useAuthGate } from '@/lib/auth-gate';
 import { getMyProfile, isProAccount } from '@/lib/db';
+import { useReposts } from '@/lib/reposts';
 import { useAlwaysShowTabBar } from '@/lib/tabbar';
 import { me, posts, type Post } from '@/lib/mock';
 import { useStories } from '@/lib/stories';
@@ -93,10 +94,10 @@ export default function Feed() {
 function PostCard({ post, isPro }: { post: Post; isPro: boolean }) {
   const router = useRouter();
   const gate = useAuthGate();
+  const { addRepost, hasReposted } = useReposts();
   const [followed, setFollowed] = useState(false);
   const [liked, setLiked] = useState(false);
   const [bought, setBought] = useState(false);
-  const [reposted, setReposted] = useState(false);
   const [rating, setRating] = useState(0);
   const [reaction, setReaction] = useState<string | null>(null);
   const [rateOpen, setRateOpen] = useState(false);
@@ -107,6 +108,7 @@ function PostCard({ post, isPro }: { post: Post; isPro: boolean }) {
 
   // Repartage = seulement pour les produits en affiliation (le vendeur a défini une commission)
   const canAffiliate = !!post.product?.commission;
+  const reposted = hasReposted(post.id);
 
   const toggleFollow = () => { if (gate('suivre ce créateur')) setFollowed((v) => !v); };
   const toggleLike = () => { if (gate('aimer')) setLiked((v) => !v); };
@@ -195,9 +197,11 @@ function PostCard({ post, isPro }: { post: Post; isPro: boolean }) {
         <Pressable onPress={openComments}>
           <Stat icon="chatbubble-ellipses" label={post.comments} />
         </Pressable>
-        <Pressable onPress={repost}>
-          <Stat icon="repeat" label={reposted ? 'Republié' : post.shares} color={reposted ? Afylo.green : canAffiliate ? Afylo.inkDim : Afylo.textFaint} />
-        </Pressable>
+        {canAffiliate && (
+          <Pressable onPress={repost}>
+            <Stat icon={reposted ? 'repeat' : 'repeat-outline'} label={reposted ? 'Republié' : post.shares} color={reposted ? Afylo.green : Afylo.inkDim} />
+          </Pressable>
+        )}
         <View style={{ flex: 1 }} />
         <Stat icon="eye" label={post.views} />
       </View>
@@ -230,12 +234,11 @@ function PostCard({ post, isPro }: { post: Post; isPro: boolean }) {
 
       <RepostSheet
         visible={repostOpen}
-        post={{ name: post.name, avatar: post.avatar, caption: post.caption, image: post.image, product: post.product }}
+        post={{ id: post.id, name: post.name, avatar: post.avatar, caption: post.caption, image: post.image, product: post.product }}
         isPro={isPro}
-        canAffiliate={canAffiliate}
         onClose={() => setRepostOpen(false)}
         onUpgrade={() => router.push('/upgrade-pro')}
-        onReposted={() => setReposted(true)}
+        onPublish={(p) => addRepost({ mode: p.mode, text: p.text, media: p.media, post: { id: post.id, name: post.name, avatar: post.avatar, caption: post.caption, image: post.image, product: post.product } })}
       />
     </View>
   );
