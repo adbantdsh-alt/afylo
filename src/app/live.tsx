@@ -4,18 +4,20 @@ import { Image } from 'expo-image';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useVideoPlayer, VideoView } from 'expo-video';
 import { useEffect, useRef, useState } from 'react';
-import { Animated, Modal, Pressable, ScrollView, Share, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Animated, Easing, Modal, Pressable, ScrollView, Share, StyleSheet, Text, TextInput, useWindowDimensions, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Avatar } from '@/components/ui-kit';
 import { GiftSheet } from '@/components/gift-sheet';
 import { PaymentSheet } from '@/components/payment-sheet';
 import { Afylo, Font, Radius } from '@/constants/brand';
-import { affiliationProducts, avatar, myProducts, photo, video } from '@/lib/mock';
+import { affiliationProducts, avatar, myProducts, video } from '@/lib/mock';
 
 type SellProduct = { id: string; title: string; price: string; image: string; tag: string };
 type Comment = { id: string; name: string; avatar: string; text: string; gift?: boolean; system?: 'join' | 'like' | 'share' | 'guest' };
-type Guest = { id: string; name: string; avatar: string };
+type GuestMode = 'audio' | 'video';
+type Guest = { id: string; name: string; avatar: string; mode: GuestMode; local?: boolean };
+type Heart = { id: number; x: number; y: number; color: string; size: number };
 
 // Produits disponibles pour le vendeur : les siens + ceux en affiliation
 const AVAILABLE: SellProduct[] = [
@@ -26,6 +28,7 @@ const AVAILABLE: SellProduct[] = [
 const CHATTERS = ['Awa', 'Modou', 'Sokhna', 'Cheikh', 'Mariama', 'Ibou', 'Aïda', 'Serigne'];
 const MSGS = ['Trop belle 😍', 'Ça coûte combien ?', 'Livraison à Thiès ?', '🔥🔥🔥', "J'achète !", 'Bravo 👏', "Tu as d'autres couleurs ?", 'Première fois ici 🙌', 'Salut de Dakar', 'Le lien du produit ?', 'Magnifique'];
 const GIFTS = [500, 1000, 2000, 5000];
+const HEART_COLORS = ['#E11D48', '#FF4D8D', '#FF7AB8', '#B8791F', '#6E80FF', '#FF5A5F', '#FF2D55'];
 const SYS: Record<'join' | 'like' | 'share' | 'guest', { icon: keyof typeof Ionicons.glyphMap; color: string }> = {
   join: { icon: 'enter-outline', color: '#7EC8FF' },
   like: { icon: 'heart', color: Afylo.live },
@@ -36,6 +39,7 @@ let cid = 0;
 
 export default function Live() {
   const router = useRouter();
+  const { width, height } = useWindowDimensions();
   const params = useLocalSearchParams<{ role?: string; name?: string; avatar?: string }>();
   const isHost = params.role !== 'viewer';
   const name = params.name || (isHost ? 'Ton live' : 'Fatou Ndiaye');
@@ -51,29 +55,53 @@ export default function Live() {
   const [comments, setComments] = useState<Comment[]>([]);
   const [text, setText] = useState('');
   const [viewers, setViewers] = useState(128);
-  const [hearts, setHearts] = useState<{ id: number }[]>([]);
+  const [hearts, setHearts] = useState<Heart[]>([]);
+  const [pops, setPops] = useState<{ id: number; x: number; y: number }[]>([]);
   const [followed, setFollowed] = useState(false);
   const [payOpen, setPayOpen] = useState(false);
   const [giftOpen, setGiftOpen] = useState(false);
   const [pinned, setPinned] = useState<Comment | null>(null);
   const [blocked, setBlocked] = useState<string[]>([]);
   const [mod, setMod] = useState<Comment | null>(null);
+  const [toast, setToast] = useState<string | null>(null);
   const [requests, setRequests] = useState<Guest[]>([]); // demandes d'intervention (vendeur)
   const [guests, setGuests] = useState<Guest[]>([]); // intervenants acceptés
-  const [requested, setRequested] = useState<'idle' | 'pending' | 'live'>('idle'); // côté spectateur
+  const [requestsOpen, setRequestsOpen] = useState(false); // panneau des demandes (vendeur)
+  const [requested, setRequested] = useState<'idle' | 'pending' | 'accepted' | 'live'>('idle'); // côté spectateur
+  const [chooser, setChooser] = useState(false); // choix audio/vidéo après acceptation
   const lastTap = useRef(0);
 
-  const pushEvent = (name: string, av: string, system: NonNullable<Comment['system']>, text: string) =>
-    setComments((prev) => [...prev.slice(-30), { id: `e${cid++}`, name, avatar: av, text, system }]);
+  const showToast = (m: string) => { setToast(m); setTimeout(() => setToast((cur) => (cur === m ? null : cur)), 1700); };
+  const pushEvent = (nm: string, av: string, system: NonNullable<Comment['system']>, txt: string) =>
+    setComments((prev) => [...prev.slice(-30), { id: `e${cid++}`, name: nm, avatar: av, text: txt, system }]);
 
   const viewerPlayer = useVideoPlayer(video(3), (p) => { p.loop = true; p.muted = true; if (!isHost) p.play(); });
 
   const toggleSell = (p: SellProduct) => setSell((prev) => (prev.find((x) => x.id === p.id) ? prev.filter((x) => x.id !== p.id) : [...prev, p]));
 
-  const sendHeart = () => setHearts((h) => [...h.slice(-14), { id: cid++ }]);
+  // ---- LIKES spectaculaires ----
+  const spawnHearts = (x: number, y: number, count = 1) => {
+    setHearts((h) => [
+      ...h.slice(-44),
+      ...Array.from({ length: count }, () => ({
+        id: cid++,
+        x: x + (Math.random() * 46 - 23),
+        y: y + (Math.random() * 20 - 10),
+        color: HEART_COLORS[Math.floor(Math.random() * HEART_COLORS.length)],
+        size: 20 + Math.random() * 26,
+      })),
+    ]);
+  };
+  const bigPop = (x: number, y: number) => {
+    const id = cid++;
+    setPops((p) => [...p, { id, x, y }]);
+    setTimeout(() => setPops((p) => p.filter((z) => z.id !== id)), 700);
+  };
+  const sendHeart = () => spawnHearts(width - 38, height - 130, 2); // bouton cœur (bas droite)
+
   const onGiftSent = (amount: number) => {
     setComments((prev) => [...prev.slice(-30), { id: `g${cid++}`, name: 'Toi', avatar: avatar(12), text: `a offert ${amount.toLocaleString('fr-FR')} FCFA 🎁`, gift: true }]);
-    sendHeart();
+    spawnHearts(width / 2, height / 2, 8);
   };
   const share = async () => { try { await Share.share({ message: `${name} est en direct sur Afylo — rejoins !` }); } catch {} };
   const send = () => {
@@ -82,30 +110,52 @@ export default function Live() {
     setText('');
   };
 
-  // Modération (vendeur)
-  const deleteComment = (id: string) => { setComments((prev) => prev.filter((c) => c.id !== id)); setMod(null); };
-  const blockUser = (n: string) => { setBlocked((b) => [...b, n]); setComments((prev) => prev.filter((c) => c.name !== n)); setMod(null); };
+  // Actions sur un commentaire (appui long) — le menu s'adapte hôte / spectateur
+  const deleteComment = (id: string) => { setComments((prev) => prev.filter((c) => c.id !== id)); setMod(null); showToast('Commentaire supprimé'); };
+  const blockUser = (n: string) => { setBlocked((b) => [...b, n]); setComments((prev) => prev.filter((c) => c.name !== n)); setMod(null); showToast(`${n} bloqué`); };
   const pinComment = (c: Comment) => { setPinned(c); setMod(null); };
+  const replyTo = (n: string) => { setText((t) => `@${n} ${t}`); setMod(null); };
+  const reportComment = () => { setMod(null); showToast('Merci, commentaire signalé'); };
 
-  // Double-tap n'importe où = like
-  const onScreenTap = () => {
+  // Aller sur le profil du live
+  const openHostProfile = () => router.push({ pathname: '/creator/[id]', params: { id: name, name, avatar: hostAvatar } });
+
+  // Double-tap n'importe où = like à l'endroit touché
+  const onScreenTap = (e: any) => {
     const now = Date.now();
-    if (now - lastTap.current < 300) sendHeart();
+    const { locationX = width / 2, locationY = height / 2 } = e?.nativeEvent ?? {};
+    if (now - lastTap.current < 300) { bigPop(locationX, locationY); spawnHearts(locationX, locationY, 6); }
     lastTap.current = now;
   };
 
-  // Intervenants (co-host façon TikTok)
-  const acceptGuest = (g: Guest) => {
-    setGuests((prev) => [...prev, g]);
+  // ---- Intervenants (co-host façon appel vidéo TikTok) ----
+  const acceptGuest = (g: Guest, mode: GuestMode) => {
+    setGuests((prev) => [...prev, { ...g, mode }]);
     setRequests((prev) => prev.filter((r) => r.id !== g.id));
-    pushEvent(g.name, g.avatar, 'guest', 'a rejoint en tant qu\'intervenant');
+    pushEvent(g.name, g.avatar, 'guest', mode === 'video' ? 'a rejoint en vidéo 📹' : 'a rejoint en audio 🎤');
   };
   const refuseGuest = (id: string) => setRequests((prev) => prev.filter((r) => r.id !== id));
+  const removeGuest = (id: string) => { setGuests((prev) => prev.filter((g) => g.id !== id)); showToast('Intervenant retiré'); };
+
+  // Côté spectateur : demander à intervenir → accepté → choix audio/vidéo
   const requestJoin = () => {
     if (requested !== 'idle') return;
     setRequested('pending');
-    setTimeout(() => { setRequested('live'); pushEvent('Toi', avatar(12), 'guest', 'tu es maintenant intervenant 🎤'); }, 2600);
+    setTimeout(() => { setRequested('accepted'); setChooser(true); }, 2200);
   };
+  const chooseMode = async (mode: GuestMode) => {
+    if (mode === 'video' && !permission?.granted) {
+      const r = await requestPermission();
+      if (!r?.granted) showToast('Caméra refusée — audio activé');
+    }
+    const finalMode: GuestMode = mode === 'video' && !permission?.granted ? 'audio' : mode;
+    setGuests((prev) => [...prev, { id: 'me', name: 'Toi', avatar: avatar(12), mode: finalMode, local: true }]);
+    setRequested('live');
+    setChooser(false);
+    pushEvent('Toi', avatar(12), 'guest', finalMode === 'video' ? 'tu interviens en vidéo 📹' : 'tu interviens en audio 🎤');
+  };
+  const leaveStage = () => { setGuests((prev) => prev.filter((g) => !g.local)); setRequested('idle'); };
+  const localMode = guests.find((g) => g.local)?.mode;
 
   // Événement d'arrivée
   useEffect(() => {
@@ -113,7 +163,7 @@ export default function Live() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phase]);
 
-  // Flux d'événements (chat, cadeaux, rejoint, likes, partages) + demandes d'intervention
+  // Flux d'événements + demandes d'intervention simulées
   useEffect(() => {
     if (phase !== 'live') return;
     const t = setInterval(() => {
@@ -123,18 +173,18 @@ export default function Live() {
         const roll = Math.round(Date.now() / 1000) % 6;
         if (roll === 0) setComments((prev) => [...prev.slice(-30), { id: `c${cid++}`, name: nm, avatar: av, text: `a offert ${GIFTS[cid % GIFTS.length].toLocaleString('fr-FR')} FCFA 🎁`, gift: true }]);
         else if (roll === 1) pushEvent(nm, av, 'join', 'a rejoint le live');
-        else if (roll === 2) pushEvent(nm, av, 'like', 'a aimé');
+        else if (roll === 2) { pushEvent(nm, av, 'like', 'a aimé'); spawnHearts(width - 38, height - 130, 1); }
         else if (roll === 3) pushEvent(nm, av, 'share', 'a partagé');
         else setComments((prev) => [...prev.slice(-30), { id: `c${cid++}`, name: nm, avatar: av, text: MSGS[cid % MSGS.length] }]);
       }
       setViewers((v) => v + (Math.round(Date.now() / 1000) % 3) - 1);
-      // Demande d'intervention simulée (vue vendeur)
-      if (isHost && Math.round(Date.now() / 1000) % 8 === 0) {
-        setRequests((prev) => (prev.length ? prev : [{ id: `r${cid++}`, name: nm, avatar: av }]));
+      if (isHost && Math.round(Date.now() / 1000) % 7 === 0) {
+        setRequests((prev) => (prev.length >= 3 ? prev : [...prev, { id: `r${cid++}`, name: nm, avatar: av, mode: 'audio' }]));
       }
     }, 2200);
     return () => clearInterval(t);
-  }, [phase, blocked, isHost]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phase, blocked, isHost, width, height]);
 
   // ---------- VUE VENDEUR : préparation du live ----------
   if (isHost && phase === 'setup') {
@@ -155,9 +205,7 @@ export default function Live() {
             <Text style={styles.setupTitle}>Préparer ton live</Text>
             <Pressable onPress={() => setFacing((f) => (f === 'front' ? 'back' : 'front'))} style={styles.close}><Ionicons name="camera-reverse-outline" size={22} color="#fff" /></Pressable>
           </View>
-
           <View style={{ flex: 1 }} />
-
           <View style={styles.setupPanel}>
             <Text style={styles.panelTitle}>Que veux-tu vendre en live ?</Text>
             <Text style={styles.panelSub}>Sélectionne tes produits (ma boutique + affiliation). {sell.length} sélectionné(s).</Text>
@@ -186,7 +234,7 @@ export default function Live() {
     );
   }
 
-  // ---------- VUE LIVE (vendeur en direct OU spectateur) ----------
+  // ---------- VUE LIVE ----------
   return (
     <View style={styles.root}>
       {isHost ? (
@@ -200,7 +248,7 @@ export default function Live() {
 
       <SafeAreaView style={{ flex: 1 }} pointerEvents="box-none">
         <View style={styles.top}>
-          <View style={styles.hostPill}>
+          <Pressable onPress={openHostProfile} style={styles.hostPill}>
             <Avatar uri={hostAvatar} size={30} />
             <Text style={styles.hostName} numberOfLines={1}>{name}</Text>
             {!isHost && (
@@ -208,10 +256,17 @@ export default function Live() {
                 <Text style={styles.followText}>{followed ? '✓' : '+'}</Text>
               </Pressable>
             )}
-          </View>
+          </Pressable>
           <View style={styles.liveBadge}><View style={styles.liveDot} /><Text style={styles.liveText}>EN DIRECT</Text></View>
           <View style={styles.viewersPill}><Ionicons name="eye" size={13} color="#fff" /><Text style={styles.viewersText}>{Math.max(1, viewers)}</Text></View>
-          <Pressable onPress={share} style={styles.topIcon}><Ionicons name="share-social" size={18} color="#fff" /></Pressable>
+          <View style={{ flex: 1 }} />
+          {isHost && (
+            <Pressable onPress={() => setRequestsOpen(true)} style={styles.close}>
+              <Ionicons name="people" size={19} color="#fff" />
+              {requests.length > 0 && <View style={styles.reqBadge}><Text style={styles.reqBadgeText}>{requests.length}</Text></View>}
+            </Pressable>
+          )}
+          <Pressable onPress={share} style={styles.close}><Ionicons name="share-social" size={18} color="#fff" /></Pressable>
           <Pressable onPress={() => (router.canGoBack() ? router.back() : router.replace('/accueil'))} style={styles.close}><Ionicons name="close" size={24} color="#fff" /></Pressable>
         </View>
 
@@ -224,31 +279,16 @@ export default function Live() {
           </View>
         )}
 
-        {/* Demande d'intervention (vendeur accepte/refuse) */}
-        {isHost && requests.length > 0 && (
-          <View style={styles.reqCard}>
-            <Avatar uri={requests[0].avatar} size={34} />
-            <Text style={styles.reqText} numberOfLines={1}><Text style={{ fontFamily: Font.bold }}>{requests[0].name}</Text> veut intervenir</Text>
-            <Pressable onPress={() => refuseGuest(requests[0].id)} style={styles.reqRefuse}><Ionicons name="close" size={18} color="#fff" /></Pressable>
-            <Pressable onPress={() => acceptGuest(requests[0])} style={styles.reqAccept}><Text style={styles.reqAcceptText}>Accepter</Text></Pressable>
-          </View>
-        )}
-
-        {/* Intervenants en direct */}
+        {/* Intervenants en direct (audio = avatar, vidéo = flux) */}
         {guests.length > 0 && (
           <View style={styles.guestStrip}>
-            {guests.map((g) => (
-              <View key={g.id} style={styles.guestPip}>
-                <Avatar uri={g.avatar} size={44} ring />
-                <View style={styles.guestMic}><Ionicons name="mic" size={9} color="#fff" /></View>
-              </View>
-            ))}
+            {guests.map((g) => <GuestPip key={g.id} g={g} facing={facing} />)}
           </View>
         )}
 
         <View style={{ flex: 1 }} />
 
-        {/* Commentaires (tap = modérer pour le vendeur) */}
+        {/* Commentaires — appui long pour agir */}
         <View style={styles.commentsWrap} pointerEvents="box-none">
           {comments.slice(-7).map((c) =>
             c.system ? (
@@ -257,7 +297,7 @@ export default function Live() {
                 <Text style={styles.sysText}><Text style={{ fontFamily: Font.semibold }}>{c.name}</Text> {c.text}</Text>
               </View>
             ) : (
-              <Pressable key={c.id} onPress={() => isHost && c.name !== 'Toi' && setMod(c)} style={styles.comment}>
+              <Pressable key={c.id} onLongPress={() => c.name !== 'Toi' && setMod(c)} delayLongPress={280} style={styles.comment}>
                 <Avatar uri={c.avatar} size={26} />
                 <View style={[styles.commentBubble, c.gift && styles.giftBubble]}>
                   <Text style={[styles.commentName, c.gift && { color: '#fff' }]}>{c.name}</Text>
@@ -272,7 +312,7 @@ export default function Live() {
         <View style={styles.bottom}>
           {!isHost ? (
             <View style={styles.inputBar}>
-              <TextInput style={styles.input} value={text} onChangeText={setText} placeholder="Ajoute un commentaire…" placeholderTextColor="#ffffff99" onSubmitEditing={send} />
+              <TextInput style={styles.input} value={text} onChangeText={setText} placeholder="Ajoute un commentaire…" placeholderTextColor="#ffffff99" onSubmitEditing={send} returnKeyType="send" />
             </View>
           ) : (
             <Pressable onPress={() => setFacing((f) => (f === 'front' ? 'back' : 'front'))} style={styles.circleBtn}>
@@ -287,8 +327,14 @@ export default function Live() {
           )}
 
           {!isHost && (
-            <Pressable onPress={requestJoin} style={[styles.circleBtn, requested !== 'idle' && { backgroundColor: Afylo.violet }]}>
-              <Ionicons name={requested === 'live' ? 'mic' : requested === 'pending' ? 'hourglass' : 'hand-left'} size={20} color="#fff" />
+            <Pressable
+              onPress={requested === 'live' ? leaveStage : requestJoin}
+              style={[styles.circleBtn, requested !== 'idle' && { backgroundColor: Afylo.violet }]}>
+              <Ionicons
+                name={requested === 'live' ? (localMode === 'video' ? 'videocam' : 'mic') : requested === 'pending' ? 'hourglass' : requested === 'accepted' ? 'checkmark' : 'hand-left'}
+                size={20}
+                color="#fff"
+              />
             </Pressable>
           )}
 
@@ -304,10 +350,80 @@ export default function Live() {
         </View>
       </SafeAreaView>
 
-      {/* Cœurs flottants */}
-      <View style={styles.heartsLayer} pointerEvents="none">
-        {hearts.map((h) => <FloatingHeart key={h.id} onDone={() => setHearts((prev) => prev.filter((x) => x.id !== h.id))} />)}
+      {/* Toast */}
+      {toast && (
+        <View style={styles.toast} pointerEvents="none"><Text style={styles.toastText}>{toast}</Text></View>
+      )}
+
+      {/* Cœurs flottants + pop double-tap */}
+      <View style={StyleSheet.absoluteFill} pointerEvents="none">
+        {hearts.map((h) => <FloatingHeart key={h.id} heart={h} onDone={() => setHearts((prev) => prev.filter((x) => x.id !== h.id))} />)}
+        {pops.map((p) => <BigPop key={p.id} x={p.x} y={p.y} />)}
       </View>
+
+      {/* Panneau des demandes d'intervention (vendeur) */}
+      <Modal visible={requestsOpen} transparent animationType="slide" onRequestClose={() => setRequestsOpen(false)}>
+        <Pressable style={styles.mOverlay} onPress={() => setRequestsOpen(false)}>
+          <Pressable style={styles.mSheet} onPress={(e) => e.stopPropagation?.()}>
+            <View style={styles.mHandle} />
+            <Text style={styles.mTitle}>Demandes d'intervention</Text>
+            {requests.length === 0 ? (
+              <Text style={styles.emptyReq}>Aucune demande pour le moment.</Text>
+            ) : (
+              requests.map((r) => (
+                <View key={r.id} style={styles.reqRow}>
+                  <Avatar uri={r.avatar} size={40} />
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.reqName}>{r.name}</Text>
+                    <Text style={styles.reqSub}>veut intervenir</Text>
+                  </View>
+                  <Pressable onPress={() => acceptGuest(r, 'audio')} style={styles.reqIcon}><Ionicons name="mic" size={18} color="#fff" /></Pressable>
+                  <Pressable onPress={() => acceptGuest(r, 'video')} style={[styles.reqIcon, { backgroundColor: Afylo.violet }]}><Ionicons name="videocam" size={18} color="#fff" /></Pressable>
+                  <Pressable onPress={() => refuseGuest(r.id)} style={styles.reqIconGhost}><Ionicons name="close" size={18} color="#fff" /></Pressable>
+                </View>
+              ))
+            )}
+
+            {guests.length > 0 && (
+              <>
+                <Text style={[styles.mTitle, { fontSize: 15, marginTop: 18 }]}>En direct avec toi</Text>
+                {guests.map((g) => (
+                  <View key={g.id} style={styles.reqRow}>
+                    <Avatar uri={g.avatar} size={40} ring />
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.reqName}>{g.name}{g.local ? ' (toi)' : ''}</Text>
+                      <Text style={styles.reqSub}><Ionicons name={g.mode === 'video' ? 'videocam' : 'mic'} size={11} color="#ffffffaa" /> {g.mode === 'video' ? 'Vidéo' : 'Audio'}</Text>
+                    </View>
+                    <Pressable onPress={() => removeGuest(g.id)} style={styles.reqRemove}><Text style={styles.reqRemoveText}>Retirer</Text></Pressable>
+                  </View>
+                ))}
+              </>
+            )}
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      {/* Choix audio / vidéo (spectateur accepté) */}
+      <Modal visible={chooser} transparent animationType="fade" onRequestClose={() => { setChooser(false); setRequested('idle'); }}>
+        <View style={styles.chooserOverlay}>
+          <View style={styles.chooserCard}>
+            <View style={styles.chooserIcon}><Ionicons name="checkmark" size={26} color="#fff" /></View>
+            <Text style={styles.chooserTitle}>Tu es accepté !</Text>
+            <Text style={styles.chooserSub}>Comment veux-tu intervenir dans le live ?</Text>
+            <View style={styles.chooserRow}>
+              <Pressable onPress={() => chooseMode('audio')} style={styles.chooserBtn}>
+                <Ionicons name="mic" size={26} color={Afylo.text} />
+                <Text style={styles.chooserBtnText}>Audio</Text>
+              </Pressable>
+              <Pressable onPress={() => chooseMode('video')} style={[styles.chooserBtn, styles.chooserBtnVideo]}>
+                <Ionicons name="videocam" size={26} color="#fff" />
+                <Text style={[styles.chooserBtnText, { color: '#fff' }]}>Vidéo</Text>
+              </Pressable>
+            </View>
+            <Pressable onPress={() => { setChooser(false); setRequested('idle'); }}><Text style={styles.chooserCancel}>Annuler</Text></Pressable>
+          </View>
+        </View>
+      </Modal>
 
       {/* Sélecteur de produit (ajouter pendant le live) */}
       <Modal visible={productPicker} transparent animationType="slide" onRequestClose={() => setProductPicker(false)}>
@@ -334,15 +450,26 @@ export default function Live() {
         </Pressable>
       </Modal>
 
-      {/* Menu de modération (vendeur) */}
+      {/* Menu commentaire (appui long) — hôte modère, spectateur répond/signale */}
       <Modal visible={!!mod} transparent animationType="fade" onRequestClose={() => setMod(null)}>
         <Pressable style={styles.modOverlay} onPress={() => setMod(null)}>
           <View style={styles.modSheet}>
             <Text style={styles.modWho}>{mod?.name}</Text>
             <Text style={styles.modMsg}>{mod?.text}</Text>
-            <Pressable style={styles.modItem} onPress={() => mod && pinComment(mod)}><Ionicons name="pin-outline" size={20} color={Afylo.text} /><Text style={styles.modItemText}>Épingler</Text></Pressable>
-            <Pressable style={styles.modItem} onPress={() => mod && deleteComment(mod.id)}><Ionicons name="trash-outline" size={20} color={Afylo.live} /><Text style={[styles.modItemText, { color: Afylo.live }]}>Supprimer</Text></Pressable>
-            <Pressable style={styles.modItem} onPress={() => mod && blockUser(mod.name)}><Ionicons name="ban-outline" size={20} color={Afylo.live} /><Text style={[styles.modItemText, { color: Afylo.live }]}>Bloquer {mod?.name}</Text></Pressable>
+            {isHost ? (
+              <>
+                <Pressable style={styles.modItem} onPress={() => mod && pinComment(mod)}><Ionicons name="pin-outline" size={20} color={Afylo.text} /><Text style={styles.modItemText}>Épingler</Text></Pressable>
+                <Pressable style={styles.modItem} onPress={() => mod && replyTo(mod.name)}><Ionicons name="return-up-back-outline" size={20} color={Afylo.text} /><Text style={styles.modItemText}>Répondre</Text></Pressable>
+                <Pressable style={styles.modItem} onPress={() => mod && deleteComment(mod.id)}><Ionicons name="trash-outline" size={20} color={Afylo.live} /><Text style={[styles.modItemText, { color: Afylo.live }]}>Supprimer</Text></Pressable>
+                <Pressable style={styles.modItem} onPress={() => mod && blockUser(mod.name)}><Ionicons name="ban-outline" size={20} color={Afylo.live} /><Text style={[styles.modItemText, { color: Afylo.live }]}>Bloquer {mod?.name}</Text></Pressable>
+              </>
+            ) : (
+              <>
+                <Pressable style={styles.modItem} onPress={() => mod && replyTo(mod.name)}><Ionicons name="return-up-back-outline" size={20} color={Afylo.text} /><Text style={styles.modItemText}>Répondre à {mod?.name}</Text></Pressable>
+                <Pressable style={styles.modItem} onPress={() => mod && router.push({ pathname: '/creator/[id]', params: { id: mod.name, name: mod.name, avatar: mod.avatar } })}><Ionicons name="person-outline" size={20} color={Afylo.text} /><Text style={styles.modItemText}>Voir le profil</Text></Pressable>
+                <Pressable style={styles.modItem} onPress={reportComment}><Ionicons name="flag-outline" size={20} color={Afylo.live} /><Text style={[styles.modItemText, { color: Afylo.live }]}>Signaler</Text></Pressable>
+              </>
+            )}
             <Pressable style={styles.modCancel} onPress={() => setMod(null)}><Text style={styles.modCancelText}>Annuler</Text></Pressable>
           </View>
         </Pressable>
@@ -354,21 +481,66 @@ export default function Live() {
   );
 }
 
-function FloatingHeart({ onDone }: { onDone: () => void }) {
-  const y = useRef(new Animated.Value(0)).current;
-  const opacity = useRef(new Animated.Value(1)).current;
-  const x = useRef(new Animated.Value(0)).current;
+/* ---------------- Intervenant : pip audio / vidéo ---------------- */
+function GuestPip({ g, facing }: { g: Guest; facing: 'front' | 'back' }) {
+  return (
+    <View style={styles.guestPip}>
+      {g.mode === 'video'
+        ? (g.local ? <CameraView style={StyleSheet.absoluteFill} facing={facing} /> : <RemoteVideoPip />)
+        : <View style={styles.guestAudio}><Avatar uri={g.avatar} size={54} ring /></View>}
+      <View style={styles.guestNameBar}>
+        <Ionicons name={g.mode === 'video' ? 'videocam' : 'mic'} size={9} color="#fff" />
+        <Text style={styles.guestName} numberOfLines={1}>{g.name}</Text>
+      </View>
+    </View>
+  );
+}
+
+function RemoteVideoPip() {
+  const player = useVideoPlayer(video(6), (p) => { p.loop = true; p.muted = true; p.play(); });
+  return <VideoView player={player} style={StyleSheet.absoluteFill} contentFit="cover" nativeControls={false} />;
+}
+
+/* ---------------- Likes animés ---------------- */
+function FloatingHeart({ heart, onDone }: { heart: Heart; onDone: () => void }) {
+  const t = useRef(new Animated.Value(0)).current;
+  const pop = useRef(new Animated.Value(0)).current;
+  const rise = useRef(-220 - Math.random() * 160).current;
+  const drift = useRef((Math.random() * 2 - 1) * 60).current;
+  const dur = useRef(1600 + Math.random() * 1000).current;
+  const spin = useRef((Math.random() * 2 - 1) * 24).current;
   useEffect(() => {
-    Animated.parallel([
-      Animated.timing(y, { toValue: -260, duration: 2200, useNativeDriver: true }),
-      Animated.timing(x, { toValue: (cid % 2 ? 1 : -1) * 30, duration: 2200, useNativeDriver: true }),
-      Animated.timing(opacity, { toValue: 0, duration: 2200, useNativeDriver: true }),
-    ]).start(onDone);
+    Animated.spring(pop, { toValue: 1, friction: 4, tension: 120, useNativeDriver: true }).start();
+    Animated.timing(t, { toValue: 1, duration: dur, easing: Easing.out(Easing.quad), useNativeDriver: true }).start(onDone);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+  const translateY = t.interpolate({ inputRange: [0, 1], outputRange: [0, rise] });
+  const translateX = t.interpolate({ inputRange: [0, 0.5, 1], outputRange: [0, drift, drift * 0.3] });
+  const opacity = t.interpolate({ inputRange: [0, 0.65, 1], outputRange: [1, 1, 0] });
+  const rotate = t.interpolate({ inputRange: [0, 1], outputRange: ['0deg', `${spin}deg`] });
+  const scale = pop.interpolate({ inputRange: [0, 1], outputRange: [0.3, 1] });
   return (
-    <Animated.View style={{ position: 'absolute', bottom: 90, right: 24, opacity, transform: [{ translateY: y }, { translateX: x }] }}>
-      <Ionicons name="heart" size={26} color={Afylo.live} />
+    <Animated.View style={{ position: 'absolute', left: heart.x, top: heart.y, opacity, transform: [{ translateY }, { translateX }, { rotate }, { scale }] }}>
+      <Ionicons name="heart" size={heart.size} color={heart.color} style={styles.heartShadow} />
+    </Animated.View>
+  );
+}
+
+function BigPop({ x, y }: { x: number; y: number }) {
+  const s = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    Animated.sequence([
+      Animated.spring(s, { toValue: 1, friction: 3, tension: 90, useNativeDriver: true }),
+      Animated.timing(s, { toValue: 2, duration: 320, easing: Easing.in(Easing.quad), useNativeDriver: true }),
+    ]).start();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  const scale = s.interpolate({ inputRange: [0, 1, 2], outputRange: [0.2, 1.15, 1.6] });
+  const opacity = s.interpolate({ inputRange: [0, 1, 2], outputRange: [0.9, 1, 0] });
+  const rotate = s.interpolate({ inputRange: [0, 1], outputRange: ['-18deg', '-8deg'] });
+  return (
+    <Animated.View style={{ position: 'absolute', left: x - 45, top: y - 45, opacity, transform: [{ scale }, { rotate }] }}>
+      <Ionicons name="heart" size={90} color="#FF2D55" style={styles.heartShadow} />
     </Animated.View>
   );
 }
@@ -404,19 +576,18 @@ const styles = StyleSheet.create({
   liveText: { color: '#fff', fontFamily: Font.bold, fontSize: 10 },
   viewersPill: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#00000055', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 12 },
   viewersText: { color: '#fff', fontFamily: Font.semibold, fontSize: 12 },
-  topIcon: { marginLeft: 'auto', width: 34, height: 34, borderRadius: 17, backgroundColor: '#00000055', alignItems: 'center', justifyContent: 'center' },
   close: { width: 34, height: 34, borderRadius: 17, backgroundColor: '#00000055', alignItems: 'center', justifyContent: 'center' },
+  reqBadge: { position: 'absolute', top: -3, right: -3, minWidth: 18, height: 18, paddingHorizontal: 4, borderRadius: 9, backgroundColor: Afylo.live, alignItems: 'center', justifyContent: 'center', borderWidth: 1.5, borderColor: '#000' },
+  reqBadgeText: { color: '#fff', fontFamily: Font.bold, fontSize: 10 },
 
   pinned: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#00000066', marginHorizontal: 12, marginTop: 10, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 12, borderWidth: 1, borderColor: '#FFD98A55' },
   pinnedText: { color: '#fff', fontSize: 13, flex: 1 },
-  reqCard: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: '#000000AA', marginHorizontal: 12, marginTop: 10, padding: 8, borderRadius: 14, borderWidth: 1, borderColor: Afylo.violet },
-  reqText: { color: '#fff', fontSize: 13, flex: 1 },
-  reqRefuse: { width: 34, height: 34, borderRadius: 17, backgroundColor: '#ffffff22', alignItems: 'center', justifyContent: 'center' },
-  reqAccept: { backgroundColor: Afylo.violet, paddingHorizontal: 14, height: 34, borderRadius: 17, alignItems: 'center', justifyContent: 'center' },
-  reqAcceptText: { color: '#fff', fontFamily: Font.semibold, fontSize: 13 },
+
   guestStrip: { flexDirection: 'row', gap: 10, paddingHorizontal: 14, marginTop: 12 },
-  guestPip: { width: 44, height: 44 },
-  guestMic: { position: 'absolute', bottom: -2, right: -2, width: 18, height: 18, borderRadius: 9, backgroundColor: Afylo.violet, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: '#000' },
+  guestPip: { width: 78, height: 104, borderRadius: 14, overflow: 'hidden', backgroundColor: '#111', borderWidth: 2, borderColor: Afylo.violet },
+  guestAudio: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#1a1a22' },
+  guestNameBar: { position: 'absolute', left: 0, right: 0, bottom: 0, flexDirection: 'row', alignItems: 'center', gap: 3, paddingHorizontal: 5, paddingVertical: 3, backgroundColor: '#00000088' },
+  guestName: { color: '#fff', fontFamily: Font.semibold, fontSize: 10, flex: 1 },
 
   commentsWrap: { paddingHorizontal: 12, gap: 8, marginBottom: 8, maxWidth: '82%' },
   comment: { flexDirection: 'row', alignItems: 'flex-end', gap: 8 },
@@ -434,16 +605,38 @@ const styles = StyleSheet.create({
   circleBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#00000055', alignItems: 'center', justifyContent: 'center' },
   sellBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: Afylo.violet, paddingHorizontal: 16, height: 44, borderRadius: Radius.pill, marginLeft: 'auto' },
   sellText: { color: '#fff', fontFamily: Font.semibold, fontSize: 14 },
-  heartsLayer: { position: 'absolute', right: 0, bottom: 0, width: 100, height: 400 },
+  heartShadow: { textShadowColor: '#00000066', textShadowRadius: 6, textShadowOffset: { width: 0, height: 1 } },
+
+  toast: { position: 'absolute', top: 90, alignSelf: 'center', backgroundColor: '#000000cc', paddingHorizontal: 16, paddingVertical: 10, borderRadius: Radius.pill },
+  toastText: { color: '#fff', fontFamily: Font.semibold, fontSize: 13 },
 
   mOverlay: { flex: 1, backgroundColor: '#00000088', justifyContent: 'flex-end' },
   mSheet: { backgroundColor: '#15151C', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 16, paddingBottom: 28 },
   mHandle: { width: 40, height: 4, borderRadius: 2, backgroundColor: '#ffffff33', alignSelf: 'center', marginBottom: 12 },
   mTitle: { color: '#fff', fontFamily: Font.bold, fontSize: 17, marginBottom: 8 },
+  emptyReq: { color: '#ffffff88', fontSize: 14, paddingVertical: 16, textAlign: 'center' },
+  reqRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 8 },
+  reqName: { color: '#fff', fontFamily: Font.semibold, fontSize: 14 },
+  reqSub: { color: '#ffffff99', fontSize: 12, marginTop: 1 },
+  reqIcon: { width: 38, height: 38, borderRadius: 19, backgroundColor: '#ffffff22', alignItems: 'center', justifyContent: 'center' },
+  reqIconGhost: { width: 38, height: 38, borderRadius: 19, backgroundColor: '#ffffff12', alignItems: 'center', justifyContent: 'center' },
+  reqRemove: { paddingHorizontal: 14, height: 34, borderRadius: 17, backgroundColor: '#ffffff18', alignItems: 'center', justifyContent: 'center' },
+  reqRemoveText: { color: '#fff', fontFamily: Font.semibold, fontSize: 13 },
+
+  chooserOverlay: { flex: 1, backgroundColor: '#000000aa', alignItems: 'center', justifyContent: 'center', padding: 30 },
+  chooserCard: { backgroundColor: Afylo.bg, borderRadius: 24, padding: 24, alignItems: 'center', width: '100%', maxWidth: 360 },
+  chooserIcon: { width: 56, height: 56, borderRadius: 28, backgroundColor: Afylo.green, alignItems: 'center', justifyContent: 'center', marginBottom: 14 },
+  chooserTitle: { color: Afylo.text, fontFamily: Font.bold, fontSize: 20 },
+  chooserSub: { color: Afylo.textDim, fontSize: 14, textAlign: 'center', marginTop: 6, marginBottom: 20 },
+  chooserRow: { flexDirection: 'row', gap: 12, alignSelf: 'stretch' },
+  chooserBtn: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 20, borderRadius: Radius.lg, backgroundColor: Afylo.surfaceAlt, borderWidth: 1, borderColor: Afylo.border },
+  chooserBtnVideo: { backgroundColor: Afylo.violet, borderColor: Afylo.violet },
+  chooserBtnText: { color: Afylo.text, fontFamily: Font.bold, fontSize: 15 },
+  chooserCancel: { color: Afylo.textDim, fontFamily: Font.semibold, fontSize: 15, marginTop: 18 },
 
   modOverlay: { flex: 1, backgroundColor: '#00000088', justifyContent: 'center', paddingHorizontal: 30 },
   modSheet: { backgroundColor: Afylo.surface, borderRadius: 20, padding: 16 },
-  modWho: { ...{}, color: Afylo.text, fontFamily: Font.bold, fontSize: 15 },
+  modWho: { color: Afylo.text, fontFamily: Font.bold, fontSize: 15 },
   modMsg: { color: Afylo.textDim, fontSize: 14, marginTop: 2, marginBottom: 10 },
   modItem: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12 },
   modItemText: { color: Afylo.text, fontFamily: Font.semibold, fontSize: 15 },
