@@ -31,7 +31,7 @@ function nf(n: number): string {
 }
 
 /** Forme d'affichage commune (produit réel ou démo). */
-type DisplayProduct = { id: string; title: string; price: string; stock: number; sold: number; image: string; active: boolean; real: boolean };
+type DisplayProduct = { id: string; title: string; price: string; promo?: string | null; stock: number; sold: number; image: string; active: boolean; real: boolean };
 
 type Section = 'posts' | 'texte' | 'boutique' | 'achats' | 'reposts';
 
@@ -601,6 +601,7 @@ function BoutiqueList({ isOwner }: { isOwner: boolean }) {
           id: r.id,
           title: r.title,
           price: r.price_cfa.toLocaleString('fr-FR'),
+          promo: r.promo_cfa ? r.promo_cfa.toLocaleString('fr-FR') : null,
           stock: r.stock,
           sold: r.sold_count,
           image: r.image_url || photo(`prod-${r.id}`, 400, 400),
@@ -619,8 +620,11 @@ function BoutiqueList({ isOwner }: { isOwner: boolean }) {
     }, [load]),
   );
 
-  const remove = async (id: string) => {
-    await deleteProduct(id);
+  const [confirm, setConfirm] = useState<DisplayProduct | null>(null);
+  const doDelete = async () => {
+    if (!confirm) return;
+    await deleteProduct(confirm.id);
+    setConfirm(null);
     load();
   };
 
@@ -649,15 +653,70 @@ function BoutiqueList({ isOwner }: { isOwner: boolean }) {
 
       <View style={styles.prodGrid}>
         {list.map((p) => (
-          <ProductCard key={p.id} p={p} isOwner={isOwner} onDelete={p.real ? () => remove(p.id) : undefined} />
+          <ProductCard
+            key={p.id}
+            p={p}
+            isOwner={isOwner}
+            onEdit={p.real ? () => router.push({ pathname: '/product-new', params: { id: p.id } }) : undefined}
+            onDelete={p.real ? () => setConfirm(p) : undefined}
+          />
         ))}
       </View>
+
+      {confirm && <DeleteProductModal product={confirm} onCancel={() => setConfirm(null)} onConfirm={doDelete} />}
     </View>
   );
 }
 
-function ProductCard({ p, isOwner, onDelete }: { p: DisplayProduct; isOwner: boolean; onDelete?: () => void }) {
-  const shareProduct = () => { Share.share({ message: `${p.title} — ${p.price} F sur Afryko 🛍️` }).catch(() => {}); };
+/** Suppression d'un produit — DOUBLE confirmation pour éviter les erreurs. */
+function DeleteProductModal({ product, onCancel, onConfirm }: { product: DisplayProduct; onCancel: () => void; onConfirm: () => Promise<void> }) {
+  const [step, setStep] = useState<1 | 2>(1);
+  const [busy, setBusy] = useState(false);
+  const confirmDelete = async () => { setBusy(true); try { await onConfirm(); } finally { setBusy(false); } };
+  return (
+    <Modal visible transparent animationType="fade" onRequestClose={onCancel}>
+      <Pressable style={styles.confirmOverlay} onPress={busy ? undefined : onCancel}>
+        <Pressable style={styles.confirmCard} onPress={(e) => e.stopPropagation?.()}>
+          <View style={styles.confirmIcon}><Ionicons name="trash" size={26} color={Afryko.live} /></View>
+          {step === 1 ? (
+            <>
+              <Text style={styles.confirmTitle}>Supprimer ce produit ?</Text>
+              <Text style={styles.confirmSub}>« {product.title} » sera retiré de ta boutique.</Text>
+              <Pressable style={styles.confirmDanger} onPress={() => setStep(2)}><Text style={styles.confirmDangerText}>Continuer</Text></Pressable>
+              <Pressable style={styles.confirmGhost} onPress={onCancel}><Text style={styles.confirmGhostText}>Annuler</Text></Pressable>
+            </>
+          ) : (
+            <>
+              <Text style={styles.confirmTitle}>Confirmer la suppression</Text>
+              <Text style={styles.confirmSub}>Cette action est <Text style={{ fontFamily: Font.bold, color: Afryko.text }}>définitive</Text> et ne peut pas être annulée.</Text>
+              <Pressable style={[styles.confirmDanger, busy && { opacity: 0.6 }]} disabled={busy} onPress={confirmDelete}>
+                <Text style={styles.confirmDangerText}>{busy ? 'Suppression…' : 'Supprimer définitivement'}</Text>
+              </Pressable>
+              <Pressable style={styles.confirmGhost} onPress={() => setStep(1)} disabled={busy}><Text style={styles.confirmGhostText}>Retour</Text></Pressable>
+            </>
+          )}
+        </Pressable>
+      </Pressable>
+    </Modal>
+  );
+}
+
+/** Partage robuste : Share natif, repli presse-papier sur le web si indispo. */
+async function shareMessage(message: string) {
+  try {
+    const res = await Share.share({ message });
+    if ((res as any)?.action === 'dismissedAction') return;
+  } catch {
+    try {
+      if (typeof navigator !== 'undefined' && navigator.clipboard) {
+        await navigator.clipboard.writeText(message);
+      }
+    } catch {}
+  }
+}
+
+function ProductCard({ p, isOwner, onEdit, onDelete }: { p: DisplayProduct; isOwner: boolean; onEdit?: () => void; onDelete?: () => void }) {
+  const shareProduct = () => shareMessage(`${p.title} — ${p.price} F sur Afryko 🛍️`);
   return (
     <View style={styles.prodCard}>
       <View style={styles.prodImg}>
@@ -669,12 +728,19 @@ function ProductCard({ p, isOwner, onDelete }: { p: DisplayProduct; isOwner: boo
         )}
       </View>
       <Text style={styles.prodTitle} numberOfLines={1}>{p.title}</Text>
-      <Text style={styles.prodPrice}>{p.price} F</Text>
+      {p.promo ? (
+        <View style={styles.priceRow}>
+          <Text style={styles.prodPrice}>{p.promo} F</Text>
+          <Text style={styles.prodPriceOld}>{p.price} F</Text>
+        </View>
+      ) : (
+        <Text style={styles.prodPrice}>{p.price} F</Text>
+      )}
       {isOwner ? (
         <View style={styles.prodMeta}>
           <Text style={styles.prodStat} numberOfLines={1}>{p.sold} vendus · {p.stock} en stock</Text>
           <View style={styles.prodActions}>
-            <Pressable style={styles.prodAction}><Ionicons name="create-outline" size={16} color={Afryko.textDim} /></Pressable>
+            <Pressable style={styles.prodAction} onPress={onEdit} disabled={!onEdit}><Ionicons name="create-outline" size={16} color={onEdit ? Afryko.textDim : Afryko.textFaint} /></Pressable>
             <Pressable style={styles.prodAction} onPress={shareProduct}><Ionicons name="share-social-outline" size={16} color={Afryko.textDim} /></Pressable>
             <Pressable style={styles.prodAction} onPress={onDelete} disabled={!onDelete}>
               <Ionicons name="trash-outline" size={16} color={onDelete ? Afryko.live : Afryko.textFaint} />
@@ -903,6 +969,8 @@ const styles = StyleSheet.create({
   inactiveText: { color: '#fff', fontWeight: '800', fontSize: 13 },
   prodTitle: { color: Afryko.text, fontSize: 14, fontWeight: '700', paddingHorizontal: 2 },
   prodPrice: { color: Afryko.gold, fontSize: 15, fontWeight: '800', paddingHorizontal: 2, marginTop: 2 },
+  priceRow: { flexDirection: 'row', alignItems: 'baseline', gap: 6, paddingHorizontal: 2, marginTop: 2 },
+  prodPriceOld: { color: Afryko.textFaint, fontSize: 12, fontWeight: '600', textDecorationLine: 'line-through' },
   prodMeta: { marginTop: 8, paddingHorizontal: 2 },
   prodStat: { color: Afryko.textDim, fontSize: 11 },
   prodActions: { flexDirection: 'row', gap: 6, marginTop: 8 },
@@ -911,6 +979,17 @@ const styles = StyleSheet.create({
   buyBtn: { flex: 1, backgroundColor: Afryko.violet, borderRadius: Radius.pill, paddingVertical: 9, alignItems: 'center' },
   buyBtnText: { color: '#fff', fontWeight: '800', fontSize: 13 },
   shareBtnSm: { width: 38, alignItems: 'center', justifyContent: 'center', borderRadius: Radius.pill, backgroundColor: Afryko.surfaceAlt },
+
+  // Double confirmation de suppression (produit)
+  confirmOverlay: { flex: 1, backgroundColor: '#00000088', alignItems: 'center', justifyContent: 'center', padding: 30 },
+  confirmCard: { width: '100%', maxWidth: 340, backgroundColor: Afryko.surface, borderRadius: Radius.xl, borderWidth: 1, borderColor: Afryko.border, padding: 22, alignItems: 'center' },
+  confirmIcon: { width: 56, height: 56, borderRadius: 28, backgroundColor: Afryko.live + '1A', alignItems: 'center', justifyContent: 'center', marginBottom: 14 },
+  confirmTitle: { color: Afryko.text, fontSize: 18, fontFamily: Font.bold, textAlign: 'center' },
+  confirmSub: { color: Afryko.textDim, fontSize: 14, textAlign: 'center', lineHeight: 20, marginTop: 8, marginBottom: 18 },
+  confirmDanger: { alignSelf: 'stretch', backgroundColor: Afryko.live, borderRadius: Radius.pill, paddingVertical: 14, alignItems: 'center' },
+  confirmDangerText: { color: '#fff', fontFamily: Font.bold, fontSize: 15 },
+  confirmGhost: { alignSelf: 'stretch', paddingVertical: 12, alignItems: 'center', marginTop: 4 },
+  confirmGhostText: { color: Afryko.textDim, fontFamily: Font.semibold, fontSize: 15 },
 
   liveRow: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: Afryko.surface, borderRadius: Radius.md, padding: 8 },
   liveThumb: { width: 96, height: 64, borderRadius: 10, overflow: 'hidden', backgroundColor: Afryko.surfaceAlt, alignItems: 'center', justifyContent: 'center' },

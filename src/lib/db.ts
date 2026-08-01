@@ -170,6 +170,12 @@ export async function listMyProducts(): Promise<Product[]> {
   return data ?? [];
 }
 
+/** Charge un produit par id (pour l'édition). null si introuvable. */
+export async function getProduct(id: string): Promise<Product | null> {
+  const { data } = await supabase.from('products').select('*').eq('id', id).maybeSingle();
+  return data;
+}
+
 export async function createProduct(input: ProductInput): Promise<Product> {
   const owner_id = await requireUserId();
   const { data, error } = await supabase

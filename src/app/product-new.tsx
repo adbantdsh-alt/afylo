@@ -2,14 +2,14 @@ import { Ionicons } from '@expo/vector-icons';
 import * as DocumentPicker from 'expo-document-picker';
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
-import { useRouter } from 'expo-router';
-import { useState, type ReactNode } from 'react';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useEffect, useState, type ReactNode } from 'react';
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Afryko, Font, Radius, Type } from '@/constants/brand';
 import { useAuthGate } from '@/lib/auth-gate';
-import { createProduct, uploadFile, uploadImage } from '@/lib/db';
+import { createProduct, getProduct, updateProduct, uploadFile, uploadImage } from '@/lib/db';
 import { classifyProduct } from '@/lib/moderation';
 
 const MIN_COMMISSION = 15;
@@ -18,6 +18,8 @@ const CONDITIONS = ['Neuf', 'Comme neuf', 'Occasion', 'Fait main'];
 export default function ProductNew() {
   const router = useRouter();
   const gate = useAuthGate();
+  const params = useLocalSearchParams<{ id?: string }>();
+  const editId = params.id || null; // présent = mode édition
 
   const [kind, setKind] = useState<'physical' | 'digital'>('physical');
   const [images, setImages] = useState<string[]>([]);
@@ -33,6 +35,25 @@ export default function ProductNew() {
   const [description, setDescription] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Édition : précharge le produit existant
+  useEffect(() => {
+    if (!editId) return;
+    getProduct(editId)
+      .then((p) => {
+        if (!p) return;
+        setKind(p.kind);
+        setTitle(p.title);
+        setPrice(String(p.price_cfa));
+        setPromo(p.promo_cfa ? String(p.promo_cfa) : '');
+        setStock(String(p.stock));
+        setImages(p.images?.length ? p.images : p.image_url ? [p.image_url] : []);
+        setDescription(p.description ?? '');
+        if (p.commission_pct > 0) { setAffiliationOn(true); setCommission(String(p.commission_pct)); }
+        setTiers((p.quantity_tiers ?? []).map((t) => ({ qty: String(t.qty), price: String(t.price_cfa) })));
+      })
+      .catch(() => {});
+  }, [editId]);
 
   const maxImages = kind === 'digital' ? 1 : 10;
 
@@ -75,12 +96,13 @@ export default function ProductNew() {
 
     setLoading(true);
     try {
+      // Conserve les images déjà en ligne (http), n'uploade que les nouvelles (locales)
       const urls: string[] = [];
-      for (const uri of images) urls.push(await uploadImage('products', uri));
+      for (const uri of images) urls.push(/^https?:\/\//.test(uri) ? uri : await uploadImage('products', uri));
       let digital_file_url: string | null = null;
       if (kind === 'digital' && file) digital_file_url = await uploadFile(file.uri, file.name);
 
-      await createProduct({
+      const payload = {
         title: title.trim(),
         kind,
         price_cfa: priceN,
@@ -90,12 +112,15 @@ export default function ProductNew() {
         description: finalDesc || undefined,
         image_url: urls[0] ?? null,
         images: urls,
-        digital_file_url,
         quantity_tiers,
-      });
+        // n'écrase le fichier digital que si un nouveau a été choisi
+        ...(digital_file_url ? { digital_file_url } : editId ? {} : { digital_file_url: null }),
+      };
+      if (editId) await updateProduct(editId, payload);
+      else await createProduct(payload);
       (router.canGoBack() ? router.back() : router.replace('/accueil'));
     } catch (e: any) {
-      setError(e.message ?? 'Erreur lors de la création.');
+      setError(e.message ?? "Erreur lors de l'enregistrement.");
     } finally {
       setLoading(false);
     }
@@ -106,7 +131,7 @@ export default function ProductNew() {
       <SafeAreaView edges={['top']} style={{ backgroundColor: Afryko.bg }}>
         <View style={styles.header}>
           <Pressable onPress={() => (router.canGoBack() ? router.back() : router.replace('/accueil'))} style={styles.hbtn}><Ionicons name="close" size={26} color={Afryko.text} /></Pressable>
-          <Text style={styles.title}>Nouveau produit</Text>
+          <Text style={styles.title}>{editId ? 'Modifier le produit' : 'Nouveau produit'}</Text>
           <View style={{ width: 40 }} />
         </View>
       </SafeAreaView>
@@ -217,7 +242,7 @@ export default function ProductNew() {
 
           <Pressable onPress={submit} disabled={loading} style={[styles.publish, loading && { opacity: 0.6 }]}>
             <Ionicons name="checkmark-circle" size={20} color="#fff" />
-            <Text style={styles.publishText}>{loading ? 'Publication…' : 'Publier le produit'}</Text>
+            <Text style={styles.publishText}>{loading ? 'Enregistrement…' : editId ? 'Enregistrer les modifications' : 'Publier le produit'}</Text>
           </Pressable>
         </ScrollView>
       </KeyboardAvoidingView>
