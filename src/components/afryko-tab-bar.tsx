@@ -5,7 +5,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated, { useAnimatedStyle } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { Afylo, Font } from '@/constants/brand';
+import { Afryko, Font } from '@/constants/brand';
 import { useAuthGate } from '@/lib/auth-gate';
 import { useTabBar } from '@/lib/tabbar';
 
@@ -16,7 +16,7 @@ const TABS: Record<string, { on: keyof typeof Ionicons.glyphMap; off: keyof type
   profil: { on: 'person', off: 'person-outline', label: 'Profil' },
 };
 
-export function AfyloTabBar({ state, navigation }: BottomTabBarProps) {
+export function AfrykoTabBar({ state, navigation }: BottomTabBarProps) {
   const insets = useSafeAreaInsets();
   const gate = useAuthGate();
   const { hidden } = useTabBar();
@@ -40,7 +40,7 @@ export function AfyloTabBar({ state, navigation }: BottomTabBarProps) {
             return (
               <Pressable key={route.key} onPress={() => { if (gate('publier ou vendre')) onPress(); }} style={styles.slot}>
                 <LinearGradient
-                  colors={[Afylo.violet, Afylo.violet2]}
+                  colors={[Afryko.violet, Afryko.violet2]}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 1 }}
                   style={styles.create}>
@@ -78,9 +78,9 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 22,
     borderTopRightRadius: 22,
     overflow: 'hidden',
-    backgroundColor: Afylo.navBg,
+    backgroundColor: Afryko.navBg,
     borderTopWidth: 1,
-    borderColor: Afylo.navBorder,
+    borderColor: Afryko.navBorder,
     shadowColor: '#000',
     shadowOpacity: 0.25,
     shadowRadius: 16,
@@ -97,7 +97,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: Afylo.violet,
+    shadowColor: Afryko.violet,
     shadowOpacity: 0.4,
     shadowRadius: 10,
     shadowOffset: { width: 0, height: 4 },

@@ -9,7 +9,7 @@ import { ActivityIndicator, Modal, PanResponder, Pressable, ScrollView, StyleShe
 import { withTiming } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { Afylo, Font, Radius } from '@/constants/brand';
+import { Afryko, Font, Radius } from '@/constants/brand';
 import { useAuthGate } from '@/lib/auth-gate';
 import { myProducts } from '@/lib/mock';
 import { useStories, type StoryProduct } from '@/lib/stories';
@@ -187,7 +187,7 @@ export default function Creer() {
 
         {/* Produit attaché */}
         <Pressable onPress={() => setProductPicker(true)} style={styles.attachProduct}>
-          <Ionicons name="pricetag" size={18} color={product ? Afylo.violet2 : '#ffffffcc'} />
+          <Ionicons name="pricetag" size={18} color={product ? Afryko.violet2 : '#ffffffcc'} />
           <Text style={[styles.attachText, product && { color: '#fff' }]} numberOfLines={1}>
             {product ? `${product.title} · ${product.price}` : 'Attacher un produit (achat direct)'}
           </Text>
@@ -201,7 +201,7 @@ export default function Creer() {
         {media ? (
           // ---- Aperçu : publier ----
           <View style={styles.previewBar} pointerEvents="box-none">
-            <Pressable onPress={publish} style={[styles.publishBtn, mode === 'Live' && { backgroundColor: Afylo.live }]}>
+            <Pressable onPress={publish} style={[styles.publishBtn, mode === 'Live' && { backgroundColor: Afryko.live }]}>
               {busy ? <ActivityIndicator color="#fff" /> : (
                 <>
                   <Text style={styles.publishText}>{mode === 'Story' ? 'Publier la story' : 'Continuer'}</Text>
@@ -229,13 +229,13 @@ export default function Creer() {
 
               {/* Déclencheur */}
               {locked ? (
-                <Pressable style={[styles.shutterRing, { borderColor: Afylo.live }]} onPress={endRecord}>
+                <Pressable style={[styles.shutterRing, { borderColor: Afryko.live }]} onPress={endRecord}>
                   <View style={styles.stopCore} />
                 </Pressable>
               ) : (
                 <View
                   {...shutterPan.panHandlers}
-                  style={[styles.shutterRing, recording && { borderColor: Afylo.live, transform: [{ scale: 1.15 }] }]}>
+                  style={[styles.shutterRing, recording && { borderColor: Afryko.live, transform: [{ scale: 1.15 }] }]}>
                   <View style={[styles.shutterCore, recording && styles.shutterCoreRec]} />
                 </View>
               )}
@@ -275,7 +275,7 @@ export default function Creer() {
                     <Text style={styles.pmName} numberOfLines={1}>{p.title}</Text>
                     <Text style={styles.pmPrice}>{p.price} FCFA</Text>
                   </View>
-                  <Ionicons name="add-circle" size={22} color={Afylo.violet} />
+                  <Ionicons name="add-circle" size={22} color={Afryko.violet} />
                 </Pressable>
               ))}
             </ScrollView>
@@ -310,11 +310,11 @@ const styles = StyleSheet.create({
   cameraCircle: { width: 74, height: 74, borderRadius: 37, backgroundColor: '#ffffff1A', alignItems: 'center', justifyContent: 'center', marginBottom: 8 },
   stageHint: { color: '#fff', fontFamily: Font.semibold, fontSize: 16 },
   stageSub: { color: '#ffffff88', fontSize: 13, marginTop: 4 },
-  allowBtn: { backgroundColor: Afylo.violet, paddingHorizontal: 18, paddingVertical: 10, borderRadius: Radius.pill, marginTop: 8 },
+  allowBtn: { backgroundColor: Afryko.violet, paddingHorizontal: 18, paddingVertical: 10, borderRadius: Radius.pill, marginTop: 8 },
   allowText: { color: '#fff', fontFamily: Font.semibold, fontSize: 14 },
 
   recPill: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#000000AA', paddingHorizontal: 12, paddingVertical: 5, borderRadius: Radius.pill },
-  recDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: Afylo.live },
+  recDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: Afryko.live },
   recText: { color: '#fff', fontFamily: Font.bold, fontSize: 12 },
 
   attachProduct: { flexDirection: 'row', alignItems: 'center', gap: 10, marginHorizontal: 16, marginBottom: 12, backgroundColor: '#00000066', borderRadius: Radius.pill, paddingHorizontal: 16, height: 46 },
@@ -327,8 +327,8 @@ const styles = StyleSheet.create({
   tool: { width: 54, height: 54, borderRadius: 27, backgroundColor: '#00000055', alignItems: 'center', justifyContent: 'center' },
   shutterRing: { width: 82, height: 82, borderRadius: 41, borderWidth: 5, borderColor: '#fff', alignItems: 'center', justifyContent: 'center' },
   shutterCore: { width: 64, height: 64, borderRadius: 32, backgroundColor: '#fff' },
-  shutterCoreRec: { backgroundColor: Afylo.live },
-  stopCore: { width: 30, height: 30, borderRadius: 8, backgroundColor: Afylo.live },
+  shutterCoreRec: { backgroundColor: Afryko.live },
+  stopCore: { width: 30, height: 30, borderRadius: 8, backgroundColor: Afryko.live },
   captureHint: { color: '#ffffffcc', fontSize: 12, textAlign: 'center', marginTop: 14 },
 
   modes: { flexDirection: 'row', justifyContent: 'center', gap: 22, paddingTop: 14, paddingBottom: 8 },
@@ -336,7 +336,7 @@ const styles = StyleSheet.create({
   modeActive: { color: '#fff', fontFamily: Font.bold },
 
   previewBar: { paddingHorizontal: 16, paddingBottom: 14 },
-  publishBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, height: 54, borderRadius: Radius.pill, backgroundColor: Afylo.violet },
+  publishBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, height: 54, borderRadius: Radius.pill, backgroundColor: Afryko.violet },
   publishText: { color: '#fff', fontFamily: Font.bold, fontSize: 16 },
 
   pmOverlay: { flex: 1, backgroundColor: '#00000088', justifyContent: 'flex-end' },

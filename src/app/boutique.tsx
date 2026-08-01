@@ -4,20 +4,20 @@ import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Badge } from '@/components/ui-kit';
-import { Afylo, Radius } from '@/constants/brand';
+import { Afryko, Radius } from '@/constants/brand';
 import { shopProducts } from '@/lib/mock';
 
 export default function Boutique() {
   return (
     <View style={styles.root}>
-      <SafeAreaView edges={['top']} style={{ backgroundColor: Afylo.bg }}>
+      <SafeAreaView edges={['top']} style={{ backgroundColor: Afryko.bg }}>
         <View style={styles.header}>
           <View>
             <Text style={styles.title}>Boutique</Text>
             <Text style={styles.sub}>Vends et gagne des commissions</Text>
           </View>
           <View style={styles.cart}>
-            <Ionicons name="cart-outline" size={22} color={Afylo.text} />
+            <Ionicons name="cart-outline" size={22} color={Afryko.text} />
           </View>
         </View>
       </SafeAreaView>
@@ -30,7 +30,7 @@ export default function Boutique() {
             <Text style={styles.earnValue}>124 500 FCFA</Text>
           </View>
           <View style={styles.earnBadge}>
-            <Ionicons name="trending-up" size={16} color={Afylo.green} />
+            <Ionicons name="trending-up" size={16} color={Afryko.green} />
             <Text style={styles.earnBadgeText}>+18%</Text>
           </View>
         </View>
@@ -67,11 +67,11 @@ export default function Boutique() {
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: Afylo.bg },
+  root: { flex: 1, backgroundColor: Afryko.bg },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 18, paddingVertical: 10 },
-  title: { color: Afylo.text, fontSize: 24, fontWeight: '800' },
-  sub: { color: Afylo.textDim, fontSize: 13, marginTop: 2 },
-  cart: { width: 44, height: 44, borderRadius: 22, backgroundColor: Afylo.surfaceAlt, alignItems: 'center', justifyContent: 'center' },
+  title: { color: Afryko.text, fontSize: 24, fontWeight: '800' },
+  sub: { color: Afryko.textDim, fontSize: 13, marginTop: 2 },
+  cart: { width: 44, height: 44, borderRadius: 22, backgroundColor: Afryko.surfaceAlt, alignItems: 'center', justifyContent: 'center' },
 
   earn: {
     flexDirection: 'row',
@@ -81,28 +81,28 @@ const styles = StyleSheet.create({
     marginTop: 6,
     padding: 18,
     borderRadius: Radius.lg,
-    backgroundColor: Afylo.surface,
+    backgroundColor: Afryko.surface,
     borderWidth: 1,
     borderColor: '#FFB02033',
   },
-  earnLabel: { color: Afylo.textDim, fontSize: 13 },
-  earnValue: { color: Afylo.gold, fontSize: 26, fontWeight: '800', marginTop: 4 },
+  earnLabel: { color: Afryko.textDim, fontSize: 13 },
+  earnValue: { color: Afryko.gold, fontSize: 26, fontWeight: '800', marginTop: 4 },
   earnBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#00C56622', paddingHorizontal: 10, paddingVertical: 6, borderRadius: Radius.pill },
-  earnBadgeText: { color: Afylo.green, fontWeight: '800', fontSize: 13 },
+  earnBadgeText: { color: Afryko.green, fontWeight: '800', fontSize: 13 },
 
   sectionRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 18, marginTop: 22, marginBottom: 12 },
-  section: { color: Afylo.text, fontSize: 17, fontWeight: '700' },
-  link: { color: Afylo.violet, fontSize: 13, fontWeight: '600' },
+  section: { color: Afryko.text, fontSize: 17, fontWeight: '700' },
+  link: { color: Afryko.violet, fontSize: 13, fontWeight: '600' },
 
   grid: { flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 12, gap: 12 },
-  pcard: { width: '46%', flexGrow: 1, backgroundColor: Afylo.surface, borderRadius: Radius.lg, padding: 8 },
-  pimgWrap: { aspectRatio: 1, borderRadius: Radius.md, overflow: 'hidden', backgroundColor: Afylo.surfaceAlt, marginBottom: 8 },
-  commission: { position: 'absolute', top: 8, left: 8, backgroundColor: Afylo.gold, paddingHorizontal: 8, paddingVertical: 3, borderRadius: Radius.pill },
-  commissionText: { color: Afylo.ink, fontSize: 10, fontWeight: '800' },
-  pname: { color: Afylo.text, fontSize: 14, fontWeight: '700', paddingHorizontal: 4 },
-  pseller: { color: Afylo.textDim, fontSize: 12, paddingHorizontal: 4, marginTop: 1 },
+  pcard: { width: '46%', flexGrow: 1, backgroundColor: Afryko.surface, borderRadius: Radius.lg, padding: 8 },
+  pimgWrap: { aspectRatio: 1, borderRadius: Radius.md, overflow: 'hidden', backgroundColor: Afryko.surfaceAlt, marginBottom: 8 },
+  commission: { position: 'absolute', top: 8, left: 8, backgroundColor: Afryko.gold, paddingHorizontal: 8, paddingVertical: 3, borderRadius: Radius.pill },
+  commissionText: { color: Afryko.ink, fontSize: 10, fontWeight: '800' },
+  pname: { color: Afryko.text, fontSize: 14, fontWeight: '700', paddingHorizontal: 4 },
+  pseller: { color: Afryko.textDim, fontSize: 12, paddingHorizontal: 4, marginTop: 1 },
   prow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 4, marginTop: 8 },
-  pprice: { color: Afylo.text, fontSize: 15, fontWeight: '800' },
-  resell: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: Afylo.violet, paddingHorizontal: 10, paddingVertical: 6, borderRadius: Radius.pill },
+  pprice: { color: Afryko.text, fontSize: 15, fontWeight: '800' },
+  resell: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: Afryko.violet, paddingHorizontal: 10, paddingVertical: 6, borderRadius: Radius.pill },
   resellText: { color: '#fff', fontSize: 12, fontWeight: '700' },
 });

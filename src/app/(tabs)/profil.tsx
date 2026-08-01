@@ -7,7 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Avatar, PillButton } from '@/components/ui-kit';
 import { RepostSheet, MediaPreview } from '@/components/repost-sheet';
-import { Afylo, Font, Radius, Type } from '@/constants/brand';
+import { Afryko, Font, Radius, Type } from '@/constants/brand';
 import { useAuth } from '@/lib/auth';
 import { deleteProduct, getMyProfile, isProAccount, listMyProducts } from '@/lib/db';
 import { useReposts, type Repost } from '@/lib/reposts';
@@ -49,7 +49,7 @@ export default function Profil() {
           bio: dbProfile.bio || 'Ajoute une bio depuis « Modifier le profil ».',
           website: dbProfile.website || null,
         }
-      : { ...myProfile, website: 'afylo.app' as string | null };
+      : { ...myProfile, website: 'afryko.app' as string | null };
 
   // Certification : compte officiel adbaecomx (ou champ is_verified en base)
   const isVerified = dbProfile?.is_verified === true || dbProfile?.handle === 'adbaecomx' || p.handle === '@adbaecomx';
@@ -58,7 +58,7 @@ export default function Profil() {
 
   const share = async () => {
     try {
-      await Share.share({ message: `Découvre ${p.name} sur Afylo — ${p.handle}` });
+      await Share.share({ message: `Découvre ${p.name} sur Afryko — ${p.handle}` });
     } catch {}
   };
 
@@ -68,7 +68,7 @@ export default function Profil() {
       <View style={styles.root}>
         <SafeAreaView edges={['top']} style={styles.guestWrap}>
           <View style={styles.guestIcon}>
-            <Ionicons name="person" size={38} color={Afylo.violet} />
+            <Ionicons name="person" size={38} color={Afryko.violet} />
           </View>
           <Text style={styles.guestTitle}>Ton profil t'attend</Text>
           <Text style={styles.guestSub}>Crée un compte pour publier tes vidéos, vendre tes produits, suivre des créateurs et gérer ta boutique.</Text>
@@ -82,20 +82,20 @@ export default function Profil() {
   return (
     <View style={styles.root}>
       {/* Bascule d'aperçu propriétaire / visiteur (dev — sera l'auth plus tard) */}
-      <SafeAreaView edges={['top']} style={{ backgroundColor: Afylo.bg }}>
+      <SafeAreaView edges={['top']} style={{ backgroundColor: Afryko.bg }}>
         <View style={styles.topbar}>
           <Text style={styles.handle}>{p.handle}</Text>
           <View style={{ flexDirection: 'row', gap: 2 }}>
             <Pressable onPress={() => router.push('/messages')} style={styles.iconTop}>
-              <Ionicons name="chatbubble-ellipses-outline" size={22} color={Afylo.text} />
+              <Ionicons name="chatbubble-ellipses-outline" size={22} color={Afryko.text} />
             </Pressable>
             {isOwner && isPro && (
               <Pressable onPress={() => router.push('/studio')} style={styles.iconTop}>
-                <Ionicons name="stats-chart" size={20} color={Afylo.gold} />
+                <Ionicons name="stats-chart" size={20} color={Afryko.gold} />
               </Pressable>
             )}
             <Pressable onPress={() => setMenuOpen(true)} style={styles.iconTop}>
-              <Ionicons name="menu" size={24} color={Afylo.text} />
+              <Ionicons name="menu" size={24} color={Afryko.text} />
             </Pressable>
           </View>
         </View>
@@ -130,7 +130,7 @@ export default function Profil() {
 
         <View style={styles.nameRow}>
           <Text style={styles.name}>{p.name}</Text>
-          {isVerified && <Ionicons name="checkmark-circle" size={20} color={Afylo.violet} />}
+          {isVerified && <Ionicons name="checkmark-circle" size={20} color={Afryko.violet} />}
         </View>
         <Text style={styles.bio}>{p.bio}</Text>
 
@@ -138,17 +138,17 @@ export default function Profil() {
         <View style={styles.metaRow}>
           {p.website && (
             <Pressable style={styles.meta} onPress={() => Linking.openURL(p.website!.startsWith('http') ? p.website! : `https://${p.website}`)}>
-              <Ionicons name="link-outline" size={15} color={Afylo.violet} />
-              <Text style={[styles.metaText, { color: Afylo.violet }]}>{p.website}</Text>
+              <Ionicons name="link-outline" size={15} color={Afryko.violet} />
+              <Text style={[styles.metaText, { color: Afryko.violet }]}>{p.website}</Text>
             </Pressable>
           )}
           <View style={styles.meta}>
-            <Ionicons name="location-outline" size={15} color={Afylo.textDim} />
+            <Ionicons name="location-outline" size={15} color={Afryko.textDim} />
             <Text style={styles.metaText}>Dakar, Sénégal</Text>
           </View>
           <View style={styles.meta}>
-            <Ionicons name="calendar-outline" size={15} color={Afylo.textDim} />
-            <Text style={styles.metaText}>Sur Afylo depuis 2026</Text>
+            <Ionicons name="calendar-outline" size={15} color={Afryko.textDim} />
+            <Text style={styles.metaText}>Sur Afryko depuis 2026</Text>
           </View>
         </View>
 
@@ -193,7 +193,7 @@ export default function Profil() {
             <MenuItem icon="share-social-outline" label="Partager le profil" onPress={() => { setMenuOpen(false); share(); }} />
             <MenuItem icon="bookmark-outline" label="Enregistrements" onPress={() => setMenuOpen(false)} />
             <MenuItem icon="settings-outline" label="Paramètres" onPress={() => { setMenuOpen(false); router.push('/settings'); }} />
-            <MenuItem icon="help-circle-outline" label="Aide" onPress={() => { setMenuOpen(false); Linking.openURL('mailto:support@afylo.app'); }} />
+            <MenuItem icon="help-circle-outline" label="Aide" onPress={() => { setMenuOpen(false); Linking.openURL('mailto:support@afryko.app'); }} />
             {isOwner && <MenuItem icon="log-out-outline" label="Déconnexion" danger onPress={async () => { setMenuOpen(false); await signOut(); }} />}
           </SafeAreaView>
         </Pressable>
@@ -214,7 +214,7 @@ function Stat({ value, label }: { value: string; label: string }) {
 function SectionTab({ icon, active, onPress }: { icon: keyof typeof Ionicons.glyphMap; active: boolean; onPress: () => void }) {
   return (
     <Pressable onPress={onPress} style={[styles.tab, active && styles.tabActive]}>
-      <Ionicons name={icon} size={22} color={active ? Afylo.text : Afylo.textFaint} />
+      <Ionicons name={icon} size={22} color={active ? Afryko.text : Afryko.textFaint} />
     </Pressable>
   );
 }
@@ -238,9 +238,9 @@ function PostsGrid() {
 }
 
 const PURCHASE_STATUS: Record<Purchase['status'], { label: string; color: string; icon: keyof typeof Ionicons.glyphMap }> = {
-  sequestre: { label: 'En séquestre', color: Afylo.violet, icon: 'lock-closed' },
-  a_confirmer: { label: 'Confirmer la réception', color: Afylo.gold, icon: 'cube' },
-  termine: { label: 'Terminé', color: Afylo.green, icon: 'checkmark-circle' },
+  sequestre: { label: 'En séquestre', color: Afryko.violet, icon: 'lock-closed' },
+  a_confirmer: { label: 'Confirmer la réception', color: Afryko.gold, icon: 'cube' },
+  termine: { label: 'Terminé', color: Afryko.green, icon: 'checkmark-circle' },
 };
 
 function PurchasesList() {
@@ -276,7 +276,7 @@ function PurchasesList() {
 function ProUpsell({ onPress, what }: { onPress: () => void; what: string }) {
   return (
     <View style={styles.upsell}>
-      <View style={styles.upsellIcon}><Ionicons name="briefcase" size={30} color={Afylo.violet} /></View>
+      <View style={styles.upsellIcon}><Ionicons name="briefcase" size={30} color={Afryko.violet} /></View>
       <Text style={styles.upsellTitle}>Compte professionnel requis</Text>
       <Text style={styles.upsellSub}>Pour {what}, passe en Pro — ouvre ta boutique, vends en live et accède aux statistiques.</Text>
       <Pressable onPress={onPress} style={styles.upsellBtn}><Text style={styles.upsellBtnText}>Devenir pro · Gratuit</Text></Pressable>
@@ -295,7 +295,7 @@ function RepostsGrid() {
   if (reposts.length === 0) {
     return (
       <View style={{ alignItems: 'center', paddingVertical: 40 }}>
-        <Ionicons name="repeat" size={40} color={Afylo.textFaint} />
+        <Ionicons name="repeat" size={40} color={Afryko.textFaint} />
         <Text style={styles.emptyText}>Aucun repartage pour l'instant.{'\n'}Repartage un produit en affiliation depuis l'accueil pour le retrouver ici.</Text>
       </View>
     );
@@ -330,8 +330,8 @@ function RepostsGrid() {
                 <View style={styles.rdHeader}>
                   <View style={styles.rdMe}><Ionicons name="repeat" size={14} color={'#16A34A'} /><Text style={styles.rdMeText}>Tu as republié</Text></View>
                   <View style={{ flex: 1 }} />
-                  <Pressable onPress={() => { const r = open; setOpenId(null); setEditing(r); }} style={styles.rdAction}><Ionicons name="create-outline" size={20} color={Afylo.text} /></Pressable>
-                  <Pressable onPress={() => { removeRepost(open.id); setOpenId(null); }} style={styles.rdAction}><Ionicons name="trash-outline" size={20} color={Afylo.live} /></Pressable>
+                  <Pressable onPress={() => { const r = open; setOpenId(null); setEditing(r); }} style={styles.rdAction}><Ionicons name="create-outline" size={20} color={Afryko.text} /></Pressable>
+                  <Pressable onPress={() => { removeRepost(open.id); setOpenId(null); }} style={styles.rdAction}><Ionicons name="trash-outline" size={20} color={Afryko.live} /></Pressable>
                 </View>
 
                 {open.text ? <Text style={styles.rdQuote}>{open.text}</Text> : null}
@@ -344,7 +344,7 @@ function RepostsGrid() {
                     <Text style={styles.rdCaption} numberOfLines={2}>{open.post.caption}</Text>
                     {open.post.product && (
                       <View style={styles.rdProduct}>
-                        <Ionicons name="bag-handle" size={12} color={Afylo.violet} />
+                        <Ionicons name="bag-handle" size={12} color={Afryko.violet} />
                         <Text style={styles.rdProductText} numberOfLines={1}>{open.post.product.title} · {open.post.product.price}</Text>
                       </View>
                     )}
@@ -356,17 +356,17 @@ function RepostsGrid() {
                 {open.affiliate && (
                   <View style={styles.affBox}>
                     <View style={styles.affHead}>
-                      <Ionicons name="link" size={15} color={Afylo.violet} />
+                      <Ionicons name="link" size={15} color={Afryko.violet} />
                       <Text style={styles.affTitle}>Ton lien d'affiliation</Text>
                     </View>
                     <Text style={styles.affLink} numberOfLines={1}>{open.affiliate.link}</Text>
-                    <Text style={styles.affInfo}>Toute vente via ce lien te verse <Text style={{ fontFamily: Font.bold, color: Afylo.text }}>{open.affiliate.commission}</Text> de commission.</Text>
+                    <Text style={styles.affInfo}>Toute vente via ce lien te verse <Text style={{ fontFamily: Font.bold, color: Afryko.text }}>{open.affiliate.commission}</Text> de commission.</Text>
                     <View style={styles.affStats}>
                       <View style={styles.affStat}><Text style={styles.affStatV}>{open.affiliate.sales}</Text><Text style={styles.affStatL}>ventes</Text></View>
                       <View style={styles.affDivider} />
                       <View style={styles.affStat}><Text style={[styles.affStatV, { color: '#16A34A' }]}>{fmtCfa(open.affiliate.earned)}</Text><Text style={styles.affStatL}>gagnés</Text></View>
                     </View>
-                    <Pressable style={styles.affShare} onPress={() => Share.share({ message: `Découvre ${open.post.product?.title ?? 'ce produit'} sur Afylo 👉 ${open.affiliate!.link}` }).catch(() => {})}>
+                    <Pressable style={styles.affShare} onPress={() => Share.share({ message: `Découvre ${open.post.product?.title ?? 'ce produit'} sur Afryko 👉 ${open.affiliate!.link}` }).catch(() => {})}>
                       <Ionicons name="share-social" size={16} color="#fff" /><Text style={styles.affShareText}>Partager le lien</Text>
                     </Pressable>
                   </View>
@@ -443,12 +443,12 @@ function BoutiqueList({ isOwner }: { isOwner: boolean }) {
     <View style={{ paddingHorizontal: 12, paddingTop: 12 }}>
       {isOwner && (
         <Pressable style={styles.createBtn} onPress={() => router.push('/product-new')}>
-          <Ionicons name="add-circle" size={22} color={Afylo.violet} />
+          <Ionicons name="add-circle" size={22} color={Afryko.violet} />
           <Text style={styles.createText}>Créer un produit</Text>
         </Pressable>
       )}
 
-      {loading && <ActivityIndicator color={Afylo.violet} style={{ marginVertical: 20 }} />}
+      {loading && <ActivityIndicator color={Afryko.violet} style={{ marginVertical: 20 }} />}
 
       {isOwner && session && list.length === 0 && !loading && (
         <Text style={styles.emptyText}>Aucun produit pour l'instant. Crée ton premier article ci-dessus.</Text>
@@ -484,9 +484,9 @@ function ProductCard({ p, isOwner, onDelete }: { p: DisplayProduct; isOwner: boo
         <View style={styles.prodMeta}>
           <Text style={styles.prodStat}>{p.sold} vendus · {p.stock} en stock</Text>
           <View style={styles.prodActions}>
-            <Pressable style={styles.prodAction}><Ionicons name="create-outline" size={17} color={Afylo.textDim} /></Pressable>
+            <Pressable style={styles.prodAction}><Ionicons name="create-outline" size={17} color={Afryko.textDim} /></Pressable>
             <Pressable style={styles.prodAction} onPress={onDelete} disabled={!onDelete}>
-              <Ionicons name="trash-outline" size={17} color={onDelete ? Afylo.live : Afylo.textFaint} />
+              <Ionicons name="trash-outline" size={17} color={onDelete ? Afryko.live : Afryko.textFaint} />
             </Pressable>
           </View>
         </View>
@@ -502,8 +502,8 @@ function LivesList({ isOwner }: { isOwner: boolean }) {
     <View style={{ paddingHorizontal: 16, paddingTop: 12, gap: 12 }}>
       {isOwner && (
         <Pressable style={styles.createBtn}>
-          <Ionicons name="radio" size={20} color={Afylo.live} />
-          <Text style={[styles.createText, { color: Afylo.live }]}>Démarrer un live</Text>
+          <Ionicons name="radio" size={20} color={Afryko.live} />
+          <Text style={[styles.createText, { color: Afryko.live }]}>Démarrer un live</Text>
         </Pressable>
       )}
       {myLives.map((l) => (
@@ -526,74 +526,74 @@ function LiveRow({ l, isOwner }: { l: MyLive; isOwner: boolean }) {
         <Text style={styles.liveMeta}>{l.date} · {l.viewers} spectateurs</Text>
         {isOwner && (
           <View style={styles.liveRevenue}>
-            <Ionicons name="cash-outline" size={13} color={Afylo.green} />
+            <Ionicons name="cash-outline" size={13} color={Afryko.green} />
             <Text style={styles.liveRevenueText}>{l.revenue} F générés</Text>
           </View>
         )}
       </View>
-      <Ionicons name="ellipsis-vertical" size={18} color={Afylo.textFaint} />
+      <Ionicons name="ellipsis-vertical" size={18} color={Afryko.textFaint} />
     </View>
   );
 }
 
 function MenuItem({ icon, label, onPress, danger }: { icon: keyof typeof Ionicons.glyphMap; label: string; onPress?: () => void; danger?: boolean }) {
   return (
-    <Pressable onPress={onPress} style={({ pressed }) => [styles.menuItem, pressed && { backgroundColor: Afylo.surfaceAlt }]}>
-      <Ionicons name={icon} size={22} color={danger ? Afylo.live : Afylo.text} />
-      <Text style={[styles.menuLabel, danger && { color: Afylo.live }]}>{label}</Text>
+    <Pressable onPress={onPress} style={({ pressed }) => [styles.menuItem, pressed && { backgroundColor: Afryko.surfaceAlt }]}>
+      <Ionicons name={icon} size={22} color={danger ? Afryko.live : Afryko.text} />
+      <Text style={[styles.menuLabel, danger && { color: Afryko.live }]}>{label}</Text>
     </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: Afylo.bg },
+  root: { flex: 1, backgroundColor: Afryko.bg },
   guestWrap: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 32 },
   guestIcon: { width: 76, height: 76, borderRadius: 24, backgroundColor: '#3E5BFF1A', alignItems: 'center', justifyContent: 'center', marginBottom: 20 },
-  guestTitle: { ...Type.title, color: Afylo.text, textAlign: 'center' },
-  guestSub: { ...Type.body, color: Afylo.textDim, textAlign: 'center', marginTop: 10 },
+  guestTitle: { ...Type.title, color: Afryko.text, textAlign: 'center' },
+  guestSub: { ...Type.body, color: Afryko.textDim, textAlign: 'center', marginTop: 10 },
   previewToggle: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 16, paddingVertical: 6 },
-  previewText: { color: Afylo.textFaint, fontSize: 12 },
-  previewChip: { paddingHorizontal: 10, paddingVertical: 3, borderRadius: Radius.pill, backgroundColor: Afylo.surface },
-  previewChipOn: { backgroundColor: Afylo.violet },
-  previewChipText: { color: Afylo.textDim, fontSize: 11, fontWeight: '700' },
+  previewText: { color: Afryko.textFaint, fontSize: 12 },
+  previewChip: { paddingHorizontal: 10, paddingVertical: 3, borderRadius: Radius.pill, backgroundColor: Afryko.surface },
+  previewChipOn: { backgroundColor: Afryko.violet },
+  previewChipText: { color: Afryko.textDim, fontSize: 11, fontWeight: '700' },
   previewChipTextOn: { color: '#fff' },
 
   topbar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 18, paddingVertical: 6 },
-  handle: { ...Type.username, fontSize: 20, color: Afylo.text },
+  handle: { ...Type.username, fontSize: 20, color: Afryko.text },
   iconTop: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
 
   head: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 18, marginTop: 12, gap: 20 },
-  addStoryBadge: { position: 'absolute', bottom: 0, right: 0, width: 26, height: 26, borderRadius: 13, backgroundColor: Afylo.violet, alignItems: 'center', justifyContent: 'center', borderWidth: 2.5, borderColor: Afylo.bg },
+  addStoryBadge: { position: 'absolute', bottom: 0, right: 0, width: 26, height: 26, borderRadius: 13, backgroundColor: Afryko.violet, alignItems: 'center', justifyContent: 'center', borderWidth: 2.5, borderColor: Afryko.bg },
   statsRow: { flex: 1, flexDirection: 'row', justifyContent: 'space-around' },
-  statValue: { ...Type.statNumber, color: Afylo.text },
-  statLabel: { ...Type.statLabel, color: Afylo.textDim, marginTop: 4 },
+  statValue: { ...Type.statNumber, color: Afryko.text },
+  statLabel: { ...Type.statLabel, color: Afryko.textDim, marginTop: 4 },
   nameRow: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 18, marginTop: 18 },
-  name: { ...Type.name, color: Afylo.text },
-  bio: { ...Type.bio, color: Afylo.text, opacity: 0.9, paddingHorizontal: 18, marginTop: 8 },
+  name: { ...Type.name, color: Afryko.text },
+  bio: { ...Type.bio, color: Afryko.text, opacity: 0.9, paddingHorizontal: 18, marginTop: 8 },
   metaRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 14, paddingHorizontal: 18, marginTop: 10 },
   meta: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  metaText: { ...Type.small, color: Afylo.textDim },
+  metaText: { ...Type.small, color: Afryko.textDim },
   earnPill: { flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start', marginHorizontal: 18, marginTop: 12, backgroundColor: '#FFB0201A', borderWidth: 1, borderColor: '#FFB02033', paddingHorizontal: 12, paddingVertical: 8, borderRadius: Radius.pill, gap: 2 },
-  earnText: { color: Afylo.textDim, fontSize: 13 },
-  earnValue: { color: Afylo.gold, fontSize: 13, fontWeight: '800' },
+  earnText: { color: Afryko.textDim, fontSize: 13 },
+  earnValue: { color: Afryko.gold, fontSize: 13, fontWeight: '800' },
   actions: { flexDirection: 'row', gap: 12, paddingHorizontal: 18, marginTop: 16 },
   proBanner: { flexDirection: 'row', alignItems: 'center', gap: 12, marginHorizontal: 18, marginTop: 16, padding: 12, borderRadius: Radius.lg, backgroundColor: '#3E5BFF0F', borderWidth: 1, borderColor: '#3E5BFF33' },
-  proBannerIcon: { width: 40, height: 40, borderRadius: 12, backgroundColor: Afylo.violet, alignItems: 'center', justifyContent: 'center' },
-  proBannerTitle: { ...Type.body, fontFamily: Font.semibold, color: Afylo.text },
-  proBannerSub: { ...Type.caption, color: Afylo.textDim, marginTop: 2, lineHeight: 16 },
+  proBannerIcon: { width: 40, height: 40, borderRadius: 12, backgroundColor: Afryko.violet, alignItems: 'center', justifyContent: 'center' },
+  proBannerTitle: { ...Type.body, fontFamily: Font.semibold, color: Afryko.text },
+  proBannerSub: { ...Type.caption, color: Afryko.textDim, marginTop: 2, lineHeight: 16 },
   upsell: { alignItems: 'center', paddingHorizontal: 30, paddingVertical: 40, gap: 8 },
   upsellIcon: { width: 70, height: 70, borderRadius: 22, backgroundColor: '#3E5BFF14', alignItems: 'center', justifyContent: 'center', marginBottom: 8 },
-  upsellTitle: { ...Type.title, fontSize: 18, color: Afylo.text, textAlign: 'center' },
-  upsellSub: { ...Type.body, color: Afylo.textDim, textAlign: 'center', lineHeight: 21 },
-  upsellBtn: { backgroundColor: Afylo.violet, paddingHorizontal: 22, paddingVertical: 13, borderRadius: Radius.pill, marginTop: 12 },
+  upsellTitle: { ...Type.title, fontSize: 18, color: Afryko.text, textAlign: 'center' },
+  upsellSub: { ...Type.body, color: Afryko.textDim, textAlign: 'center', lineHeight: 21 },
+  upsellBtn: { backgroundColor: Afryko.violet, paddingHorizontal: 22, paddingVertical: 13, borderRadius: Radius.pill, marginTop: 12 },
   upsellBtnText: { color: '#fff', fontFamily: Font.semibold, fontSize: 15 },
 
-  tabs: { flexDirection: 'row', marginTop: 22, borderBottomWidth: 1, borderBottomColor: Afylo.surfaceAlt },
+  tabs: { flexDirection: 'row', marginTop: 22, borderBottomWidth: 1, borderBottomColor: Afryko.surfaceAlt },
   tab: { flex: 1, alignItems: 'center', paddingVertical: 12, borderBottomWidth: 2, borderBottomColor: 'transparent' },
-  tabActive: { borderBottomColor: Afylo.text },
+  tabActive: { borderBottomColor: Afryko.text },
 
   mediaGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 2, marginTop: 2 },
-  cell: { width: '33%', aspectRatio: 0.8, backgroundColor: Afylo.surfaceAlt, flexGrow: 1 },
+  cell: { width: '33%', aspectRatio: 0.8, backgroundColor: Afryko.surfaceAlt, flexGrow: 1 },
   cellTag: { position: 'absolute', bottom: 6, left: 6, flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: '#00000088', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 8 },
   repostTag: { position: 'absolute', top: 6, right: 6, width: 22, height: 22, borderRadius: 11, backgroundColor: '#00000088', alignItems: 'center', justifyContent: 'center' },
   repostMediaTag: { position: 'absolute', top: 6, left: 6, width: 22, height: 22, borderRadius: 11, backgroundColor: '#00000088', alignItems: 'center', justifyContent: 'center' },
@@ -602,73 +602,73 @@ const styles = StyleSheet.create({
   cellTagText: { color: '#fff', fontSize: 10, fontWeight: '700' },
 
   rdOverlay: { flex: 1, backgroundColor: '#00000066', justifyContent: 'flex-end' },
-  rdSheet: { backgroundColor: Afylo.bg, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 20, paddingBottom: 30 },
-  rdHandle: { width: 40, height: 4, borderRadius: 2, backgroundColor: Afylo.border, alignSelf: 'center', marginBottom: 16 },
+  rdSheet: { backgroundColor: Afryko.bg, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 20, paddingBottom: 30 },
+  rdHandle: { width: 40, height: 4, borderRadius: 2, backgroundColor: Afryko.border, alignSelf: 'center', marginBottom: 16 },
   rdHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 12 },
   rdMe: { flexDirection: 'row', alignItems: 'center', gap: 5 },
-  rdMeText: { color: Afylo.green, fontFamily: Font.semibold, fontSize: 13 },
-  rdAction: { width: 40, height: 40, borderRadius: 20, backgroundColor: Afylo.surfaceAlt, alignItems: 'center', justifyContent: 'center', marginLeft: 8 },
-  rdQuote: { color: Afylo.text, fontSize: 15, lineHeight: 21, marginBottom: 12 },
-  rdQuoted: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: Afylo.surface, borderWidth: 1, borderColor: Afylo.border, borderRadius: Radius.lg, padding: 10, marginTop: 12 },
-  rdAvatar: { width: 34, height: 34, borderRadius: 17, backgroundColor: Afylo.surfaceAlt },
-  rdName: { color: Afylo.text, fontFamily: Font.bold, fontSize: 13 },
-  rdCaption: { color: Afylo.textDim, fontSize: 12, marginTop: 1 },
+  rdMeText: { color: Afryko.green, fontFamily: Font.semibold, fontSize: 13 },
+  rdAction: { width: 40, height: 40, borderRadius: 20, backgroundColor: Afryko.surfaceAlt, alignItems: 'center', justifyContent: 'center', marginLeft: 8 },
+  rdQuote: { color: Afryko.text, fontSize: 15, lineHeight: 21, marginBottom: 12 },
+  rdQuoted: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: Afryko.surface, borderWidth: 1, borderColor: Afryko.border, borderRadius: Radius.lg, padding: 10, marginTop: 12 },
+  rdAvatar: { width: 34, height: 34, borderRadius: 17, backgroundColor: Afryko.surfaceAlt },
+  rdName: { color: Afryko.text, fontFamily: Font.bold, fontSize: 13 },
+  rdCaption: { color: Afryko.textDim, fontSize: 12, marginTop: 1 },
   rdProduct: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 4 },
-  rdProductText: { color: Afylo.violet, fontFamily: Font.semibold, fontSize: 11, flex: 1 },
-  rdThumb: { width: 46, height: 46, borderRadius: 10, backgroundColor: Afylo.surfaceAlt },
-  affBox: { marginTop: 14, backgroundColor: Afylo.surface, borderWidth: 1, borderColor: Afylo.border, borderRadius: Radius.lg, padding: 14 },
+  rdProductText: { color: Afryko.violet, fontFamily: Font.semibold, fontSize: 11, flex: 1 },
+  rdThumb: { width: 46, height: 46, borderRadius: 10, backgroundColor: Afryko.surfaceAlt },
+  affBox: { marginTop: 14, backgroundColor: Afryko.surface, borderWidth: 1, borderColor: Afryko.border, borderRadius: Radius.lg, padding: 14 },
   affHead: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 },
-  affTitle: { color: Afylo.text, fontFamily: Font.bold, fontSize: 14 },
-  affLink: { color: Afylo.violet, fontFamily: Font.semibold, fontSize: 13, backgroundColor: Afylo.surfaceAlt, borderRadius: Radius.sm, paddingHorizontal: 10, paddingVertical: 8 },
-  affInfo: { color: Afylo.textDim, fontSize: 13, marginTop: 8, lineHeight: 18 },
+  affTitle: { color: Afryko.text, fontFamily: Font.bold, fontSize: 14 },
+  affLink: { color: Afryko.violet, fontFamily: Font.semibold, fontSize: 13, backgroundColor: Afryko.surfaceAlt, borderRadius: Radius.sm, paddingHorizontal: 10, paddingVertical: 8 },
+  affInfo: { color: Afryko.textDim, fontSize: 13, marginTop: 8, lineHeight: 18 },
   affStats: { flexDirection: 'row', alignItems: 'center', marginTop: 12, marginBottom: 4 },
   affStat: { flex: 1, alignItems: 'center' },
-  affStatV: { color: Afylo.text, fontFamily: Font.bold, fontSize: 18 },
-  affStatL: { color: Afylo.textDim, fontSize: 12, marginTop: 1 },
-  affDivider: { width: 1, height: 28, backgroundColor: Afylo.border },
-  affShare: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, height: 46, borderRadius: Radius.pill, backgroundColor: Afylo.violet, marginTop: 12 },
+  affStatV: { color: Afryko.text, fontFamily: Font.bold, fontSize: 18 },
+  affStatL: { color: Afryko.textDim, fontSize: 12, marginTop: 1 },
+  affDivider: { width: 1, height: 28, backgroundColor: Afryko.border },
+  affShare: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, height: 46, borderRadius: Radius.pill, backgroundColor: Afryko.violet, marginTop: 12 },
   affShareText: { color: '#fff', fontFamily: Font.semibold, fontSize: 14 },
 
-  purchaseRow: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: Afylo.surface, borderRadius: Radius.md, borderWidth: 1, borderColor: Afylo.border, padding: 10 },
-  purchaseImg: { width: 60, height: 60, borderRadius: 10, backgroundColor: Afylo.surfaceAlt },
-  purchaseTitle: { ...Type.body, fontFamily: Font.semibold, color: Afylo.text },
-  purchaseMeta: { ...Type.caption, color: Afylo.textDim, marginTop: 1 },
+  purchaseRow: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: Afryko.surface, borderRadius: Radius.md, borderWidth: 1, borderColor: Afryko.border, padding: 10 },
+  purchaseImg: { width: 60, height: 60, borderRadius: 10, backgroundColor: Afryko.surfaceAlt },
+  purchaseTitle: { ...Type.body, fontFamily: Font.semibold, color: Afryko.text },
+  purchaseMeta: { ...Type.caption, color: Afryko.textDim, marginTop: 1 },
   purchaseStatus: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 5 },
   purchaseStatusText: { ...Type.caption, fontFamily: Font.semibold },
-  purchasePrice: { ...Type.body, fontFamily: Font.bold, color: Afylo.text },
-  confirmBtn: { backgroundColor: Afylo.green, paddingHorizontal: 12, paddingVertical: 6, borderRadius: Radius.pill },
+  purchasePrice: { ...Type.body, fontFamily: Font.bold, color: Afryko.text },
+  confirmBtn: { backgroundColor: Afryko.green, paddingHorizontal: 12, paddingVertical: 6, borderRadius: Radius.pill },
   confirmText: { color: '#fff', ...Type.caption, fontFamily: Font.semibold },
-  purchaseNote: { ...Type.caption, color: Afylo.textFaint, textAlign: 'center', marginTop: 8, lineHeight: 17, paddingHorizontal: 10 },
-  createBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: Afylo.surface, borderRadius: Radius.md, paddingVertical: 13, marginBottom: 12, borderWidth: 1, borderColor: Afylo.surfaceAlt },
-  createText: { color: Afylo.violet, fontWeight: '700', fontSize: 14 },
-  emptyText: { color: Afylo.textDim, fontSize: 14, textAlign: 'center', paddingVertical: 24, paddingHorizontal: 20, lineHeight: 20 },
-  demoNote: { color: Afylo.textFaint, fontSize: 12, textAlign: 'center', marginBottom: 12 },
+  purchaseNote: { ...Type.caption, color: Afryko.textFaint, textAlign: 'center', marginTop: 8, lineHeight: 17, paddingHorizontal: 10 },
+  createBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: Afryko.surface, borderRadius: Radius.md, paddingVertical: 13, marginBottom: 12, borderWidth: 1, borderColor: Afryko.surfaceAlt },
+  createText: { color: Afryko.violet, fontWeight: '700', fontSize: 14 },
+  emptyText: { color: Afryko.textDim, fontSize: 14, textAlign: 'center', paddingVertical: 24, paddingHorizontal: 20, lineHeight: 20 },
+  demoNote: { color: Afryko.textFaint, fontSize: 12, textAlign: 'center', marginBottom: 12 },
   prodGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
-  prodCard: { width: '46%', flexGrow: 1, backgroundColor: Afylo.surface, borderRadius: Radius.md, padding: 8 },
-  prodImg: { aspectRatio: 1, borderRadius: Radius.sm, overflow: 'hidden', backgroundColor: Afylo.surfaceAlt, marginBottom: 8 },
+  prodCard: { width: '46%', flexGrow: 1, backgroundColor: Afryko.surface, borderRadius: Radius.md, padding: 8 },
+  prodImg: { aspectRatio: 1, borderRadius: Radius.sm, overflow: 'hidden', backgroundColor: Afryko.surfaceAlt, marginBottom: 8 },
   inactive: { ...StyleSheet.absoluteFillObject, backgroundColor: '#000000AA', alignItems: 'center', justifyContent: 'center' },
   inactiveText: { color: '#fff', fontWeight: '800', fontSize: 13 },
-  prodTitle: { color: Afylo.text, fontSize: 14, fontWeight: '700', paddingHorizontal: 2 },
-  prodPrice: { color: Afylo.gold, fontSize: 15, fontWeight: '800', paddingHorizontal: 2, marginTop: 2 },
+  prodTitle: { color: Afryko.text, fontSize: 14, fontWeight: '700', paddingHorizontal: 2 },
+  prodPrice: { color: Afryko.gold, fontSize: 15, fontWeight: '800', paddingHorizontal: 2, marginTop: 2 },
   prodMeta: { marginTop: 8, paddingHorizontal: 2 },
-  prodStat: { color: Afylo.textDim, fontSize: 11 },
+  prodStat: { color: Afryko.textDim, fontSize: 11 },
   prodActions: { flexDirection: 'row', gap: 8, marginTop: 8 },
-  prodAction: { flex: 1, alignItems: 'center', paddingVertical: 7, backgroundColor: Afylo.surfaceAlt, borderRadius: 8 },
-  buyBtn: { backgroundColor: Afylo.violet, borderRadius: Radius.pill, paddingVertical: 9, alignItems: 'center', marginTop: 8 },
+  prodAction: { flex: 1, alignItems: 'center', paddingVertical: 7, backgroundColor: Afryko.surfaceAlt, borderRadius: 8 },
+  buyBtn: { backgroundColor: Afryko.violet, borderRadius: Radius.pill, paddingVertical: 9, alignItems: 'center', marginTop: 8 },
   buyBtnText: { color: '#fff', fontWeight: '800', fontSize: 13 },
 
-  liveRow: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: Afylo.surface, borderRadius: Radius.md, padding: 8 },
-  liveThumb: { width: 96, height: 64, borderRadius: 10, overflow: 'hidden', backgroundColor: Afylo.surfaceAlt, alignItems: 'center', justifyContent: 'center' },
+  liveRow: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: Afryko.surface, borderRadius: Radius.md, padding: 8 },
+  liveThumb: { width: 96, height: 64, borderRadius: 10, overflow: 'hidden', backgroundColor: Afryko.surfaceAlt, alignItems: 'center', justifyContent: 'center' },
   playCircle: { width: 30, height: 30, borderRadius: 15, backgroundColor: '#00000088', alignItems: 'center', justifyContent: 'center' },
   liveDuration: { position: 'absolute', bottom: 4, right: 4, color: '#fff', fontSize: 10, fontWeight: '700', backgroundColor: '#000000AA', paddingHorizontal: 4, borderRadius: 4 },
-  liveTitle: { color: Afylo.text, fontSize: 14, fontWeight: '700' },
-  liveMeta: { color: Afylo.textDim, fontSize: 12, marginTop: 2 },
+  liveTitle: { color: Afryko.text, fontSize: 14, fontWeight: '700' },
+  liveMeta: { color: Afryko.textDim, fontSize: 12, marginTop: 2 },
   liveRevenue: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 4 },
-  liveRevenueText: { color: Afylo.green, fontSize: 12, fontWeight: '700' },
+  liveRevenueText: { color: Afryko.green, fontSize: 12, fontWeight: '700' },
 
   overlay: { ...StyleSheet.absoluteFillObject, backgroundColor: '#000000AA', justifyContent: 'flex-start' },
-  menu: { backgroundColor: Afylo.glass, borderBottomLeftRadius: 24, borderBottomRightRadius: 24, paddingBottom: 16, paddingHorizontal: 8, overflow: 'hidden', borderBottomWidth: 1, borderColor: Afylo.glassBorder },
-  menuHandle: { width: 40, height: 4, borderRadius: 2, backgroundColor: Afylo.surfaceAlt, alignSelf: 'center', marginVertical: 10 },
+  menu: { backgroundColor: Afryko.glass, borderBottomLeftRadius: 24, borderBottomRightRadius: 24, paddingBottom: 16, paddingHorizontal: 8, overflow: 'hidden', borderBottomWidth: 1, borderColor: Afryko.glassBorder },
+  menuHandle: { width: 40, height: 4, borderRadius: 2, backgroundColor: Afryko.surfaceAlt, alignSelf: 'center', marginVertical: 10 },
   menuItem: { flexDirection: 'row', alignItems: 'center', gap: 16, paddingVertical: 14, paddingHorizontal: 14, borderRadius: Radius.md },
-  menuLabel: { color: Afylo.text, fontSize: 15, fontWeight: '600' },
+  menuLabel: { color: Afryko.text, fontSize: 15, fontWeight: '600' },
 });

@@ -1,11 +1,11 @@
 /**
- * Afylo — système de design (v2, clair & éditorial)
+ * Afryko — système de design (v2, clair & éditorial)
  * « Là où l'Afrique crée, vend et gagne. »
  *
  * Direction : fond crème chaud, texte encre, UN seul accent (persimmon —
  * chaleur africaine) au lieu du violet générique. Verre dépoli sur la nav.
  */
-export const Afylo = {
+export const Afryko = {
   // Fonds — blanc pur façon Instagram
   bg: '#FFFFFF',
   surface: '#FFFFFF',
@@ -47,7 +47,7 @@ export const Font = {
 
 /**
  * Échelle typographique (spec premium). À étaler dans les styles :
- *   <Text style={[Type.name, { color: Afylo.text }]}>…</Text>
+ *   <Text style={[Type.name, { color: Afryko.text }]}>…</Text>
  * On utilise fontFamily par graisse (Inter a de vraies graisses),
  * jamais fontWeight, pour un rendu net et cohérent iOS/Android/web.
  */

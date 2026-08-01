@@ -4,7 +4,7 @@ import { useRouter } from 'expo-router';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { Afylo, Radius } from '@/constants/brand';
+import { Afryko, Radius } from '@/constants/brand';
 import { exploreItems, type ExploreItem } from '@/lib/mock';
 import { useHideOnScroll } from '@/lib/tabbar';
 
@@ -16,9 +16,9 @@ export default function Explore() {
 
   return (
     <View style={styles.root}>
-      <SafeAreaView edges={['top']} style={{ backgroundColor: Afylo.bg }}>
+      <SafeAreaView edges={['top']} style={{ backgroundColor: Afryko.bg }}>
         <Pressable style={styles.searchWrap} onPress={() => router.push('/search')}>
-          <Ionicons name="search" size={18} color={Afylo.textDim} />
+          <Ionicons name="search" size={18} color={Afryko.textDim} />
           <Text style={styles.searchPlaceholder}>Chercher un créateur, une vidéo, un produit</Text>
         </Pressable>
       </SafeAreaView>
@@ -50,28 +50,28 @@ function GridCard({ item, onPress }: { item: ExploreItem; onPress: () => void })
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: Afylo.bg },
+  root: { flex: 1, backgroundColor: Afryko.bg },
   searchWrap: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-    backgroundColor: Afylo.surface,
+    backgroundColor: Afryko.surface,
     marginHorizontal: 16,
     marginTop: 8,
     paddingHorizontal: 16,
     height: 48,
     borderRadius: Radius.pill,
   },
-  searchPlaceholder: { color: Afylo.textFaint, fontSize: 14 },
+  searchPlaceholder: { color: Afryko.textFaint, fontSize: 14 },
   filters: { paddingHorizontal: 16, paddingVertical: 14, gap: 10 },
-  chip: { paddingHorizontal: 16, paddingVertical: 9, borderRadius: Radius.pill, backgroundColor: Afylo.surface },
-  chipActive: { backgroundColor: Afylo.violet },
-  chipText: { color: Afylo.textDim, fontWeight: '600', fontSize: 13 },
+  chip: { paddingHorizontal: 16, paddingVertical: 9, borderRadius: Radius.pill, backgroundColor: Afryko.surface },
+  chipActive: { backgroundColor: Afryko.violet },
+  chipText: { color: Afryko.textDim, fontWeight: '600', fontSize: 13 },
   chipTextActive: { color: '#fff' },
 
   grid: { flexDirection: 'row', paddingHorizontal: 12, gap: 10, paddingBottom: 110 },
   column: { flex: 1, gap: 10 },
-  gcard: { borderRadius: Radius.lg, overflow: 'hidden', backgroundColor: Afylo.surfaceAlt, justifyContent: 'flex-end' },
+  gcard: { borderRadius: Radius.lg, overflow: 'hidden', backgroundColor: Afryko.surfaceAlt, justifyContent: 'flex-end' },
   gcardFooter: { padding: 10, backgroundColor: '#00000055' },
   gcardName: { color: '#fff', fontWeight: '800', fontSize: 15 },
   gcardLabel: { color: '#ffffffcc', fontSize: 12, marginTop: 1 },
@@ -82,7 +82,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    backgroundColor: Afylo.live,
+    backgroundColor: Afryko.live,
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: Radius.pill,

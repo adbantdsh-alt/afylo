@@ -6,7 +6,7 @@ import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, ScrollVie
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Avatar, PillButton } from '@/components/ui-kit';
-import { Afylo, Font, Radius } from '@/constants/brand';
+import { Afryko, Font, Radius } from '@/constants/brand';
 import { useAuth } from '@/lib/auth';
 import { getMyProfile, updateMyProfile, uploadImage } from '@/lib/db';
 import { myProfile } from '@/lib/mock';
@@ -89,10 +89,10 @@ export default function EditProfile() {
 
   return (
     <View style={styles.root}>
-      <SafeAreaView edges={['top']} style={{ backgroundColor: Afylo.bg }}>
+      <SafeAreaView edges={['top']} style={{ backgroundColor: Afryko.bg }}>
         <View style={styles.header}>
           <Pressable onPress={() => (router.canGoBack() ? router.back() : router.replace('/accueil'))} style={styles.hbtn}>
-            <Ionicons name="close" size={26} color={Afylo.text} />
+            <Ionicons name="close" size={26} color={Afryko.text} />
           </Pressable>
           <Text style={styles.title}>Modifier le profil</Text>
           <View style={{ width: 40 }} />
@@ -100,7 +100,7 @@ export default function EditProfile() {
       </SafeAreaView>
 
       {loading ? (
-        <ActivityIndicator color={Afylo.violet} style={{ marginTop: 40 }} />
+        <ActivityIndicator color={Afryko.violet} style={{ marginTop: 40 }} />
       ) : (
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
           <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 40 }} keyboardShouldPersistTaps="handled">
@@ -157,7 +157,7 @@ function Field({
         value={value}
         onChangeText={onChange}
         placeholder={placeholder}
-        placeholderTextColor={Afylo.textFaint}
+        placeholderTextColor={Afryko.textFaint}
         multiline={multiline}
         autoCapitalize={multiline ? 'sentences' : 'none'}
         autoCorrect={false}
@@ -167,17 +167,17 @@ function Field({
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: Afylo.bg },
+  root: { flex: 1, backgroundColor: Afryko.bg },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 12, paddingVertical: 8 },
   hbtn: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
-  title: { color: Afylo.text, fontSize: 18, fontFamily: Font.bold },
+  title: { color: Afryko.text, fontSize: 18, fontFamily: Font.bold },
 
   avatarWrap: { alignItems: 'center', marginTop: 8, gap: 10 },
-  cameraBadge: { position: 'absolute', bottom: 0, right: 0, width: 34, height: 34, borderRadius: 17, backgroundColor: Afylo.violet, alignItems: 'center', justifyContent: 'center', borderWidth: 3, borderColor: Afylo.bg },
-  changePhoto: { color: Afylo.violet, fontSize: 14, fontFamily: Font.semibold },
-  demoNote: { color: Afylo.textFaint, fontSize: 12, textAlign: 'center', marginTop: 16 },
+  cameraBadge: { position: 'absolute', bottom: 0, right: 0, width: 34, height: 34, borderRadius: 17, backgroundColor: Afryko.violet, alignItems: 'center', justifyContent: 'center', borderWidth: 3, borderColor: Afryko.bg },
+  changePhoto: { color: Afryko.violet, fontSize: 14, fontFamily: Font.semibold },
+  demoNote: { color: Afryko.textFaint, fontSize: 12, textAlign: 'center', marginTop: 16 },
 
-  label: { color: Afylo.text, fontSize: 14, fontWeight: '700', marginBottom: 8 },
-  input: { backgroundColor: Afylo.surface, borderRadius: Radius.md, borderWidth: 1, borderColor: Afylo.border, color: Afylo.text, fontSize: 15, paddingHorizontal: 14, height: 50 },
-  error: { color: Afylo.live, fontSize: 14, marginTop: 16, fontWeight: '600' },
+  label: { color: Afryko.text, fontSize: 14, fontWeight: '700', marginBottom: 8 },
+  input: { backgroundColor: Afryko.surface, borderRadius: Radius.md, borderWidth: 1, borderColor: Afryko.border, color: Afryko.text, fontSize: 15, paddingHorizontal: 14, height: 50 },
+  error: { color: Afryko.live, fontSize: 14, marginTop: 16, fontWeight: '600' },
 });

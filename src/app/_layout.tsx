@@ -11,7 +11,7 @@ import { useEffect } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
-import { Afylo } from '@/constants/brand';
+import { Afryko } from '@/constants/brand';
 import '../global.css';
 import { AuthProvider, useAuth } from '@/lib/auth';
 import { AuthGateProvider } from '@/lib/auth-gate';
@@ -47,18 +47,19 @@ function RootNavigator() {
 
   if (loading) {
     return (
-      <View style={{ flex: 1, backgroundColor: Afylo.bg, alignItems: 'center', justifyContent: 'center' }}>
-        <ActivityIndicator color={Afylo.violet} size="large" />
+      <View style={{ flex: 1, backgroundColor: Afryko.bg, alignItems: 'center', justifyContent: 'center' }}>
+        <ActivityIndicator color={Afryko.violet} size="large" />
       </View>
     );
   }
 
   return (
-    <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: Afylo.bg } }}>
+    <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: Afryko.bg } }}>
       <Stack.Screen name="index" />
       <Stack.Screen name="login" />
       <Stack.Screen name="(tabs)" />
       <Stack.Screen name="studio" />
+      <Stack.Screen name="rewards" />
       <Stack.Screen name="product-new" options={{ presentation: 'modal' }} />
       <Stack.Screen name="post-new" options={{ presentation: 'modal' }} />
       <Stack.Screen name="edit-profile" options={{ presentation: 'modal' }} />
@@ -91,8 +92,8 @@ export default function RootLayout() {
   // Ne jamais bloquer le site si une police échoue à charger.
   if (!fontsLoaded && !fontError) {
     return (
-      <View style={{ flex: 1, backgroundColor: Afylo.bg, alignItems: 'center', justifyContent: 'center' }}>
-        <ActivityIndicator color={Afylo.violet} size="large" />
+      <View style={{ flex: 1, backgroundColor: Afryko.bg, alignItems: 'center', justifyContent: 'center' }}>
+        <ActivityIndicator color={Afryko.violet} size="large" />
       </View>
     );
   }

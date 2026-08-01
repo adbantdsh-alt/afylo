@@ -1,5 +1,5 @@
 /**
- * Bibliothèque de sons Afylo (démo — des milliers de sons).
+ * Bibliothèque de sons Afryko (démo — des milliers de sons).
  * Remplacée plus tard par un catalogue serveur / licences musicales.
  */
 import { photo } from '@/lib/mock';

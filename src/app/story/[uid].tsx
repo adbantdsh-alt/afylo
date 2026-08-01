@@ -8,7 +8,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Avatar } from '@/components/ui-kit';
 import { PaymentSheet } from '@/components/payment-sheet';
-import { Afylo, Font, Radius, Type } from '@/constants/brand';
+import { Afryko, Font, Radius, Type } from '@/constants/brand';
 import { useStories } from '@/lib/stories';
 
 const ITEM_MS = 5000;
@@ -150,14 +150,14 @@ const styles = StyleSheet.create({
 
   header: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 12, paddingTop: 12 },
   name: { color: '#fff', fontFamily: Font.semibold, fontSize: 15 },
-  liveTag: { backgroundColor: Afylo.live, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6 },
+  liveTag: { backgroundColor: Afryko.live, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6 },
   liveText: { color: '#fff', fontFamily: Font.bold, fontSize: 10 },
 
   productWrap: { position: 'absolute', left: 0, right: 0, bottom: 76, paddingHorizontal: 14, zIndex: 6 },
   productBar: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: '#ffffff26', borderWidth: 1, borderColor: '#ffffff44', borderRadius: Radius.pill, paddingLeft: 14, paddingRight: 6, paddingVertical: 6 },
   productTitle: { color: '#fff', fontFamily: Font.semibold, fontSize: 13, flex: 1 },
-  productPrice: { color: Afylo.gold, fontFamily: Font.bold, fontSize: 13 },
-  productCta: { backgroundColor: Afylo.violet, paddingHorizontal: 16, paddingVertical: 8, borderRadius: Radius.pill },
+  productPrice: { color: Afryko.gold, fontFamily: Font.bold, fontSize: 13 },
+  productCta: { backgroundColor: Afryko.violet, paddingHorizontal: 16, paddingVertical: 8, borderRadius: Radius.pill },
   productCtaText: { color: '#fff', fontFamily: Font.semibold, fontSize: 13 },
   replyWrap: { position: 'absolute', left: 0, right: 0, bottom: 0, flexDirection: 'row', alignItems: 'center', gap: 14, paddingHorizontal: 14, paddingBottom: 8, zIndex: 6 },
   replyBox: { flex: 1, height: 44, borderRadius: 22, borderWidth: 1.5, borderColor: '#ffffff88', justifyContent: 'center', paddingHorizontal: 18 },

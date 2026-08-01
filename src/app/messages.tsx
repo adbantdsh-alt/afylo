@@ -4,7 +4,7 @@ import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Avatar } from '@/components/ui-kit';
-import { Afylo, Font, Radius, Type } from '@/constants/brand';
+import { Afryko, Font, Radius, Type } from '@/constants/brand';
 import { avatar } from '@/lib/mock';
 
 const convos = [
@@ -19,17 +19,17 @@ export default function Messages() {
   const router = useRouter();
   return (
     <View style={styles.root}>
-      <SafeAreaView edges={['top']} style={{ backgroundColor: Afylo.bg }}>
+      <SafeAreaView edges={['top']} style={{ backgroundColor: Afryko.bg }}>
         <View style={styles.header}>
           <View style={styles.backRow}>
-            <Ionicons name="chevron-back" size={26} color={Afylo.text} onPress={() => (router.canGoBack() ? router.back() : router.replace('/accueil'))} />
+            <Ionicons name="chevron-back" size={26} color={Afryko.text} onPress={() => (router.canGoBack() ? router.back() : router.replace('/accueil'))} />
             <Text style={styles.title}>Messages</Text>
           </View>
-          <Ionicons name="create-outline" size={24} color={Afylo.text} />
+          <Ionicons name="create-outline" size={24} color={Afryko.text} />
         </View>
         <View style={styles.search}>
-          <Ionicons name="search" size={18} color={Afylo.textDim} />
-          <TextInput style={styles.searchInput} placeholder="Rechercher" placeholderTextColor={Afylo.textFaint} />
+          <Ionicons name="search" size={18} color={Afryko.textDim} />
+          <TextInput style={styles.searchInput} placeholder="Rechercher" placeholderTextColor={Afryko.textFaint} />
         </View>
       </SafeAreaView>
 
@@ -66,22 +66,22 @@ export default function Messages() {
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: Afylo.bg },
+  root: { flex: 1, backgroundColor: Afryko.bg },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 6 },
   backRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  title: { ...Type.title, color: Afylo.text },
-  search: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: Afylo.surface, marginHorizontal: 16, marginTop: 6, marginBottom: 6, paddingHorizontal: 16, height: 44, borderRadius: Radius.pill, borderWidth: 1, borderColor: Afylo.border },
-  searchInput: { flex: 1, ...Type.body, fontSize: 15, color: Afylo.text, height: '100%' },
+  title: { ...Type.title, color: Afryko.text },
+  search: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: Afryko.surface, marginHorizontal: 16, marginTop: 6, marginBottom: 6, paddingHorizontal: 16, height: 44, borderRadius: Radius.pill, borderWidth: 1, borderColor: Afryko.border },
+  searchInput: { flex: 1, ...Type.body, fontSize: 15, color: Afryko.text, height: '100%' },
 
   row: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 10 },
-  online: { position: 'absolute', bottom: 2, right: 2, width: 14, height: 14, borderRadius: 7, backgroundColor: Afylo.green, borderWidth: 2, borderColor: Afylo.bg },
+  online: { position: 'absolute', bottom: 2, right: 2, width: 14, height: 14, borderRadius: 7, backgroundColor: Afryko.green, borderWidth: 2, borderColor: Afryko.bg },
   rowTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  name: { ...Type.body, fontFamily: Font.semibold, color: Afylo.text },
-  time: { ...Type.caption, color: Afylo.textFaint },
+  name: { ...Type.body, fontFamily: Font.semibold, color: Afryko.text },
+  time: { ...Type.caption, color: Afryko.textFaint },
   rowBottom: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 3 },
-  last: { ...Type.small, color: Afylo.textDim, flex: 1, marginRight: 10 },
-  lastUnread: { color: Afylo.text, fontFamily: Font.semibold },
-  badge: { minWidth: 20, height: 20, borderRadius: 10, backgroundColor: Afylo.violet, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 6 },
+  last: { ...Type.small, color: Afryko.textDim, flex: 1, marginRight: 10 },
+  lastUnread: { color: Afryko.text, fontFamily: Font.semibold },
+  badge: { minWidth: 20, height: 20, borderRadius: 10, backgroundColor: Afryko.violet, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 6 },
   badgeText: { color: '#fff', fontFamily: Font.bold, fontSize: 12 },
-  note: { ...Type.caption, color: Afylo.textFaint, textAlign: 'center', marginTop: 20 },
+  note: { ...Type.caption, color: Afryko.textFaint, textAlign: 'center', marginTop: 20 },
 });

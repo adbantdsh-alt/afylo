@@ -1,13 +1,13 @@
 import { Tabs } from 'expo-router';
 
-import { AfyloTabBar } from '@/components/afylo-tab-bar';
+import { AfrykoTabBar } from '@/components/afryko-tab-bar';
 import { TabBarProvider } from '@/lib/tabbar';
 
 export default function TabsLayout() {
   return (
     <TabBarProvider>
       <Tabs
-        tabBar={(props) => <AfyloTabBar {...props} />}
+        tabBar={(props) => <AfrykoTabBar {...props} />}
         screenOptions={{ headerShown: false }}>
         <Tabs.Screen name="accueil" />
         <Tabs.Screen name="trend" />

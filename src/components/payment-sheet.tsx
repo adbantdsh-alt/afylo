@@ -2,7 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useEffect, useState } from 'react';
 import { Linking, Modal, Pressable, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
 
-import { Afylo, Font, Radius, Type } from '@/constants/brand';
+import { Afryko, Font, Radius, Type } from '@/constants/brand';
 import { maskCard, maskPhone, useCheckoutProfile, type PayMethod } from '@/lib/checkout-profile';
 
 // Moyens mobile money par pays + carte bancaire (via XaalisPay, universel)
@@ -51,7 +51,7 @@ export function PaymentSheet({
   const item = items[chosen ?? 0] ?? { title: 'Produit', price: '' };
   const title = item.title;
   const price = item.price;
-  const methods = [...(MOBILE[country] ?? MOBILE['Sénégal']), { id: 'card', name: 'Carte bancaire', color: Afylo.violet }];
+  const methods = [...(MOBILE[country] ?? MOBILE['Sénégal']), { id: 'card', name: 'Carte bancaire', color: Afryko.violet }];
   const methodName = methods.find((m) => m.id === method)?.name ?? 'l\'opérateur';
   const cardReady = method !== 'card' || !!profile.card;
   const canPay = !!method && cardReady && (method === 'card' ? true : phone.trim().length >= 6) && name.trim().length >= 2;
@@ -75,7 +75,7 @@ export function PaymentSheet({
 
           {/* En-tête sécurisé */}
           <View style={styles.secure}>
-            <Ionicons name="lock-closed" size={16} color={Afylo.green} />
+            <Ionicons name="lock-closed" size={16} color={Afryko.green} />
             <Text style={styles.secureText}>Paiement sécurisé avec</Text>
             <View style={styles.xpBadge}>
               <View style={[styles.xpDot, { backgroundColor: '#1F4E79' }]} />
@@ -91,11 +91,11 @@ export function PaymentSheet({
                 {items.map((it, i) => (
                   <Pressable key={i} onPress={() => setChosen(i)} style={styles.chooseRow}>
                     <View style={styles.chooseIcon}>
-                      <Ionicons name="bag-handle" size={18} color={Afylo.violet} />
+                      <Ionicons name="bag-handle" size={18} color={Afryko.violet} />
                     </View>
                     <Text style={styles.chooseTitle} numberOfLines={1}>{it.title}</Text>
                     <Text style={styles.choosePrice}>{it.price}</Text>
-                    <Ionicons name="chevron-forward" size={18} color={Afylo.textFaint} />
+                    <Ionicons name="chevron-forward" size={18} color={Afryko.textFaint} />
                   </Pressable>
                 ))}
               </View>
@@ -125,12 +125,12 @@ export function PaymentSheet({
               {/* Identité enregistrée (achat 1-clic) */}
               {isComplete && (
                 <View style={styles.identity}>
-                  <View style={styles.identityIcon}><Ionicons name="flash" size={16} color={Afylo.violet} /></View>
+                  <View style={styles.identityIcon}><Ionicons name="flash" size={16} color={Afryko.violet} /></View>
                   <View style={{ flex: 1 }}>
                     <Text style={styles.identityName}>{profile.name}</Text>
                     <Text style={styles.identitySub}>{method === 'card' && profile.card ? maskCard(profile.card) : maskPhone(profile.phone)} · achat 1-clic</Text>
                   </View>
-                  <Ionicons name="checkmark-circle" size={20} color={Afylo.green} />
+                  <Ionicons name="checkmark-circle" size={20} color={Afryko.green} />
                 </View>
               )}
 
@@ -157,14 +157,14 @@ export function PaymentSheet({
               {/* Coordonnées — seulement si pas de profil enregistré et paiement mobile money */}
               {!isComplete && method !== 'card' && (
                 <>
-                  <TextInput style={styles.input} value={phone} onChangeText={setPhone} placeholder="Numéro mobile money (ex : 77 123 45 67)" placeholderTextColor={Afylo.textFaint} keyboardType="phone-pad" />
-                  <TextInput style={styles.input} value={name} onChangeText={setName} placeholder="Nom complet" placeholderTextColor={Afylo.textFaint} />
+                  <TextInput style={styles.input} value={phone} onChangeText={setPhone} placeholder="Numéro mobile money (ex : 77 123 45 67)" placeholderTextColor={Afryko.textFaint} keyboardType="phone-pad" />
+                  <TextInput style={styles.input} value={name} onChangeText={setName} placeholder="Nom complet" placeholderTextColor={Afryko.textFaint} />
                   <View style={styles.rememberRow}>
                     <View style={{ flex: 1 }}>
                       <Text style={styles.rememberText}>Enregistrer pour la prochaine fois</Text>
                       <Text style={styles.rememberSub}>Achat en 1 clic ensuite (modifiable dans Paramètres).</Text>
                     </View>
-                    <Switch value={remember} onValueChange={setRemember} trackColor={{ true: Afylo.violet }} />
+                    <Switch value={remember} onValueChange={setRemember} trackColor={{ true: Afryko.violet }} />
                   </View>
                 </>
               )}
@@ -178,7 +178,7 @@ export function PaymentSheet({
               </Pressable>
 
               <Pressable onPress={() => Linking.openURL('https://www.xaalispay.com/')} style={styles.footer}>
-                <Ionicons name="shield-checkmark" size={14} color={Afylo.textDim} />
+                <Ionicons name="shield-checkmark" size={14} color={Afryko.textDim} />
                 <Text style={styles.footerText}>Argent bloqué jusqu'à la livraison · xaalispay.com</Text>
               </Pressable>
             </>
@@ -191,50 +191,50 @@ export function PaymentSheet({
 
 const styles = StyleSheet.create({
   overlay: { flex: 1, backgroundColor: '#00000066', justifyContent: 'flex-end' },
-  sheet: { backgroundColor: Afylo.glass, borderTopLeftRadius: 28, borderTopRightRadius: 28, padding: 22, paddingBottom: 34, overflow: 'hidden' },
-  grip: { width: 40, height: 4, borderRadius: 2, backgroundColor: Afylo.border, alignSelf: 'center', marginBottom: 16 },
+  sheet: { backgroundColor: Afryko.glass, borderTopLeftRadius: 28, borderTopRightRadius: 28, padding: 22, paddingBottom: 34, overflow: 'hidden' },
+  grip: { width: 40, height: 4, borderRadius: 2, backgroundColor: Afryko.border, alignSelf: 'center', marginBottom: 16 },
 
   secure: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, marginBottom: 16 },
-  secureText: { ...Type.small, color: Afylo.textDim },
+  secureText: { ...Type.small, color: Afryko.textDim },
   xpBadge: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   xpDot: { width: 12, height: 12, borderRadius: 6 },
   xpText: { ...Type.small, fontFamily: Font.bold, color: '#1F4E79', marginLeft: 2 },
 
   product: { alignItems: 'center', marginBottom: 18 },
-  productTitle: { ...Type.body, color: Afylo.textDim },
-  productPrice: { ...Type.title, fontSize: 34, color: Afylo.text, marginTop: 4 },
+  productTitle: { ...Type.body, color: Afryko.textDim },
+  productPrice: { ...Type.title, fontSize: 34, color: Afryko.text, marginTop: 4 },
 
-  section: { ...Type.small, fontFamily: Font.semibold, color: Afylo.text, marginBottom: 10 },
-  chooseRow: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: Afylo.surface, borderRadius: Radius.md, borderWidth: 1, borderColor: Afylo.border, padding: 12 },
+  section: { ...Type.small, fontFamily: Font.semibold, color: Afryko.text, marginBottom: 10 },
+  chooseRow: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: Afryko.surface, borderRadius: Radius.md, borderWidth: 1, borderColor: Afryko.border, padding: 12 },
   chooseIcon: { width: 36, height: 36, borderRadius: 10, backgroundColor: '#3E5BFF14', alignItems: 'center', justifyContent: 'center' },
-  chooseTitle: { ...Type.body, fontFamily: Font.semibold, color: Afylo.text, flex: 1 },
-  choosePrice: { ...Type.body, fontFamily: Font.bold, color: Afylo.violet },
+  chooseTitle: { ...Type.body, fontFamily: Font.semibold, color: Afryko.text, flex: 1 },
+  choosePrice: { ...Type.body, fontFamily: Font.bold, color: Afryko.violet },
   methods: { gap: 10, marginBottom: 16 },
-  method: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: Afylo.surface, borderRadius: Radius.md, borderWidth: 1, borderColor: Afylo.border, padding: 12 },
+  method: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: Afryko.surface, borderRadius: Radius.md, borderWidth: 1, borderColor: Afryko.border, padding: 12 },
   methodDot: { width: 34, height: 34, borderRadius: 17, alignItems: 'center', justifyContent: 'center' },
   methodDotText: { color: '#fff', fontFamily: Font.bold, fontSize: 15 },
-  methodName: { ...Type.body, fontFamily: Font.semibold, color: Afylo.text },
-  methodHint: { ...Type.caption, color: Afylo.textDim, marginTop: 1 },
+  methodName: { ...Type.body, fontFamily: Font.semibold, color: Afryko.text },
+  methodHint: { ...Type.caption, color: Afryko.textDim, marginTop: 1 },
 
   identity: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: '#3E5BFF0F', borderWidth: 1, borderColor: '#3E5BFF33', borderRadius: Radius.md, padding: 12, marginBottom: 16 },
   identityIcon: { width: 36, height: 36, borderRadius: 18, backgroundColor: '#3E5BFF1A', alignItems: 'center', justifyContent: 'center' },
-  identityName: { ...Type.body, fontFamily: Font.bold, color: Afylo.text },
-  identitySub: { ...Type.caption, color: Afylo.textDim, marginTop: 1 },
+  identityName: { ...Type.body, fontFamily: Font.bold, color: Afryko.text },
+  identitySub: { ...Type.caption, color: Afryko.textDim, marginTop: 1 },
 
   rememberRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 2, marginBottom: 8 },
-  rememberText: { ...Type.body, fontFamily: Font.semibold, color: Afylo.text },
-  rememberSub: { ...Type.caption, color: Afylo.textDim, marginTop: 1 },
+  rememberText: { ...Type.body, fontFamily: Font.semibold, color: Afryko.text },
+  rememberSub: { ...Type.caption, color: Afryko.textDim, marginTop: 1 },
 
-  input: { backgroundColor: Afylo.surface, borderRadius: Radius.md, borderWidth: 1, borderColor: Afylo.border, color: Afylo.text, ...Type.body, paddingHorizontal: 16, height: 52, marginBottom: 12 },
+  input: { backgroundColor: Afryko.surface, borderRadius: Radius.md, borderWidth: 1, borderColor: Afryko.border, color: Afryko.text, ...Type.body, paddingHorizontal: 16, height: 52, marginBottom: 12 },
 
-  payBtn: { height: 54, borderRadius: Radius.pill, backgroundColor: Afylo.violet, alignItems: 'center', justifyContent: 'center', marginTop: 6 },
+  payBtn: { height: 54, borderRadius: Radius.pill, backgroundColor: Afryko.violet, alignItems: 'center', justifyContent: 'center', marginTop: 6 },
   payText: { color: '#fff', fontFamily: Font.semibold, fontSize: 17 },
 
   footer: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, marginTop: 14 },
-  footerText: { ...Type.caption, color: Afylo.textDim },
+  footerText: { ...Type.caption, color: Afryko.textDim },
 
   doneBox: { alignItems: 'center', paddingVertical: 10 },
-  doneCircle: { width: 76, height: 76, borderRadius: 38, backgroundColor: Afylo.green, alignItems: 'center', justifyContent: 'center', marginBottom: 16 },
-  doneTitle: { ...Type.title, color: Afylo.text },
-  doneSub: { ...Type.body, color: Afylo.textDim, textAlign: 'center', marginTop: 8, lineHeight: 22 },
+  doneCircle: { width: 76, height: 76, borderRadius: 38, backgroundColor: Afryko.green, alignItems: 'center', justifyContent: 'center', marginBottom: 16 },
+  doneTitle: { ...Type.title, color: Afryko.text },
+  doneSub: { ...Type.body, color: Afryko.textDim, textAlign: 'center', marginTop: 8, lineHeight: 22 },
 });

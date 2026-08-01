@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react';
 import { ActivityIndicator, Linking, Modal, Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { Afylo, Font, Radius, Type } from '@/constants/brand';
+import { Afryko, Font, Radius, Type } from '@/constants/brand';
 import { useAuth } from '@/lib/auth';
 import { changeEmail, changePassword, deactivateAccount, deleteAccount, getAccountInfo } from '@/lib/db';
 import { maskCard, useCheckoutProfile, type PayMethod } from '@/lib/checkout-profile';
@@ -90,6 +90,7 @@ export default function Settings() {
     {
       title: 'Créateur',
       rows: [
+        { icon: 'cash-outline', label: 'Creator Rewards', sub: 'Gagne 100 F / 1 000 vues qualifiées', route: '/rewards' },
         { icon: 'wallet-outline', label: 'Portefeuille', sub: 'Solde, retraits & statistiques', route: '/studio' },
         { icon: 'repeat-outline', label: 'Affiliation', sub: 'Produits à revendre', route: '/affiliation' },
       ],
@@ -131,12 +132,12 @@ export default function Settings() {
     {
       title: 'Assistance',
       rows: [
-        { icon: 'help-circle-outline', label: 'Aide', url: 'mailto:support@afylo.app' },
-        { icon: 'flag-outline', label: 'Signaler un problème', url: 'mailto:support@afylo.app' },
+        { icon: 'help-circle-outline', label: 'Aide', url: 'mailto:support@afryko.app' },
+        { icon: 'flag-outline', label: 'Signaler un problème', url: 'mailto:support@afryko.app' },
         { icon: 'people-outline', label: 'Règles de la communauté', route: '/legal/guidelines' },
         { icon: 'document-text-outline', label: "Conditions d'utilisation", route: '/legal/terms' },
         { icon: 'shield-outline', label: 'Politique de confidentialité', route: '/legal/privacy' },
-        { icon: 'information-circle-outline', label: "À propos d'Afylo", sub: 'Version 1.0.0', route: '/legal/about' },
+        { icon: 'information-circle-outline', label: "À propos d'Afryko", sub: 'Version 1.0.0', route: '/legal/about' },
       ],
     },
     {
@@ -164,17 +165,17 @@ export default function Settings() {
 
   return (
     <View style={styles.root}>
-      <SafeAreaView edges={['top']} style={{ backgroundColor: Afylo.bg }}>
+      <SafeAreaView edges={['top']} style={{ backgroundColor: Afryko.bg }}>
         <View style={styles.header}>
           <Pressable onPress={() => (router.canGoBack() ? router.back() : router.replace('/accueil'))} style={styles.back}>
-            <Ionicons name="chevron-back" size={26} color={Afylo.text} />
+            <Ionicons name="chevron-back" size={26} color={Afryko.text} />
           </Pressable>
           <Text style={styles.title}>Paramètres</Text>
           <View style={{ width: 40 }} />
         </View>
         <View style={styles.search}>
-          <Ionicons name="search" size={18} color={Afylo.textDim} />
-          <TextInput style={styles.searchInput} value={q} onChangeText={setQ} placeholder="Rechercher un réglage" placeholderTextColor={Afylo.textFaint} />
+          <Ionicons name="search" size={18} color={Afryko.textDim} />
+          <TextInput style={styles.searchInput} value={q} onChangeText={setQ} placeholder="Rechercher un réglage" placeholderTextColor={Afryko.textFaint} />
         </View>
       </SafeAreaView>
 
@@ -191,19 +192,19 @@ export default function Settings() {
                     key={r.label}
                     onPress={() => (r.toggle ? null : onRow(r))}
                     style={[styles.row, i < rows.length - 1 && styles.rowBorderBottom]}>
-                    <Ionicons name={r.icon} size={22} color={r.danger ? Afylo.live : Afylo.text} />
+                    <Ionicons name={r.icon} size={22} color={r.danger ? Afryko.live : Afryko.text} />
                     <View style={{ flex: 1 }}>
-                      <Text style={[styles.rowLabel, r.danger && { color: Afylo.live }]}>{r.label}</Text>
+                      <Text style={[styles.rowLabel, r.danger && { color: Afryko.live }]}>{r.label}</Text>
                       {r.sub && <Text style={styles.rowSub}>{r.sub}</Text>}
                     </View>
                     {r.toggle ? (
                       <Switch
                         value={sw[r.toggle]}
                         onValueChange={(v) => setSw((p) => ({ ...p, [r.toggle!]: v }))}
-                        trackColor={{ true: Afylo.violet }}
+                        trackColor={{ true: Afryko.violet }}
                       />
                     ) : (
-                      !r.danger && <Ionicons name="chevron-forward" size={18} color={Afylo.textFaint} />
+                      !r.danger && <Ionicons name="chevron-forward" size={18} color={Afryko.textFaint} />
                     )}
                   </Pressable>
                 ))}
@@ -226,7 +227,7 @@ export default function Settings() {
         <View style={styles.confirmBackdrop}>
           <View style={styles.confirmCard}>
             <View style={[styles.confirmIcon, confirm === 'delete' && { backgroundColor: '#E11D481A' }]}>
-              <Ionicons name={confirm === 'delete' ? 'trash' : 'pause'} size={26} color={confirm === 'delete' ? Afylo.live : Afylo.violet} />
+              <Ionicons name={confirm === 'delete' ? 'trash' : 'pause'} size={26} color={confirm === 'delete' ? Afryko.live : Afryko.violet} />
             </View>
             <Text style={styles.confirmTitle}>{confirm === 'delete' ? 'Supprimer ton compte ?' : 'Désactiver ton compte ?'}</Text>
             <Text style={styles.confirmText}>
@@ -238,7 +239,7 @@ export default function Settings() {
             <Pressable
               onPress={runAccountAction}
               disabled={busy}
-              style={[styles.confirmBtn, { backgroundColor: confirm === 'delete' ? Afylo.live : Afylo.violet }]}>
+              style={[styles.confirmBtn, { backgroundColor: confirm === 'delete' ? Afryko.live : Afryko.violet }]}>
               {busy ? <ActivityIndicator color="#fff" /> : <Text style={styles.confirmBtnText}>{confirm === 'delete' ? 'Supprimer définitivement' : 'Désactiver'}</Text>}
             </Pressable>
             <Pressable onPress={() => setConfirm(null)} style={{ marginTop: 12 }} disabled={busy}>
@@ -282,10 +283,10 @@ function DetailPanel({ which, onClose, hasSession, state }: { which: DetailKey |
   return (
     <Modal visible={!!which} animationType="slide" onRequestClose={onClose} presentationStyle="fullScreen">
       <View style={styles.root}>
-        <SafeAreaView edges={['top']} style={{ backgroundColor: Afylo.bg }}>
+        <SafeAreaView edges={['top']} style={{ backgroundColor: Afryko.bg }}>
           <View style={styles.header}>
             <Pressable onPress={onClose} style={styles.back}>
-              <Ionicons name="chevron-back" size={26} color={Afylo.text} />
+              <Ionicons name="chevron-back" size={26} color={Afryko.text} />
             </Pressable>
             <Text style={styles.title}>{which ? TITLES[which] : ''}</Text>
             <View style={{ width: 40 }} />
@@ -428,10 +429,10 @@ function LinkedPanel({ linked, setLinked }: { linked: Record<string, boolean>; s
     <View style={styles.panelCard}>
       {Object.keys(linked).map((k, i, arr) => (
         <View key={k} style={[styles.row, i < arr.length - 1 && styles.rowBorderBottom]}>
-          <Ionicons name={ICONS[k]} size={22} color={Afylo.text} />
+          <Ionicons name={ICONS[k]} size={22} color={Afryko.text} />
           <Text style={[styles.rowLabel, { flex: 1 }]}>{k}</Text>
           <Pressable onPress={() => setLinked((p) => ({ ...p, [k]: !p[k] }))} style={[styles.linkBtn, linked[k] && styles.linkBtnOn]}>
-            <Text style={[styles.linkBtnText, linked[k] && { color: Afylo.textDim }]}>{linked[k] ? 'Connecté' : 'Connecter'}</Text>
+            <Text style={[styles.linkBtnText, linked[k] && { color: Afryko.textDim }]}>{linked[k] ? 'Connecté' : 'Connecter'}</Text>
           </Pressable>
         </View>
       ))}
@@ -443,7 +444,7 @@ function BlockedPanel({ blocked, setBlocked }: { blocked: any[]; setBlocked: (f:
   if (blocked.length === 0) {
     return (
       <View style={styles.empty}>
-        <Ionicons name="checkmark-circle-outline" size={44} color={Afylo.textFaint} />
+        <Ionicons name="checkmark-circle-outline" size={44} color={Afryko.textFaint} />
         <Text style={styles.emptyText}>Aucun compte bloqué.</Text>
       </View>
     );
@@ -471,7 +472,7 @@ function DevicesPanel({ devices }: { devices: { id: string; name: string; sub: s
     <View style={styles.panelCard}>
       {devices.map((d, i) => (
         <View key={d.id} style={[styles.row, i < devices.length - 1 && styles.rowBorderBottom]}>
-          <Ionicons name={d.name.includes('Chrome') ? 'desktop-outline' : 'phone-portrait-outline'} size={22} color={Afylo.text} />
+          <Ionicons name={d.name.includes('Chrome') ? 'desktop-outline' : 'phone-portrait-outline'} size={22} color={Afryko.text} />
           <View style={{ flex: 1 }}>
             <Text style={styles.rowLabel}>{d.name}</Text>
             <Text style={styles.rowSub}>{d.sub}</Text>
@@ -479,7 +480,7 @@ function DevicesPanel({ devices }: { devices: { id: string; name: string; sub: s
           {d.current ? (
             <View style={styles.currentTag}><Text style={styles.currentTagText}>Actuel</Text></View>
           ) : (
-            <Pressable style={styles.linkBtn}><Text style={[styles.linkBtnText, { color: Afylo.live }]}>Déconnecter</Text></Pressable>
+            <Pressable style={styles.linkBtn}><Text style={[styles.linkBtnText, { color: Afryko.live }]}>Déconnecter</Text></Pressable>
           )}
         </View>
       ))}
@@ -497,7 +498,7 @@ function Choice({ title, options, value, onChange, note }: { title: string; opti
         {options.map((o, i) => (
           <Pressable key={o} onPress={() => onChange(o)} style={[styles.row, i < options.length - 1 && styles.rowBorderBottom]}>
             <Text style={[styles.rowLabel, { flex: 1 }]}>{o}</Text>
-            {value === o && <Ionicons name="checkmark" size={22} color={Afylo.violet} />}
+            {value === o && <Ionicons name="checkmark" size={22} color={Afryko.violet} />}
           </Pressable>
         ))}
       </View>
@@ -510,7 +511,7 @@ function Field({ label, ...props }: { label: string } & React.ComponentProps<typ
   return (
     <View style={{ marginBottom: 16 }}>
       <Text style={styles.fieldLabel}>{label}</Text>
-      <TextInput style={styles.field} placeholderTextColor={Afylo.textFaint} autoCapitalize="none" {...props} />
+      <TextInput style={styles.field} placeholderTextColor={Afryko.textFaint} autoCapitalize="none" {...props} />
     </View>
   );
 }
@@ -524,46 +525,46 @@ function PrimaryBtn({ label, onPress, busy, disabled }: { label: string; onPress
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: Afylo.bg },
+  root: { flex: 1, backgroundColor: Afryko.bg },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 12, paddingVertical: 6 },
   back: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
-  title: { ...Type.subtitle, color: Afylo.text },
-  search: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: Afylo.surface, marginHorizontal: 16, marginTop: 6, marginBottom: 8, paddingHorizontal: 16, height: 44, borderRadius: Radius.pill, borderWidth: 1, borderColor: Afylo.border },
-  searchInput: { flex: 1, ...Type.body, fontSize: 15, color: Afylo.text, height: '100%' },
+  title: { ...Type.subtitle, color: Afryko.text },
+  search: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: Afryko.surface, marginHorizontal: 16, marginTop: 6, marginBottom: 8, paddingHorizontal: 16, height: 44, borderRadius: Radius.pill, borderWidth: 1, borderColor: Afryko.border },
+  searchInput: { flex: 1, ...Type.body, fontSize: 15, color: Afryko.text, height: '100%' },
 
-  sectionTitle: { ...Type.small, color: Afylo.textDim, fontFamily: Font.semibold, marginBottom: 8, marginLeft: 4, textTransform: 'uppercase', letterSpacing: 0.4 },
-  card: { backgroundColor: Afylo.surface, borderRadius: Radius.lg, borderWidth: 1, borderColor: Afylo.border, overflow: 'hidden' },
+  sectionTitle: { ...Type.small, color: Afryko.textDim, fontFamily: Font.semibold, marginBottom: 8, marginLeft: 4, textTransform: 'uppercase', letterSpacing: 0.4 },
+  card: { backgroundColor: Afryko.surface, borderRadius: Radius.lg, borderWidth: 1, borderColor: Afryko.border, overflow: 'hidden' },
   row: { flexDirection: 'row', alignItems: 'center', gap: 14, paddingHorizontal: 16, paddingVertical: 14 },
-  rowBorderBottom: { borderBottomWidth: 1, borderBottomColor: Afylo.bg },
-  rowLabel: { ...Type.body, fontSize: 15, color: Afylo.text },
-  rowSub: { ...Type.caption, color: Afylo.textDim, marginTop: 2 },
+  rowBorderBottom: { borderBottomWidth: 1, borderBottomColor: Afryko.bg },
+  rowLabel: { ...Type.body, fontSize: 15, color: Afryko.text },
+  rowSub: { ...Type.caption, color: Afryko.textDim, marginTop: 2 },
 
   // Panneaux
-  panelCard: { backgroundColor: Afylo.surface, borderRadius: Radius.lg, borderWidth: 1, borderColor: Afylo.border, overflow: 'hidden' },
-  choiceTitle: { ...Type.small, color: Afylo.textDim, fontFamily: Font.semibold, marginBottom: 8, marginLeft: 4 },
-  panelNote: { ...Type.caption, color: Afylo.textDim, marginTop: 12, marginHorizontal: 4, lineHeight: 18 },
-  panelErr: { ...Type.caption, color: Afylo.live, marginTop: 8, marginHorizontal: 4 },
-  avatar: { width: 40, height: 40, borderRadius: 20, backgroundColor: Afylo.surfaceAlt },
-  linkBtn: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: Radius.pill, backgroundColor: Afylo.surfaceAlt },
-  linkBtnOn: { backgroundColor: Afylo.bg, borderWidth: 1, borderColor: Afylo.border },
-  linkBtnText: { ...Type.caption, fontFamily: Font.semibold, color: Afylo.violet },
-  currentTag: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: Radius.pill, backgroundColor: Afylo.green + '1A' },
-  currentTagText: { ...Type.caption, fontFamily: Font.semibold, color: Afylo.green },
+  panelCard: { backgroundColor: Afryko.surface, borderRadius: Radius.lg, borderWidth: 1, borderColor: Afryko.border, overflow: 'hidden' },
+  choiceTitle: { ...Type.small, color: Afryko.textDim, fontFamily: Font.semibold, marginBottom: 8, marginLeft: 4 },
+  panelNote: { ...Type.caption, color: Afryko.textDim, marginTop: 12, marginHorizontal: 4, lineHeight: 18 },
+  panelErr: { ...Type.caption, color: Afryko.live, marginTop: 8, marginHorizontal: 4 },
+  avatar: { width: 40, height: 40, borderRadius: 20, backgroundColor: Afryko.surfaceAlt },
+  linkBtn: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: Radius.pill, backgroundColor: Afryko.surfaceAlt },
+  linkBtnOn: { backgroundColor: Afryko.bg, borderWidth: 1, borderColor: Afryko.border },
+  linkBtnText: { ...Type.caption, fontFamily: Font.semibold, color: Afryko.violet },
+  currentTag: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: Radius.pill, backgroundColor: Afryko.green + '1A' },
+  currentTagText: { ...Type.caption, fontFamily: Font.semibold, color: Afryko.green },
   empty: { alignItems: 'center', paddingVertical: 60, gap: 12 },
-  emptyText: { ...Type.body, color: Afylo.textDim },
+  emptyText: { ...Type.body, color: Afryko.textDim },
 
-  fieldLabel: { ...Type.small, color: Afylo.textDim, fontFamily: Font.semibold, marginBottom: 8, marginLeft: 4 },
-  field: { backgroundColor: Afylo.surface, borderWidth: 1, borderColor: Afylo.border, borderRadius: Radius.md, paddingHorizontal: 16, height: 52, ...Type.body, fontSize: 15, color: Afylo.text },
-  primaryBtn: { backgroundColor: Afylo.violet, height: 52, borderRadius: Radius.pill, alignItems: 'center', justifyContent: 'center', marginTop: 10 },
+  fieldLabel: { ...Type.small, color: Afryko.textDim, fontFamily: Font.semibold, marginBottom: 8, marginLeft: 4 },
+  field: { backgroundColor: Afryko.surface, borderWidth: 1, borderColor: Afryko.border, borderRadius: Radius.md, paddingHorizontal: 16, height: 52, ...Type.body, fontSize: 15, color: Afryko.text },
+  primaryBtn: { backgroundColor: Afryko.violet, height: 52, borderRadius: Radius.pill, alignItems: 'center', justifyContent: 'center', marginTop: 10 },
   primaryBtnText: { color: '#fff', fontFamily: Font.semibold, fontSize: 16 },
 
   confirmBackdrop: { flex: 1, backgroundColor: '#00000077', alignItems: 'center', justifyContent: 'center', padding: 28 },
-  confirmCard: { backgroundColor: Afylo.bg, borderRadius: 24, padding: 24, alignItems: 'center', width: '100%', maxWidth: 380 },
+  confirmCard: { backgroundColor: Afryko.bg, borderRadius: 24, padding: 24, alignItems: 'center', width: '100%', maxWidth: 380 },
   confirmIcon: { width: 60, height: 60, borderRadius: 18, backgroundColor: '#3E5BFF1A', alignItems: 'center', justifyContent: 'center', marginBottom: 14 },
-  confirmTitle: { ...Type.title, fontSize: 20, color: Afylo.text, textAlign: 'center' },
-  confirmText: { ...Type.body, color: Afylo.textDim, textAlign: 'center', marginTop: 8 },
-  confirmErr: { ...Type.small, color: Afylo.live, marginTop: 12, textAlign: 'center' },
+  confirmTitle: { ...Type.title, fontSize: 20, color: Afryko.text, textAlign: 'center' },
+  confirmText: { ...Type.body, color: Afryko.textDim, textAlign: 'center', marginTop: 8 },
+  confirmErr: { ...Type.small, color: Afryko.live, marginTop: 12, textAlign: 'center' },
   confirmBtn: { height: 52, borderRadius: Radius.pill, alignItems: 'center', justifyContent: 'center', alignSelf: 'stretch', marginTop: 18 },
   confirmBtnText: { color: '#fff', fontFamily: Font.semibold, fontSize: 16 },
-  confirmCancel: { ...Type.body, fontFamily: Font.semibold, color: Afylo.textDim, textAlign: 'center' },
+  confirmCancel: { ...Type.body, fontFamily: Font.semibold, color: Afryko.textDim, textAlign: 'center' },
 });

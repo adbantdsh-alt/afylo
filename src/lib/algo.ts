@@ -1,5 +1,5 @@
 /**
- * Afylo — moteur de recommandation vidéo (façon TikTok, adapté).
+ * Afryko — moteur de recommandation vidéo (façon TikTok, adapté).
  *
  * Un bon algo garde l'utilisateur : il mélange VIRALITÉ (taux d'engagement),
  * ABONNEMENTS (créateurs suivis), AFFINITÉ DE NICHE (ce que tu choisis / regardes),
@@ -60,3 +60,57 @@ export function rankPosts(posts: Post[], ctx: FeedCtx = {}): Post[] {
     .sort((a, b) => b.s - a.s)
     .map((x) => x.p);
 }
+
+/* ------------------------------------------------------------------ *
+ *  Afryko Creator Rewards — rémunération des créateurs à la vue
+ * ------------------------------------------------------------------ */
+
+/** Barème officiel : 100 FCFA pour 1 000 vues qualifiées. */
+export const REWARD_PER_1K_FCFA = 100;
+/** Seuil minimum de paiement. */
+export const PAYOUT_MIN_FCFA = 10_000;
+/** Une vue compte à partir de 8 s OU 30 % de la durée regardée. */
+export const QUALIFY_MIN_SECONDS = 8;
+export const QUALIFY_MIN_PCT = 0.3;
+
+/** Détermine si une vue est « qualifiée » (donc rémunérable). */
+export function isQualifiedView(v: {
+  watchedSeconds: number;
+  durationSeconds: number;
+  realUser: boolean; // utilisateur réel (pas bot/ferme à clics)
+  vpnFraud?: boolean;
+  repeatBySameUser?: boolean; // relecture par le même utilisateur
+}): boolean {
+  if (!v.realUser || v.vpnFraud || v.repeatBySameUser) return false;
+  const threshold = Math.min(QUALIFY_MIN_SECONDS, v.durationSeconds * QUALIFY_MIN_PCT);
+  return v.watchedSeconds >= threshold;
+}
+
+/** Revenu créateur (FCFA) pour un nombre de vues qualifiées. */
+export function viewsEarning(qualifiedViews: number): number {
+  return Math.floor(Math.max(0, qualifiedViews) / 1000) * REWARD_PER_1K_FCFA;
+}
+
+export type RewardsEligibility = {
+  followers: number;
+  videos30d: number;
+  qualifiedViews30d: number;
+  age18: boolean;
+  kyc: boolean;
+  hasPayout: boolean; // XaalisPay / moyen compatible
+};
+export type EligibilityCheck = { key: string; label: string; ok: boolean; value: string; need: string };
+
+/** Vérifie chaque condition d'éligibilité au programme. */
+export function checkEligibility(e: RewardsEligibility): EligibilityCheck[] {
+  const fmt = (n: number) => n.toLocaleString('fr-FR');
+  return [
+    { key: 'followers', label: 'Abonnés', ok: e.followers >= 5000, value: fmt(e.followers), need: '5 000 min' },
+    { key: 'videos', label: 'Vidéos originales (30 j)', ok: e.videos30d >= 10, value: `${e.videos30d}`, need: '10 min' },
+    { key: 'views', label: 'Vues qualifiées (30 j)', ok: e.qualifiedViews30d >= 50000, value: fmt(e.qualifiedViews30d), need: '50 000 min' },
+    { key: 'age', label: '18 ans ou plus', ok: e.age18, value: e.age18 ? 'Oui' : 'Non', need: 'Requis' },
+    { key: 'kyc', label: "Vérification d'identité (KYC)", ok: e.kyc, value: e.kyc ? 'Validée' : 'À faire', need: 'Requis' },
+    { key: 'payout', label: 'Moyen de paiement', ok: e.hasPayout, value: e.hasPayout ? 'Configuré' : 'À ajouter', need: 'XaalisPay/…' },
+  ];
+}
+export const isEligible = (e: RewardsEligibility) => checkEligibility(e).every((c) => c.ok);

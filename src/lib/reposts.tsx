@@ -57,7 +57,7 @@ export function RepostsProvider({ children }: { children: ReactNode }) {
       // Conversions initiales attribuées à ton audience (1 à 3 ventes, déterministe par produit)
       const sales = 1 + (hashCode(r.post.id) % 3);
       const earned = commissionFor(r.post.product.price, commission) * sales;
-      affiliate = { code, link: `afylo.shop/r/${code}`, commission, sales, earned };
+      affiliate = { code, link: `afryko.shop/r/${code}`, commission, sales, earned };
     }
     // Un seul repartage par publication : on remplace s'il existe déjà
     setReposts((prev) => [{ ...r, id, createdAt, affiliate }, ...prev.filter((x) => x.post.id !== r.post.id)]);

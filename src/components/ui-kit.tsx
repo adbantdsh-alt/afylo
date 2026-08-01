@@ -3,7 +3,7 @@ import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View, ViewStyle } from 'react-native';
 
-import { Afylo, Radius, Type } from '@/constants/brand';
+import { Afryko, Radius, Type } from '@/constants/brand';
 
 /** Avatar circulaire avec anneau (rouge si en live). */
 export function Avatar({
@@ -22,11 +22,11 @@ export function Avatar({
   if (ring || live) {
     return (
       <LinearGradient
-        colors={live ? [Afylo.live, '#FF4E6A'] : [Afylo.violet, Afylo.violet2]}
+        colors={live ? [Afryko.live, '#FF4E6A'] : [Afryko.violet, Afryko.violet2]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={{ width: size, height: size, borderRadius: size / 2, padding: border, alignItems: 'center', justifyContent: 'center' }}>
-        <View style={{ backgroundColor: Afylo.bg, borderRadius: size / 2, padding: 1.5 }}>
+        <View style={{ backgroundColor: Afryko.bg, borderRadius: size / 2, padding: 1.5 }}>
           <Image source={{ uri }} style={{ width: inner, height: inner, borderRadius: inner / 2 }} contentFit="cover" transition={200} />
         </View>
       </LinearGradient>
@@ -54,11 +54,11 @@ export function PillButton({
   const content = (
     <View style={styles.pillRow}>
       {loading ? (
-        <ActivityIndicator color={variant === 'primary' ? '#fff' : Afylo.violet} />
+        <ActivityIndicator color={variant === 'primary' ? '#fff' : Afryko.violet} />
       ) : (
         <>
-          {icon && <Ionicons name={icon} size={18} color={variant === 'primary' ? '#fff' : Afylo.ink} />}
-          <Text style={[styles.pillText, variant !== 'primary' && { color: Afylo.ink }]}>{label}</Text>
+          {icon && <Ionicons name={icon} size={18} color={variant === 'primary' ? '#fff' : Afryko.ink} />}
+          <Text style={[styles.pillText, variant !== 'primary' && { color: Afryko.ink }]}>{label}</Text>
         </>
       )}
     </View>
@@ -67,7 +67,7 @@ export function PillButton({
   if (variant === 'primary') {
     return (
       <Pressable onPress={onPress} style={({ pressed }) => [{ opacity: pressed ? 0.9 : 1 }, style]}>
-        <LinearGradient colors={[Afylo.violet, Afylo.violet2]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.pill}>
+        <LinearGradient colors={[Afryko.violet, Afryko.violet2]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.pill}>
           {content}
         </LinearGradient>
       </Pressable>
@@ -88,7 +88,7 @@ export function PillButton({
 }
 
 /** Petit badge (créateur / boutique / live). */
-export function Badge({ label, color = Afylo.violet }: { label: string; color?: string }) {
+export function Badge({ label, color = Afryko.violet }: { label: string; color?: string }) {
   return (
     <View style={[styles.badge, { backgroundColor: color + '22', borderColor: color + '55' }]}>
       <Text style={[styles.badgeText, { color }]}>{label}</Text>
@@ -101,8 +101,8 @@ export function IconButton({
   name,
   onPress,
   size = 20,
-  bg = Afylo.surfaceAlt,
-  color = Afylo.text,
+  bg = Afryko.surfaceAlt,
+  color = Afryko.text,
 }: {
   name: keyof typeof Ionicons.glyphMap;
   onPress?: () => void;
@@ -119,7 +119,7 @@ export function IconButton({
 
 const styles = StyleSheet.create({
   pill: { height: 54, borderRadius: Radius.pill, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24 },
-  pillGhost: { backgroundColor: 'transparent', borderWidth: 1.5, borderColor: Afylo.border },
+  pillGhost: { backgroundColor: 'transparent', borderWidth: 1.5, borderColor: Afryko.border },
   pillLight: { backgroundColor: '#fff' },
   pillRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   pillText: { ...Type.button, color: '#fff' },

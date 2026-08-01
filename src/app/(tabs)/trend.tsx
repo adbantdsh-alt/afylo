@@ -12,7 +12,7 @@ import { PaymentSheet } from '@/components/payment-sheet';
 import { RateSheet } from '@/components/rate-sheet';
 import { RatingStar } from '@/components/rating-star';
 import { ReportSheet } from '@/components/report-sheet';
-import { Afylo, Font, Radius, Type } from '@/constants/brand';
+import { Afryko, Font, Radius, Type } from '@/constants/brand';
 import { NICHES, rankPosts } from '@/lib/algo';
 import { useAuthGate } from '@/lib/auth-gate';
 import { avatar, face, type Post, posts as basePosts, video } from '@/lib/mock';
@@ -28,13 +28,13 @@ const reels: Post[] = [
     avatar: avatar(20),
     badge: 'créateur',
     time: 'en direct',
-    image: face('afylo-reel4', 700, 1300),
+    image: face('afryko-reel4', 700, 1300),
     likes: '15k',
     comments: '890',
     views: '210k',
     shares: '412',
-    caption: 'Danse challenge du moment 💃 #afylo #dakar',
-    product: { title: 'T-shirt Afylo édition limitée', price: '8 000 FCFA', commission: '25%' },
+    caption: 'Danse challenge du moment 💃 #afryko #dakar',
+    product: { title: 'T-shirt Afryko édition limitée', price: '8 000 FCFA', commission: '25%' },
   },
   {
     id: 'r5',
@@ -42,7 +42,7 @@ const reels: Post[] = [
     handle: '@cheikh.tech',
     avatar: avatar(33),
     time: 'il y a 1 j',
-    image: face('afylo-reel5', 700, 1300),
+    image: face('afryko-reel5', 700, 1300),
     likes: '6.4k',
     comments: '120',
     views: '58k',
@@ -189,15 +189,15 @@ function Reel({ post, index, active, height, width, onNotInterested }: { post: P
           <Avatar uri={post.avatar} size={48} ring />
         </View>
         <Action
-          node={reaction ? <Text style={{ fontSize: 30 }}>{reaction}</Text> : <RatingStar fill={rating > 0 ? rating / 10 : liked ? 1 : 0} size={32} color={Afylo.violet2} empty="#fff" />}
+          node={reaction ? <Text style={{ fontSize: 30 }}>{reaction}</Text> : <RatingStar fill={rating > 0 ? rating / 10 : liked ? 1 : 0} size={32} color={Afryko.violet2} empty="#fff" />}
           label={rating > 0 ? `${rating}/10` : liked ? 'Aimé' : 'Noter'}
-          color={rating > 0 || liked ? Afylo.violet2 : '#fff'}
+          color={rating > 0 || liked ? Afryko.violet2 : '#fff'}
           onPress={like}
           onLongPress={rate}
         />
         <Action icon="chatbubble-ellipses" label={post.comments} onPress={openComments} />
-        <Action icon={saved ? 'bookmark' : 'bookmark-outline'} label="Enreg." color={saved ? Afylo.gold : '#fff'} onPress={save} />
-        <Action icon="arrow-redo" label={reposted ? 'Republié' : post.shares} color={reposted ? Afylo.green : '#fff'} onPress={share} />
+        <Action icon={saved ? 'bookmark' : 'bookmark-outline'} label="Enreg." color={saved ? Afryko.gold : '#fff'} onPress={save} />
+        <Action icon="arrow-redo" label={reposted ? 'Republié' : post.shares} color={reposted ? Afryko.green : '#fff'} onPress={share} />
       </View>
 
       {/* Infos en bas */}
@@ -252,7 +252,7 @@ function Reel({ post, index, active, height, width, onNotInterested }: { post: P
             </View>
 
             <View style={styles.optRow}>
-              <Ionicons name="speedometer-outline" size={20} color={Afylo.text} />
+              <Ionicons name="speedometer-outline" size={20} color={Afryko.text} />
               <Text style={styles.optRowLabel}>Vitesse</Text>
               <View style={styles.speedChips}>
                 {[0.5, 1, 1.5, 2].map((s) => (
@@ -264,11 +264,11 @@ function Reel({ post, index, active, height, width, onNotInterested }: { post: P
             </View>
 
             <Pressable style={styles.optLine} onPress={() => { player.muted = !player.muted; }}>
-              <Ionicons name="headset-outline" size={20} color={Afylo.text} />
+              <Ionicons name="headset-outline" size={20} color={Afryko.text} />
               <Text style={styles.optLineText}>Son en arrière-plan</Text>
             </Pressable>
             <Pressable style={styles.optLine} onPress={() => setOptionsOpen(false)}>
-              <Ionicons name="musical-notes-outline" size={20} color={Afylo.text} />
+              <Ionicons name="musical-notes-outline" size={20} color={Afryko.text} />
               <Text style={styles.optLineText}>Lien avec la publication</Text>
             </Pressable>
           </View>
@@ -283,7 +283,7 @@ function Reel({ post, index, active, height, width, onNotInterested }: { post: P
 function OptItem({ icon, label, onPress }: { icon: keyof typeof Ionicons.glyphMap; label: string; onPress: () => void }) {
   return (
     <Pressable style={styles.optItem} onPress={onPress}>
-      <View style={styles.optIcon}><Ionicons name={icon} size={24} color={Afylo.text} /></View>
+      <View style={styles.optIcon}><Ionicons name={icon} size={24} color={Afryko.text} /></View>
       <Text style={styles.optItemText}>{label}</Text>
     </Pressable>
   );
@@ -311,26 +311,26 @@ const styles = StyleSheet.create({
   nicheChip: { backgroundColor: '#ffffff1A', borderWidth: 1, borderColor: '#ffffff44', paddingHorizontal: 18, paddingVertical: 11, borderRadius: Radius.pill },
   nicheChipText: { color: '#fff', fontFamily: Font.semibold, fontSize: 14 },
   nicheActiveWrap: { position: 'absolute', top: 44, left: 0, right: 0, alignItems: 'center' },
-  nicheActive: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: Afylo.violet, paddingHorizontal: 14, paddingVertical: 7, borderRadius: Radius.pill },
+  nicheActive: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: Afryko.violet, paddingHorizontal: 14, paddingVertical: 7, borderRadius: Radius.pill },
   nicheActiveText: { color: '#fff', fontFamily: Font.bold, fontSize: 13 },
   speedTag: { position: 'absolute', top: 90, alignSelf: 'center', backgroundColor: '#000000AA', paddingHorizontal: 10, paddingVertical: 3, borderRadius: Radius.pill },
   speedTagText: { color: '#fff', fontFamily: Font.bold, fontSize: 12 },
 
   optOverlay: { flex: 1, backgroundColor: '#00000066', justifyContent: 'flex-end' },
-  optSheet: { backgroundColor: Afylo.surface, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 16, paddingBottom: 30 },
-  optGrip: { width: 40, height: 4, borderRadius: 2, backgroundColor: Afylo.border, alignSelf: 'center', marginBottom: 14 },
+  optSheet: { backgroundColor: Afryko.surface, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 16, paddingBottom: 30 },
+  optGrip: { width: 40, height: 4, borderRadius: 2, backgroundColor: Afryko.border, alignSelf: 'center', marginBottom: 14 },
   optGrid: { flexDirection: 'row', justifyContent: 'space-around', marginBottom: 8 },
   optItem: { alignItems: 'center', gap: 6, width: 74 },
-  optIcon: { width: 54, height: 54, borderRadius: 27, backgroundColor: Afylo.surfaceAlt, alignItems: 'center', justifyContent: 'center' },
-  optItemText: { ...Type.caption, color: Afylo.text, textAlign: 'center' },
-  optRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 14, borderTopWidth: 1, borderTopColor: Afylo.border, marginTop: 8 },
-  optRowLabel: { ...Type.body, color: Afylo.text, flex: 1 },
-  speedChips: { flexDirection: 'row', gap: 6, backgroundColor: Afylo.surfaceAlt, borderRadius: Radius.pill, padding: 3 },
+  optIcon: { width: 54, height: 54, borderRadius: 27, backgroundColor: Afryko.surfaceAlt, alignItems: 'center', justifyContent: 'center' },
+  optItemText: { ...Type.caption, color: Afryko.text, textAlign: 'center' },
+  optRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 14, borderTopWidth: 1, borderTopColor: Afryko.border, marginTop: 8 },
+  optRowLabel: { ...Type.body, color: Afryko.text, flex: 1 },
+  speedChips: { flexDirection: 'row', gap: 6, backgroundColor: Afryko.surfaceAlt, borderRadius: Radius.pill, padding: 3 },
   speedChip: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: Radius.pill },
-  speedChipOn: { backgroundColor: Afylo.violet },
-  speedChipText: { ...Type.small, fontFamily: Font.semibold, color: Afylo.text },
-  optLine: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 14, borderTopWidth: 1, borderTopColor: Afylo.border },
-  optLineText: { ...Type.body, color: Afylo.text },
+  speedChipOn: { backgroundColor: Afryko.violet },
+  speedChipText: { ...Type.small, fontFamily: Font.semibold, color: Afryko.text },
+  optLine: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 14, borderTopWidth: 1, borderTopColor: Afryko.border },
+  optLineText: { ...Type.body, color: Afryko.text },
 
   rail: { position: 'absolute', right: 12, bottom: 160, alignItems: 'center', gap: 20 },
   action: { alignItems: 'center', gap: 3 },
@@ -339,7 +339,7 @@ const styles = StyleSheet.create({
   bottom: { position: 'absolute', left: 0, right: 0, bottom: 0, paddingHorizontal: 16, paddingBottom: 90 },
   infoRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 6 },
   name: { color: '#fff', fontSize: 17, fontWeight: '800' },
-  liveTag: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: Afylo.live, paddingHorizontal: 8, paddingVertical: 3, borderRadius: Radius.pill },
+  liveTag: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: Afryko.live, paddingHorizontal: 8, paddingVertical: 3, borderRadius: Radius.pill },
   dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#fff' },
   liveTagText: { color: '#fff', fontSize: 10, fontWeight: '800' },
   caption: { color: '#fff', fontSize: 14, lineHeight: 20, width: '78%' },
@@ -358,7 +358,7 @@ const styles = StyleSheet.create({
     width: '82%',
   },
   buyTitle: { color: '#fff', fontSize: 13, fontWeight: '700', flex: 1 },
-  buyPrice: { color: Afylo.gold, fontSize: 13, fontWeight: '800' },
-  buyCta: { backgroundColor: Afylo.violet, paddingHorizontal: 14, paddingVertical: 8, borderRadius: Radius.pill },
+  buyPrice: { color: Afryko.gold, fontSize: 13, fontWeight: '800' },
+  buyCta: { backgroundColor: Afryko.violet, paddingHorizontal: 14, paddingVertical: 8, borderRadius: Radius.pill },
   buyCtaText: { color: '#fff', fontSize: 13, fontWeight: '800' },
 });

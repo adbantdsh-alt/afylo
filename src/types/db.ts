@@ -1,5 +1,5 @@
 /**
- * Types de la base de données Afylo (miroir de supabase/migrations/0001_init.sql).
+ * Types de la base de données Afryko (miroir de supabase/migrations/0001_init.sql).
  * À terme, remplaçables par les types générés :
  *   npx supabase gen types typescript --project-id uxtnmvyqwoklspffjbdn > src/types/db.ts
  */
@@ -98,8 +98,8 @@ export interface Order {
   updated_at: string;
 }
 
-/** Commission Afylo prélevée sur chaque vente (5%). */
-export const AFYLO_FEE_PCT = 5;
+/** Commission Afryko prélevée sur chaque vente (5%). */
+export const AFRYKO_FEE_PCT = 5;
 
 /** Formatte un montant en FCFA : 18500 → "18 500 FCFA". */
 export function formatCfa(amount: number): string {

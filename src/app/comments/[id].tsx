@@ -6,7 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Avatar } from '@/components/ui-kit';
 import { REACTIONS } from '@/components/rate-sheet';
-import { Afylo, Font, Radius, Type } from '@/constants/brand';
+import { Afryko, Font, Radius, Type } from '@/constants/brand';
 import { useAuthGate } from '@/lib/auth-gate';
 import { avatar, face } from '@/lib/mock';
 
@@ -86,7 +86,7 @@ export default function Comments() {
         <View style={styles.grip} />
         <View style={styles.header}>
           <Text style={styles.title}>{comments.length} commentaires</Text>
-          <Ionicons name="close" size={24} color={Afylo.text} onPress={() => (router.canGoBack() ? router.back() : router.replace('/accueil'))} />
+          <Ionicons name="close" size={24} color={Afryko.text} onPress={() => (router.canGoBack() ? router.back() : router.replace('/accueil'))} />
         </View>
 
         <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16, paddingBottom: 12 }} showsVerticalScrollIndicator={false}>
@@ -100,7 +100,7 @@ export default function Comments() {
             {replyTo && (
               <View style={styles.replyBanner}>
                 <Text style={styles.replyText}>Réponse à {replyTo.handle}</Text>
-                <Ionicons name="close" size={18} color={Afylo.textDim} onPress={() => setReplyTo(null)} />
+                <Ionicons name="close" size={18} color={Afryko.textDim} onPress={() => setReplyTo(null)} />
               </View>
             )}
             {recording && (
@@ -116,7 +116,7 @@ export default function Comments() {
                 value={text}
                 onChangeText={setText}
                 placeholder={replyTo ? `Répondre à ${replyTo.handle}` : 'Ajoute un commentaire...'}
-                placeholderTextColor={Afylo.textFaint}
+                placeholderTextColor={Afryko.textFaint}
                 onSubmitEditing={send}
               />
               {text.trim() ? (
@@ -124,7 +124,7 @@ export default function Comments() {
                   <Ionicons name="send" size={18} color="#fff" />
                 </Pressable>
               ) : (
-                <Pressable onPress={addVoice} onLongPress={() => setRecording(true)} onPressOut={() => recording && addVoice()} style={[styles.send, recording && { backgroundColor: Afylo.live }]}>
+                <Pressable onPress={addVoice} onLongPress={() => setRecording(true)} onPressOut={() => recording && addVoice()} style={[styles.send, recording && { backgroundColor: Afryko.live }]}>
                   <Ionicons name={recording ? 'stop' : 'mic'} size={20} color="#fff" />
                 </Pressable>
               )}
@@ -175,7 +175,7 @@ function CommentRow({ c, onLike, onReply, depth = 0 }: { c: Comment; onLike: (id
           )}
         </View>
         <Pressable onPress={() => onLike(c.id)} style={styles.cLike}>
-          <Ionicons name={c.liked ? 'heart' : 'heart-outline'} size={17} color={c.liked ? Afylo.live : Afylo.textDim} />
+          <Ionicons name={c.liked ? 'heart' : 'heart-outline'} size={17} color={c.liked ? Afryko.live : Afryko.textDim} />
           {c.likes > 0 && <Text style={styles.cLikeCount}>{c.likes}</Text>}
         </Pressable>
       </View>
@@ -190,31 +190,31 @@ function CommentRow({ c, onLike, onReply, depth = 0 }: { c: Comment; onLike: (id
 
 const styles = StyleSheet.create({
   overlay: { flex: 1, backgroundColor: '#00000066', justifyContent: 'flex-end' },
-  sheet: { height: '82%', backgroundColor: Afylo.bg, borderTopLeftRadius: 24, borderTopRightRadius: 24, overflow: 'hidden' },
-  grip: { width: 40, height: 4, borderRadius: 2, backgroundColor: Afylo.border, alignSelf: 'center', marginTop: 10 },
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: Afylo.border },
-  title: { ...Type.subtitle, color: Afylo.text },
+  sheet: { height: '82%', backgroundColor: Afryko.bg, borderTopLeftRadius: 24, borderTopRightRadius: 24, overflow: 'hidden' },
+  grip: { width: 40, height: 4, borderRadius: 2, backgroundColor: Afryko.border, alignSelf: 'center', marginTop: 10 },
+  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: Afryko.border },
+  title: { ...Type.subtitle, color: Afryko.text },
   recBanner: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 16, paddingVertical: 8 },
-  recDot: { width: 9, height: 9, borderRadius: 5, backgroundColor: Afylo.live },
-  recText: { ...Type.small, color: Afylo.live, fontFamily: Font.semibold },
-  voiceNote: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: Afylo.violet, borderRadius: 20, paddingHorizontal: 14, paddingVertical: 9, marginTop: 4, alignSelf: 'flex-start', minWidth: 150 },
+  recDot: { width: 9, height: 9, borderRadius: 5, backgroundColor: Afryko.live },
+  recText: { ...Type.small, color: Afryko.live, fontFamily: Font.semibold },
+  voiceNote: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: Afryko.violet, borderRadius: 20, paddingHorizontal: 14, paddingVertical: 9, marginTop: 4, alignSelf: 'flex-start', minWidth: 150 },
   voiceWave: { flex: 1, height: 3, borderRadius: 2, backgroundColor: '#ffffff66' },
   voiceDur: { color: '#fff', ...Type.caption, fontFamily: Font.semibold },
 
-  cName: { ...Type.small, fontFamily: Font.semibold, color: Afylo.text },
-  cTime: { ...Type.caption, color: Afylo.textFaint, fontFamily: Font.regular },
-  cText: { ...Type.body, fontSize: 15, color: Afylo.text, marginTop: 3 },
+  cName: { ...Type.small, fontFamily: Font.semibold, color: Afryko.text },
+  cTime: { ...Type.caption, color: Afryko.textFaint, fontFamily: Font.regular },
+  cText: { ...Type.body, fontSize: 15, color: Afryko.text, marginTop: 3 },
   cActions: { flexDirection: 'row', alignItems: 'center', gap: 16, marginTop: 6 },
-  cReply: { ...Type.caption, fontFamily: Font.semibold, color: Afylo.textDim },
-  picker: { flexDirection: 'row', gap: 10, marginTop: 8, backgroundColor: Afylo.surface, borderWidth: 1, borderColor: Afylo.border, borderRadius: Radius.pill, paddingHorizontal: 12, paddingVertical: 6, alignSelf: 'flex-start' },
+  cReply: { ...Type.caption, fontFamily: Font.semibold, color: Afryko.textDim },
+  picker: { flexDirection: 'row', gap: 10, marginTop: 8, backgroundColor: Afryko.surface, borderWidth: 1, borderColor: Afryko.border, borderRadius: Radius.pill, paddingHorizontal: 12, paddingVertical: 6, alignSelf: 'flex-start' },
   pickerEmoji: { fontSize: 22 },
   cLike: { alignItems: 'center', paddingLeft: 8, gap: 2 },
-  cLikeCount: { ...Type.caption, color: Afylo.textDim },
+  cLikeCount: { ...Type.caption, color: Afryko.textDim },
 
-  replyBanner: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 8, backgroundColor: Afylo.bg, borderTopWidth: 1, borderTopColor: Afylo.border },
-  replyText: { ...Type.caption, color: Afylo.textDim },
-  inputSheet: { backgroundColor: Afylo.glass, overflow: 'hidden', borderTopWidth: 1, borderTopColor: Afylo.glassBorder },
+  replyBanner: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 8, backgroundColor: Afryko.bg, borderTopWidth: 1, borderTopColor: Afryko.border },
+  replyText: { ...Type.caption, color: Afryko.textDim },
+  inputSheet: { backgroundColor: Afryko.glass, overflow: 'hidden', borderTopWidth: 1, borderTopColor: Afryko.glassBorder },
   inputBar: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 12, paddingVertical: 8 },
-  input: { flex: 1, backgroundColor: Afylo.bg, borderRadius: Radius.pill, paddingHorizontal: 16, height: 40, ...Type.body, fontSize: 15, color: Afylo.text },
-  send: { width: 40, height: 40, borderRadius: 20, backgroundColor: Afylo.violet, alignItems: 'center', justifyContent: 'center' },
+  input: { flex: 1, backgroundColor: Afryko.bg, borderRadius: Radius.pill, paddingHorizontal: 16, height: 40, ...Type.body, fontSize: 15, color: Afryko.text },
+  send: { width: 40, height: 40, borderRadius: 20, backgroundColor: Afryko.violet, alignItems: 'center', justifyContent: 'center' },
 });

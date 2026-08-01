@@ -13,7 +13,7 @@ import { useVideoPlayer, VideoView } from 'expo-video';
 import { useEffect, useState } from 'react';
 import { Modal, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
-import { Afylo, Font, Radius } from '@/constants/brand';
+import { Afryko, Font, Radius } from '@/constants/brand';
 import type { RepostMedia, RepostPostSnap } from '@/lib/reposts';
 
 export type RepostPayload = { mode: 'simple' | 'quote'; text?: string; media?: RepostMedia | null };
@@ -91,7 +91,7 @@ export function RepostSheet({
             </View>
           ) : needPro ? (
             <View style={styles.center}>
-              <View style={[styles.okIcon, { backgroundColor: Afylo.violet }]}><Ionicons name="repeat" size={28} color="#fff" /></View>
+              <View style={[styles.okIcon, { backgroundColor: Afryko.violet }]}><Ionicons name="repeat" size={28} color="#fff" /></View>
               <Text style={styles.okTitle}>Le repartage est Pro</Text>
               <Text style={styles.okSub}>Passe en compte Pro pour repartager les produits en affiliation et gagner une commission sur chaque vente via ton audience.</Text>
               <Pressable onPress={() => { close(); onUpgrade(); }} style={styles.primaryBtn}><Text style={styles.primaryText}>Passer en Pro</Text></Pressable>
@@ -109,7 +109,7 @@ export function RepostSheet({
                     <Text style={styles.qCaption} numberOfLines={2}>{post.caption}</Text>
                     {post.product && (
                       <View style={styles.qProduct}>
-                        <Ionicons name="bag-handle" size={12} color={Afylo.violet} />
+                        <Ionicons name="bag-handle" size={12} color={Afryko.violet} />
                         <Text style={styles.qProductText} numberOfLines={1}>{post.product.title} · {post.product.price}</Text>
                       </View>
                     )}
@@ -120,7 +120,7 @@ export function RepostSheet({
 
               {commission && (
                 <View style={styles.commBanner}>
-                  <Ionicons name="cash" size={16} color={Afylo.green} />
+                  <Ionicons name="cash" size={16} color={Afryko.green} />
                   <Text style={styles.commText}>Affiliation active — tu touches <Text style={{ fontFamily: Font.bold }}>{commission}</Text> sur chaque vente via ton repartage.</Text>
                 </View>
               )}
@@ -128,20 +128,20 @@ export function RepostSheet({
               {step === 'choose' ? (
                 <>
                   <Pressable style={styles.choice} onPress={() => finish('simple')}>
-                    <View style={styles.choiceIcon}><Ionicons name="repeat" size={22} color={Afylo.text} /></View>
+                    <View style={styles.choiceIcon}><Ionicons name="repeat" size={22} color={Afryko.text} /></View>
                     <View style={{ flex: 1 }}>
                       <Text style={styles.choiceTitle}>Republier</Text>
                       <Text style={styles.choiceSub}>Partage tel quel à ton audience.</Text>
                     </View>
-                    <Ionicons name="chevron-forward" size={18} color={Afylo.textFaint} />
+                    <Ionicons name="chevron-forward" size={18} color={Afryko.textFaint} />
                   </Pressable>
                   <Pressable style={styles.choice} onPress={() => setStep('compose')}>
-                    <View style={styles.choiceIcon}><Ionicons name="create-outline" size={22} color={Afylo.text} /></View>
+                    <View style={styles.choiceIcon}><Ionicons name="create-outline" size={22} color={Afryko.text} /></View>
                     <View style={{ flex: 1 }}>
                       <Text style={styles.choiceTitle}>Citer</Text>
                       <Text style={styles.choiceSub}>Ajoute un mot, un vocal, une photo ou une vidéo.</Text>
                     </View>
-                    <Ionicons name="chevron-forward" size={18} color={Afylo.textFaint} />
+                    <Ionicons name="chevron-forward" size={18} color={Afryko.textFaint} />
                   </Pressable>
                 </>
               ) : (
@@ -151,7 +151,7 @@ export function RepostSheet({
                     value={text}
                     onChangeText={setText}
                     placeholder="Ajoute ton avis, une recommandation…"
-                    placeholderTextColor={Afylo.textFaint}
+                    placeholderTextColor={Afryko.textFaint}
                     multiline
                   />
 
@@ -231,7 +231,7 @@ function VideoPreview({ uri }: { uri: string }) {
 function AttachBtn({ icon, label, onPress }: { icon: keyof typeof Ionicons.glyphMap; label: string; onPress: () => void }) {
   return (
     <Pressable onPress={onPress} style={styles.attach}>
-      <Ionicons name={icon} size={18} color={Afylo.text} />
+      <Ionicons name={icon} size={18} color={Afryko.text} />
       <Text style={styles.attachText}>{label}</Text>
     </Pressable>
   );
@@ -241,54 +241,54 @@ function fmtDur(s: number) { const m = Math.floor(s / 60); const r = s % 60; ret
 
 const styles = StyleSheet.create({
   overlay: { flex: 1, backgroundColor: '#00000066', justifyContent: 'flex-end' },
-  sheet: { backgroundColor: Afylo.bg, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 20, paddingBottom: 30 },
-  handle: { width: 40, height: 4, borderRadius: 2, backgroundColor: Afylo.border, alignSelf: 'center', marginBottom: 16 },
-  title: { color: Afylo.text, fontFamily: Font.bold, fontSize: 19, marginBottom: 14 },
+  sheet: { backgroundColor: Afryko.bg, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 20, paddingBottom: 30 },
+  handle: { width: 40, height: 4, borderRadius: 2, backgroundColor: Afryko.border, alignSelf: 'center', marginBottom: 16 },
+  title: { color: Afryko.text, fontFamily: Font.bold, fontSize: 19, marginBottom: 14 },
 
-  quoted: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: Afylo.surface, borderWidth: 1, borderColor: Afylo.border, borderRadius: Radius.lg, padding: 10 },
-  qAvatar: { width: 34, height: 34, borderRadius: 17, backgroundColor: Afylo.surfaceAlt },
-  qName: { color: Afylo.text, fontFamily: Font.bold, fontSize: 13 },
-  qCaption: { color: Afylo.textDim, fontSize: 12, marginTop: 1 },
+  quoted: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: Afryko.surface, borderWidth: 1, borderColor: Afryko.border, borderRadius: Radius.lg, padding: 10 },
+  qAvatar: { width: 34, height: 34, borderRadius: 17, backgroundColor: Afryko.surfaceAlt },
+  qName: { color: Afryko.text, fontFamily: Font.bold, fontSize: 13 },
+  qCaption: { color: Afryko.textDim, fontSize: 12, marginTop: 1 },
   qProduct: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 4 },
-  qProductText: { color: Afylo.violet, fontFamily: Font.semibold, fontSize: 11, flex: 1 },
-  qThumb: { width: 46, height: 46, borderRadius: 10, backgroundColor: Afylo.surfaceAlt },
+  qProductText: { color: Afryko.violet, fontFamily: Font.semibold, fontSize: 11, flex: 1 },
+  qThumb: { width: 46, height: 46, borderRadius: 10, backgroundColor: Afryko.surfaceAlt },
 
-  commBanner: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: Afylo.green + '18', borderRadius: Radius.md, padding: 12, marginTop: 12 },
-  commText: { flex: 1, color: Afylo.text, fontSize: 13, lineHeight: 18 },
+  commBanner: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: Afryko.green + '18', borderRadius: Radius.md, padding: 12, marginTop: 12 },
+  commText: { flex: 1, color: Afryko.text, fontSize: 13, lineHeight: 18 },
 
-  choice: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: Afylo.surfaceAlt },
-  choiceIcon: { width: 44, height: 44, borderRadius: 22, backgroundColor: Afylo.surfaceAlt, alignItems: 'center', justifyContent: 'center' },
-  choiceTitle: { color: Afylo.text, fontFamily: Font.bold, fontSize: 15 },
-  choiceSub: { color: Afylo.textDim, fontSize: 13, marginTop: 1 },
+  choice: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: Afryko.surfaceAlt },
+  choiceIcon: { width: 44, height: 44, borderRadius: 22, backgroundColor: Afryko.surfaceAlt, alignItems: 'center', justifyContent: 'center' },
+  choiceTitle: { color: Afryko.text, fontFamily: Font.bold, fontSize: 15 },
+  choiceSub: { color: Afryko.textDim, fontSize: 13, marginTop: 1 },
 
-  input: { minHeight: 70, maxHeight: 150, backgroundColor: Afylo.surface, borderWidth: 1, borderColor: Afylo.border, borderRadius: Radius.md, padding: 14, color: Afylo.text, fontSize: 15, marginTop: 14, textAlignVertical: 'top' },
+  input: { minHeight: 70, maxHeight: 150, backgroundColor: Afryko.surface, borderWidth: 1, borderColor: Afryko.border, borderRadius: Radius.md, padding: 14, color: Afryko.text, fontSize: 15, marginTop: 14, textAlignVertical: 'top' },
   attachRow: { flexDirection: 'row', gap: 10, marginTop: 12 },
-  attach: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, height: 44, borderRadius: Radius.pill, backgroundColor: Afylo.surface, borderWidth: 1, borderColor: Afylo.border },
-  attachText: { color: Afylo.text, fontFamily: Font.semibold, fontSize: 13 },
+  attach: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, height: 44, borderRadius: Radius.pill, backgroundColor: Afryko.surface, borderWidth: 1, borderColor: Afryko.border },
+  attachText: { color: Afryko.text, fontFamily: Font.semibold, fontSize: 13 },
 
-  recRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 12, backgroundColor: Afylo.surface, borderWidth: 1, borderColor: Afylo.border, borderRadius: Radius.pill, paddingLeft: 14, paddingRight: 6, height: 46 },
-  recDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: Afylo.live },
-  recTime: { color: Afylo.text, fontFamily: Font.bold, fontSize: 14 },
-  recLabel: { flex: 1, color: Afylo.textDim, fontSize: 13 },
-  recStop: { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: Afylo.live, borderRadius: Radius.pill, paddingHorizontal: 14, height: 34 },
+  recRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 12, backgroundColor: Afryko.surface, borderWidth: 1, borderColor: Afryko.border, borderRadius: Radius.pill, paddingLeft: 14, paddingRight: 6, height: 46 },
+  recDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: Afryko.live },
+  recTime: { color: Afryko.text, fontFamily: Font.bold, fontSize: 14 },
+  recLabel: { flex: 1, color: Afryko.textDim, fontSize: 13 },
+  recStop: { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: Afryko.live, borderRadius: Radius.pill, paddingHorizontal: 14, height: 34 },
   recStopText: { color: '#fff', fontFamily: Font.semibold, fontSize: 13 },
 
   previewWrap: { marginTop: 12 },
-  previewMedia: { width: '100%', height: 190, borderRadius: Radius.md, backgroundColor: Afylo.surfaceAlt },
+  previewMedia: { width: '100%', height: 190, borderRadius: Radius.md, backgroundColor: Afryko.surfaceAlt },
   previewRemove: { position: 'absolute', top: 8, right: 8, width: 30, height: 30, borderRadius: 15, backgroundColor: '#000000aa', alignItems: 'center', justifyContent: 'center' },
-  audioPill: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: Afylo.surface, borderWidth: 1, borderColor: Afylo.border, borderRadius: Radius.pill, paddingHorizontal: 12, height: 52 },
-  audioPlay: { width: 34, height: 34, borderRadius: 17, backgroundColor: Afylo.violet, alignItems: 'center', justifyContent: 'center' },
+  audioPill: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: Afryko.surface, borderWidth: 1, borderColor: Afryko.border, borderRadius: Radius.pill, paddingHorizontal: 12, height: 52 },
+  audioPlay: { width: 34, height: 34, borderRadius: 17, backgroundColor: Afryko.violet, alignItems: 'center', justifyContent: 'center' },
   audioWave: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 3 },
-  waveBar: { width: 3, borderRadius: 2, backgroundColor: Afylo.violet2 },
-  audioDur: { color: Afylo.textDim, fontFamily: Font.semibold, fontSize: 13 },
+  waveBar: { width: 3, borderRadius: 2, backgroundColor: Afryko.violet2 },
+  audioDur: { color: Afryko.textDim, fontFamily: Font.semibold, fontSize: 13 },
 
   center: { alignItems: 'center', paddingVertical: 10 },
-  okIcon: { width: 60, height: 60, borderRadius: 30, backgroundColor: Afylo.green, alignItems: 'center', justifyContent: 'center', marginBottom: 14 },
-  okTitle: { color: Afylo.text, fontFamily: Font.bold, fontSize: 19, textAlign: 'center' },
-  okSub: { color: Afylo.textDim, fontSize: 14, textAlign: 'center', marginTop: 8, lineHeight: 20, paddingHorizontal: 8 },
+  okIcon: { width: 60, height: 60, borderRadius: 30, backgroundColor: Afryko.green, alignItems: 'center', justifyContent: 'center', marginBottom: 14 },
+  okTitle: { color: Afryko.text, fontFamily: Font.bold, fontSize: 19, textAlign: 'center' },
+  okSub: { color: Afryko.textDim, fontSize: 14, textAlign: 'center', marginTop: 8, lineHeight: 20, paddingHorizontal: 8 },
 
-  primaryBtn: { backgroundColor: Afylo.violet, height: 52, borderRadius: Radius.pill, alignItems: 'center', justifyContent: 'center', marginTop: 18, alignSelf: 'stretch' },
+  primaryBtn: { backgroundColor: Afryko.violet, height: 52, borderRadius: Radius.pill, alignItems: 'center', justifyContent: 'center', marginTop: 18, alignSelf: 'stretch' },
   primaryText: { color: '#fff', fontFamily: Font.bold, fontSize: 16 },
   ghostBtn: { alignItems: 'center', paddingVertical: 12, marginTop: 4 },
-  ghostText: { color: Afylo.textDim, fontFamily: Font.semibold, fontSize: 15 },
+  ghostText: { color: Afryko.textDim, fontFamily: Font.semibold, fontSize: 15 },
 });

@@ -6,7 +6,7 @@ import { KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, TextInput,
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { PillButton } from '@/components/ui-kit';
-import { Afylo, Radius } from '@/constants/brand';
+import { Afryko, Radius } from '@/constants/brand';
 import { redirectOrigin, useAuth } from '@/lib/auth';
 import { supabase } from '@/lib/supabase';
 
@@ -68,13 +68,13 @@ export default function Login() {
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
         <SafeAreaView style={styles.safe}>
           <Pressable onPress={() => (router.canGoBack() ? router.back() : router.replace('/accueil'))} style={styles.back}>
-            <Ionicons name="chevron-back" size={26} color={Afylo.text} />
+            <Ionicons name="chevron-back" size={26} color={Afryko.text} />
           </Pressable>
 
           <Text style={styles.brand}>
-            Afylo<Text style={{ color: Afylo.violet }}>.</Text>
+            Afryko<Text style={{ color: Afryko.violet }}>.</Text>
           </Text>
-          <Text style={styles.title}>{mode === 'login' ? 'Content de te revoir' : 'Rejoins Afylo'}</Text>
+          <Text style={styles.title}>{mode === 'login' ? 'Content de te revoir' : 'Rejoins Afryko'}</Text>
           <Text style={styles.sub}>
             {mode === 'login' ? 'Connecte-toi pour créer, vendre et gagner.' : 'Crée ton compte en quelques secondes.'}
           </Text>
@@ -117,7 +117,7 @@ export default function Login() {
           </Text>
 
           <Text style={styles.legal}>
-            En continuant, tu acceptes les Conditions d'utilisation et la Politique de confidentialité d'Afylo.
+            En continuant, tu acceptes les Conditions d'utilisation et la Politique de confidentialité d'Afryko.
           </Text>
         </SafeAreaView>
       </KeyboardAvoidingView>
@@ -143,11 +143,11 @@ function Field({
   const [hidden, setHidden] = useState(true);
   return (
     <View style={styles.field}>
-      <Ionicons name={icon} size={20} color={Afylo.textDim} />
+      <Ionicons name={icon} size={20} color={Afryko.textDim} />
       <TextInput
         style={styles.input}
         placeholder={placeholder}
-        placeholderTextColor={Afylo.textFaint}
+        placeholderTextColor={Afryko.textFaint}
         value={value}
         onChangeText={onChange}
         secureTextEntry={secure && hidden}
@@ -157,7 +157,7 @@ function Field({
       />
       {secure && (
         <Pressable onPress={() => setHidden((v) => !v)} hitSlop={10}>
-          <Ionicons name={hidden ? 'eye-outline' : 'eye-off-outline'} size={22} color={Afylo.textDim} />
+          <Ionicons name={hidden ? 'eye-outline' : 'eye-off-outline'} size={22} color={Afryko.textDim} />
         </Pressable>
       )}
     </View>
@@ -173,36 +173,36 @@ function traduire(msg: string): string {
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: Afylo.bg },
+  root: { flex: 1, backgroundColor: Afryko.bg },
   safe: { flex: 1, paddingHorizontal: 24 },
   back: { width: 40, height: 40, justifyContent: 'center', marginTop: 4, marginLeft: -8 },
-  brand: { color: Afylo.text, fontSize: 24, fontWeight: '800', marginTop: 8 },
-  title: { color: Afylo.text, fontSize: 28, fontWeight: '800', marginTop: 24, letterSpacing: -0.5 },
-  sub: { color: Afylo.textDim, fontSize: 15, marginTop: 8, lineHeight: 21 },
+  brand: { color: Afryko.text, fontSize: 24, fontWeight: '800', marginTop: 8 },
+  title: { color: Afryko.text, fontSize: 28, fontWeight: '800', marginTop: 24, letterSpacing: -0.5 },
+  sub: { color: Afryko.textDim, fontSize: 15, marginTop: 8, lineHeight: 21 },
 
-  switch: { flexDirection: 'row', backgroundColor: Afylo.surface, borderRadius: Radius.pill, padding: 4, marginTop: 28 },
+  switch: { flexDirection: 'row', backgroundColor: Afryko.surface, borderRadius: Radius.pill, padding: 4, marginTop: 28 },
   switchBtn: { flex: 1, paddingVertical: 11, borderRadius: Radius.pill, alignItems: 'center' },
-  switchOn: { backgroundColor: Afylo.violet },
-  switchText: { color: Afylo.textDim, fontWeight: '700', fontSize: 14 },
+  switchOn: { backgroundColor: Afryko.violet },
+  switchText: { color: Afryko.textDim, fontWeight: '700', fontSize: 14 },
   switchTextOn: { color: '#fff' },
 
   field: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-    backgroundColor: Afylo.surface,
+    backgroundColor: Afryko.surface,
     borderRadius: Radius.md,
     paddingHorizontal: 16,
     height: 56,
     marginTop: 14,
     borderWidth: 1,
-    borderColor: Afylo.surfaceAlt,
+    borderColor: Afryko.surfaceAlt,
   },
-  input: { flex: 1, color: Afylo.text, fontSize: 16, height: '100%' },
-  hint: { color: Afylo.textDim, fontSize: 13, marginTop: 8, marginLeft: 4 },
-  forgot: { color: Afylo.violet, fontSize: 14, fontWeight: '700', textAlign: 'right', marginTop: 12 },
-  error: { color: Afylo.live, fontSize: 14, marginTop: 14, fontWeight: '600' },
-  info: { color: Afylo.green, fontSize: 14, marginTop: 14, fontWeight: '600', lineHeight: 20 },
-  guest: { color: Afylo.textDim, fontSize: 15, fontWeight: '700', textAlign: 'center', marginTop: 22 },
-  legal: { color: Afylo.textFaint, fontSize: 12, textAlign: 'center', marginTop: 20, lineHeight: 18 },
+  input: { flex: 1, color: Afryko.text, fontSize: 16, height: '100%' },
+  hint: { color: Afryko.textDim, fontSize: 13, marginTop: 8, marginLeft: 4 },
+  forgot: { color: Afryko.violet, fontSize: 14, fontWeight: '700', textAlign: 'right', marginTop: 12 },
+  error: { color: Afryko.live, fontSize: 14, marginTop: 14, fontWeight: '600' },
+  info: { color: Afryko.green, fontSize: 14, marginTop: 14, fontWeight: '600', lineHeight: 20 },
+  guest: { color: Afryko.textDim, fontSize: 15, fontWeight: '700', textAlign: 'center', marginTop: 22 },
+  legal: { color: Afryko.textFaint, fontSize: 12, textAlign: 'center', marginTop: 20, lineHeight: 18 },
 });

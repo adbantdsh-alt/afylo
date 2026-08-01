@@ -10,7 +10,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { PaymentSheet } from '@/components/payment-sheet';
 import { RateSheet } from '@/components/rate-sheet';
 import { RatingStar } from '@/components/rating-star';
-import { Afylo, Font, Radius } from '@/constants/brand';
+import { Afryko, Font, Radius } from '@/constants/brand';
 import { useAuthGate } from '@/lib/auth-gate';
 import { exploreItems, type ExploreItem, video } from '@/lib/mock';
 
@@ -86,13 +86,13 @@ function Slide({ item, index, active, height, width }: { item: ExploreItem; inde
       {/* Rail d'actions */}
       <View style={styles.rail}>
         <Act
-          node={reaction ? <Text style={{ fontSize: 30 }}>{reaction}</Text> : <RatingStar fill={rating > 0 ? rating / 10 : liked ? 1 : 0} size={32} color={Afylo.violet2} empty="#fff" />}
+          node={reaction ? <Text style={{ fontSize: 30 }}>{reaction}</Text> : <RatingStar fill={rating > 0 ? rating / 10 : liked ? 1 : 0} size={32} color={Afryko.violet2} empty="#fff" />}
           label={rating > 0 ? `${rating}/10` : liked ? 'Aimé' : 'Noter'}
           onPress={like}
           onLongPress={rate}
         />
         <Act icon="chatbubble-ellipses" label="340" onPress={() => router.push({ pathname: '/comments/[id]', params: { id: item.id } })} />
-        <Act icon={saved ? 'bookmark' : 'bookmark-outline'} color={saved ? Afylo.gold : '#fff'} label="Enreg." onPress={() => setSaved((v) => !v)} />
+        <Act icon={saved ? 'bookmark' : 'bookmark-outline'} color={saved ? Afryko.gold : '#fff'} label="Enreg." onPress={() => setSaved((v) => !v)} />
         <Act icon="arrow-redo" label="88" />
       </View>
 
@@ -144,13 +144,13 @@ const styles = StyleSheet.create({
   creatorRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 },
   creatorAvatar: { width: 36, height: 36, borderRadius: 18, backgroundColor: '#333', borderWidth: 1.5, borderColor: '#fff' },
   creatorName: { color: '#fff', fontFamily: Font.bold, fontSize: 15 },
-  liveTag: { backgroundColor: Afylo.live, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6 },
+  liveTag: { backgroundColor: Afryko.live, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6 },
   liveText: { color: '#fff', fontFamily: Font.bold, fontSize: 10 },
   caption: { color: '#fff', fontSize: 14, width: '80%' },
   buyBar: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#ffffff26', borderWidth: 1, borderColor: '#ffffff44', borderRadius: Radius.pill, paddingLeft: 12, paddingRight: 6, paddingVertical: 6, marginTop: 12, width: '86%' },
   buyTitle: { color: '#fff', fontFamily: Font.semibold, fontSize: 13, flex: 1 },
-  buyPrice: { color: Afylo.gold, fontFamily: Font.bold, fontSize: 13 },
-  buyCta: { backgroundColor: Afylo.violet, paddingHorizontal: 16, paddingVertical: 8, borderRadius: Radius.pill },
+  buyPrice: { color: Afryko.gold, fontFamily: Font.bold, fontSize: 13 },
+  buyCta: { backgroundColor: Afryko.violet, paddingHorizontal: 16, paddingVertical: 8, borderRadius: Radius.pill },
   buyCtaText: { color: '#fff', fontFamily: Font.semibold, fontSize: 13 },
 });
 

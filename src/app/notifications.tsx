@@ -4,7 +4,7 @@ import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Avatar } from '@/components/ui-kit';
-import { Afylo, Font, Type } from '@/constants/brand';
+import { Afryko, Font, Type } from '@/constants/brand';
 import { avatar } from '@/lib/mock';
 
 type Notif = { id: string; kind: 'like' | 'follow' | 'sale' | 'comment' | 'rating'; avatar: string; text: string; time: string; unread?: boolean };
@@ -18,20 +18,20 @@ const NOTIFS: Notif[] = [
 ];
 
 const ICON: Record<Notif['kind'], { name: keyof typeof Ionicons.glyphMap; color: string }> = {
-  like: { name: 'heart', color: Afylo.live },
-  follow: { name: 'person-add', color: Afylo.violet },
-  sale: { name: 'bag-check', color: Afylo.green },
-  comment: { name: 'chatbubble', color: Afylo.violet },
-  rating: { name: 'star', color: Afylo.gold },
+  like: { name: 'heart', color: Afryko.live },
+  follow: { name: 'person-add', color: Afryko.violet },
+  sale: { name: 'bag-check', color: Afryko.green },
+  comment: { name: 'chatbubble', color: Afryko.violet },
+  rating: { name: 'star', color: Afryko.gold },
 };
 
 export default function Notifications() {
   const router = useRouter();
   return (
     <View style={styles.root}>
-      <SafeAreaView edges={['top']} style={{ backgroundColor: Afylo.bg }}>
+      <SafeAreaView edges={['top']} style={{ backgroundColor: Afryko.bg }}>
         <View style={styles.header}>
-          <Ionicons name="chevron-back" size={26} color={Afylo.text} onPress={() => (router.canGoBack() ? router.back() : router.replace('/accueil'))} />
+          <Ionicons name="chevron-back" size={26} color={Afryko.text} onPress={() => (router.canGoBack() ? router.back() : router.replace('/accueil'))} />
           <Text style={styles.title}>Notifications</Text>
           <View style={{ width: 26 }} />
         </View>
@@ -55,12 +55,12 @@ export default function Notifications() {
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: Afylo.bg },
+  root: { flex: 1, backgroundColor: Afryko.bg },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 12, paddingVertical: 8 },
-  title: { ...Type.subtitle, color: Afylo.text },
+  title: { ...Type.subtitle, color: Afryko.text },
   row: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, paddingVertical: 12 },
   rowUnread: { backgroundColor: '#3E5BFF0A' },
-  badge: { position: 'absolute', bottom: -2, right: -2, width: 20, height: 20, borderRadius: 10, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: Afylo.bg },
-  text: { ...Type.small, color: Afylo.text, flex: 1, lineHeight: 19 },
-  time: { ...Type.caption, color: Afylo.textFaint },
+  badge: { position: 'absolute', bottom: -2, right: -2, width: 20, height: 20, borderRadius: 10, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: Afryko.bg },
+  text: { ...Type.small, color: Afryko.text, flex: 1, lineHeight: 19 },
+  time: { ...Type.caption, color: Afryko.textFaint },
 });

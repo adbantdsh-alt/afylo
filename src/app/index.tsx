@@ -5,7 +5,7 @@ import { StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { PillButton } from '@/components/ui-kit';
-import { Afylo } from '@/constants/brand';
+import { Afryko } from '@/constants/brand';
 import { useAuth } from '@/lib/auth';
 import { avatar } from '@/lib/mock';
 
@@ -23,7 +23,7 @@ export default function Onboarding() {
       <LinearGradient colors={['#EEF1FF', '#FFFFFF', '#FFFFFF']} style={StyleSheet.absoluteFill} />
       <SafeAreaView style={styles.safe}>
         <Text style={styles.brand}>
-          Afylo<Text style={{ color: Afylo.violet }}>.</Text>
+          Afryko<Text style={{ color: Afryko.violet }}>.</Text>
         </Text>
 
         {/* Collage d'avatars créateurs */}
@@ -45,7 +45,7 @@ export default function Onboarding() {
           <PillButton label="Commencer" icon="arrow-forward" onPress={() => router.push('/login')} style={{ marginTop: 24 }} />
           <PillButton label="Explorer sans compte" variant="ghost" onPress={explore} style={{ marginTop: 12 }} />
           <Text style={styles.login} onPress={() => router.push('/login')}>
-            J'ai déjà un compte <Text style={{ color: Afylo.violet, fontWeight: '700' }}>Se connecter</Text>
+            J'ai déjà un compte <Text style={{ color: Afryko.violet, fontWeight: '700' }}>Se connecter</Text>
           </Text>
         </View>
       </SafeAreaView>
@@ -70,7 +70,7 @@ function Tile({
 }) {
   return (
     <View style={[styles.tile, { width: size, height: size * 1.15, top, left, transform: [{ rotate: `${r}deg` }] }]}>
-      {ring && <LinearGradient colors={[Afylo.violet, Afylo.live]} style={StyleSheet.absoluteFill} />}
+      {ring && <LinearGradient colors={[Afryko.violet, Afryko.live]} style={StyleSheet.absoluteFill} />}
       <Image
         source={{ uri: avatar(n) }}
         style={[styles.tileImg, ring && { margin: 3, borderRadius: 26 }]}
@@ -82,14 +82,14 @@ function Tile({
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: Afylo.bg },
+  root: { flex: 1, backgroundColor: Afryko.bg },
   safe: { flex: 1, paddingHorizontal: 24 },
-  brand: { color: Afylo.text, fontSize: 26, fontWeight: '800', marginTop: 8, letterSpacing: -0.5 },
+  brand: { color: Afryko.text, fontSize: 26, fontWeight: '800', marginTop: 8, letterSpacing: -0.5 },
   collage: { height: 360, marginTop: 12, alignSelf: 'center', width: 300 },
-  tile: { position: 'absolute', borderRadius: 28, overflow: 'hidden', backgroundColor: Afylo.surfaceAlt },
+  tile: { position: 'absolute', borderRadius: 28, overflow: 'hidden', backgroundColor: Afryko.surfaceAlt },
   tileImg: { flex: 1, borderRadius: 28 },
   bottom: { marginTop: 'auto', paddingBottom: 12 },
-  title: { color: Afylo.text, fontSize: 34, fontWeight: '800', letterSpacing: -1 },
-  sub: { color: Afylo.textDim, fontSize: 15, lineHeight: 22, marginTop: 12 },
-  login: { color: Afylo.textDim, textAlign: 'center', marginTop: 18, fontSize: 14 },
+  title: { color: Afryko.text, fontSize: 34, fontWeight: '800', letterSpacing: -1 },
+  sub: { color: Afryko.textDim, fontSize: 15, lineHeight: 22, marginTop: 12 },
+  login: { color: Afryko.textDim, textAlign: 'center', marginTop: 18, fontSize: 14 },
 });

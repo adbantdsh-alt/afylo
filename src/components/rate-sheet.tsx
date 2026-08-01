@@ -1,7 +1,7 @@
 import { useRef } from 'react';
 import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { Afylo, Font, Radius, Type } from '@/constants/brand';
+import { Afryko, Font, Radius, Type } from '@/constants/brand';
 
 export const REACTIONS = ['🔥', '❤️', '😍', '👏', '😂', '😮'];
 
@@ -87,21 +87,21 @@ export function RateSheet({
 
 const styles = StyleSheet.create({
   backdrop: { flex: 1, backgroundColor: '#00000066', justifyContent: 'flex-end' },
-  sheet: { backgroundColor: Afylo.bg, borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingHorizontal: 16, paddingTop: 10, paddingBottom: 26 },
-  handle: { width: 40, height: 4, borderRadius: 2, backgroundColor: Afylo.border, alignSelf: 'center', marginBottom: 14 },
+  sheet: { backgroundColor: Afryko.bg, borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingHorizontal: 16, paddingTop: 10, paddingBottom: 26 },
+  handle: { width: 40, height: 4, borderRadius: 2, backgroundColor: Afryko.border, alignSelf: 'center', marginBottom: 14 },
 
   reactRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 18 },
-  emojiBtn: { width: 48, height: 48, borderRadius: 24, backgroundColor: Afylo.surface, borderWidth: 1, borderColor: Afylo.border, alignItems: 'center', justifyContent: 'center' },
-  emojiActive: { backgroundColor: '#3E5BFF22', borderColor: Afylo.violet },
+  emojiBtn: { width: 48, height: 48, borderRadius: 24, backgroundColor: Afryko.surface, borderWidth: 1, borderColor: Afryko.border, alignItems: 'center', justifyContent: 'center' },
+  emojiActive: { backgroundColor: '#3E5BFF22', borderColor: Afryko.violet },
   emoji: { fontSize: 24 },
 
   scaleHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8, paddingHorizontal: 2 },
-  scaleLabel: { ...Type.small, color: Afylo.textDim, fontFamily: Font.semibold },
-  reset: { ...Type.small, color: Afylo.violet, fontFamily: Font.semibold },
+  scaleLabel: { ...Type.small, color: Afryko.textDim, fontFamily: Font.semibold },
+  reset: { ...Type.small, color: Afryko.violet, fontFamily: Font.semibold },
   scale: { flexDirection: 'row', justifyContent: 'space-between' },
-  num: { flex: 1, aspectRatio: 1, marginHorizontal: 2, borderRadius: 10, backgroundColor: Afylo.surface, borderWidth: 1, borderColor: Afylo.border, alignItems: 'center', justifyContent: 'center' },
-  numActive: { backgroundColor: Afylo.violet, borderColor: Afylo.violet },
-  numText: { fontFamily: Font.semibold, color: Afylo.text, fontSize: 14 },
+  num: { flex: 1, aspectRatio: 1, marginHorizontal: 2, borderRadius: 10, backgroundColor: Afryko.surface, borderWidth: 1, borderColor: Afryko.border, alignItems: 'center', justifyContent: 'center' },
+  numActive: { backgroundColor: Afryko.violet, borderColor: Afryko.violet },
+  numText: { fontFamily: Font.semibold, color: Afryko.text, fontSize: 14 },
   numTextActive: { color: '#fff' },
-  hint: { ...Type.caption, color: Afylo.textFaint, textAlign: 'center', marginTop: 16, lineHeight: 16 },
+  hint: { ...Type.caption, color: Afryko.textFaint, textAlign: 'center', marginTop: 16, lineHeight: 16 },
 });

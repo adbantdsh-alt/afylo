@@ -5,7 +5,7 @@ import { createContext, useCallback, useContext, useState, type ReactNode } from
 import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { PillButton } from '@/components/ui-kit';
-import { Afylo, Font, Radius, Type } from '@/constants/brand';
+import { Afryko, Font, Radius, Type } from '@/constants/brand';
 import { useAuth } from '@/lib/auth';
 
 /**
@@ -43,10 +43,10 @@ export function AuthGateProvider({ children }: { children: ReactNode }) {
         <Pressable style={styles.backdrop} onPress={() => setReason(null)}>
           <Pressable style={styles.sheet} onPress={(e) => e.stopPropagation()}>
             <View style={styles.handle} />
-            <LinearGradient colors={[Afylo.violet, Afylo.violet2]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.logo}>
+            <LinearGradient colors={[Afryko.violet, Afryko.violet2]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.logo}>
               <Text style={styles.logoText}>A</Text>
             </LinearGradient>
-            <Text style={styles.title}>Rejoins Afylo pour {reason}</Text>
+            <Text style={styles.title}>Rejoins Afryko pour {reason}</Text>
             <Text style={styles.sub}>Crée ton compte gratuitement en quelques secondes et commence à créer, vendre et gagner.</Text>
 
             <PillButton label="Créer un compte" onPress={() => go('signup')} style={{ marginTop: 20 }} />
@@ -66,11 +66,11 @@ export const useAuthGate = () => useContext(GateCtx);
 
 const styles = StyleSheet.create({
   backdrop: { flex: 1, backgroundColor: '#00000066', justifyContent: 'flex-end' },
-  sheet: { backgroundColor: Afylo.bg, borderTopLeftRadius: 28, borderTopRightRadius: 28, padding: 24, paddingBottom: 34, alignItems: 'center' },
-  handle: { width: 40, height: 4, borderRadius: 2, backgroundColor: Afylo.border, marginBottom: 18 },
+  sheet: { backgroundColor: Afryko.bg, borderTopLeftRadius: 28, borderTopRightRadius: 28, padding: 24, paddingBottom: 34, alignItems: 'center' },
+  handle: { width: 40, height: 4, borderRadius: 2, backgroundColor: Afryko.border, marginBottom: 18 },
   logo: { width: 56, height: 56, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
   logoText: { color: '#fff', fontFamily: Font.bold, fontSize: 28 },
-  title: { ...Type.title, color: Afylo.text, textAlign: 'center', marginTop: 16 },
-  sub: { ...Type.body, color: Afylo.textDim, textAlign: 'center', marginTop: 8 },
-  later: { ...Type.small, color: Afylo.textDim },
+  title: { ...Type.title, color: Afryko.text, textAlign: 'center', marginTop: 16 },
+  sub: { ...Type.body, color: Afryko.textDim, textAlign: 'center', marginTop: 8 },
+  later: { ...Type.small, color: Afryko.textDim },
 });
