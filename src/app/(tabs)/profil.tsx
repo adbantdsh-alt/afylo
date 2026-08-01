@@ -177,27 +177,7 @@ export default function Profil() {
         </View>
         <Text style={styles.handleText}>{handle}</Text>
 
-        <Text style={styles.bio}>{bio}</Text>
-
-        {/* Méta-infos (lien web, localisation, arrivée) */}
-        <View style={styles.metaRow}>
-          {website && (
-            <Pressable style={styles.meta} onPress={() => Linking.openURL(website.startsWith('http') ? website : `https://${website}`)}>
-              <Ionicons name="link-outline" size={15} color={Afryko.violet} />
-              <Text style={[styles.metaText, { color: Afryko.violet }]}>{website}</Text>
-            </Pressable>
-          )}
-          <View style={styles.meta}>
-            <Ionicons name="location-outline" size={15} color={Afryko.textDim} />
-            <Text style={styles.metaText}>Dakar, Sénégal</Text>
-          </View>
-          <View style={styles.meta}>
-            <Ionicons name="calendar-outline" size={15} color={Afryko.textDim} />
-            <Text style={styles.metaText}>A rejoint Afryko en 2026</Text>
-          </View>
-        </View>
-
-        {/* Compteurs façon X : Abonnements · Abonnés (+ Ventes si Pro) */}
+        {/* Compteurs remontés AVANT la bio — Abonnements · Abonnés (+ Ventes si Pro) */}
         <View style={styles.countsRow}>
           <View style={styles.count}>
             <Text style={styles.countN}>{nf(stats.reach.following)}</Text>
@@ -213,6 +193,22 @@ export default function Profil() {
               <Text style={styles.countL}> Ventes</Text>
             </View>
           )}
+        </View>
+
+        <Text style={styles.bio}>{bio}</Text>
+
+        {/* Site web + ville alignés sur une ligne (sans date d'arrivée) */}
+        <View style={styles.metaRow}>
+          {website && (
+            <Pressable style={styles.meta} onPress={() => Linking.openURL(website.startsWith('http') ? website : `https://${website}`)}>
+              <Ionicons name="link-outline" size={15} color={Afryko.violet} />
+              <Text style={[styles.metaText, { color: Afryko.violet }]}>{website}</Text>
+            </Pressable>
+          )}
+          <View style={styles.meta}>
+            <Ionicons name="location-outline" size={15} color={Afryko.textDim} />
+            <Text style={styles.metaText}>Dakar, Sénégal</Text>
+          </View>
         </View>
 
         {/* 5 onglets : Posts · Texte · Boutique · Achats · Reposts */}
