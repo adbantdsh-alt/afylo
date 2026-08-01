@@ -1,4 +1,4 @@
-import { createContext, useContext, useRef, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useRef, type ReactNode } from 'react';
 import type { NativeScrollEvent, NativeSyntheticEvent } from 'react-native';
 import { useSharedValue, withTiming, type SharedValue } from 'react-native-reanimated';
 
@@ -62,7 +62,9 @@ function safeNow(): number {
 /** Force la barre visible (écrans où le masquage est désactivé, ex. profil). */
 export function useAlwaysShowTabBar() {
   const { hidden } = useTabBar();
-  return () => {
+  // IMPORTANT : callback STABLE (mémoïsé). Sinon, utilisé comme dépendance de
+  // useFocusEffect, il change à chaque rendu → boucle de re-fetch/re-render (flash).
+  return useCallback(() => {
     hidden.value = withTiming(0, { duration: 150 });
-  };
+  }, [hidden]);
 }
