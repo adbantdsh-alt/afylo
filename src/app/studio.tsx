@@ -2,14 +2,15 @@ import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
-import { useState } from 'react';
-import { Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { useCallback, useEffect, useState } from 'react';
+import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Afryko, Font, Radius } from '@/constants/brand';
-import { creatorRewards, studioDays, studioKpis, studioTopPosts, wallet, walletTx, type WalletTx } from '@/lib/mock';
-import { viewsEarning } from '@/lib/algo';
+import { useCheckoutProfile } from '@/lib/checkout-profile';
+import { useMe } from '@/lib/me';
 import { useReposts } from '@/lib/reposts';
+import { EMPTY_WALLET, getWalletSummary, type WalletSummary, type WalletTx } from '@/lib/wallet';
 
 const fmt = (n: number) => Math.round(Math.abs(n)).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
 const signed = (n: number) => (n >= 0 ? '+' : '−') + fmt(Math.abs(n));
@@ -18,8 +19,29 @@ type Tab = 'wallet' | 'stats';
 
 export default function Portefeuille() {
   const router = useRouter();
+  const me = useMe();
+  const { reposts } = useReposts();
+  const { profile } = useCheckoutProfile();
   const [tab, setTab] = useState<Tab>('wallet');
   const [withdraw, setWithdraw] = useState(false);
+  const [summary, setSummary] = useState<WalletSummary>(EMPTY_WALLET);
+  const [loading, setLoading] = useState(true);
+
+  // Commissions « optimistes » des repartages Pro (affiliation générée côté client)
+  const affiliateExtra = reposts.reduce((s, r) => s + (r.affiliate?.earned ?? 0), 0);
+
+  const load = useCallback(() => {
+    setLoading(true);
+    getWalletSummary(me.id, affiliateExtra)
+      .then(setSummary)
+      .catch(() => setSummary(EMPTY_WALLET))
+      .finally(() => setLoading(false));
+  }, [me.id, affiliateExtra]);
+
+  useEffect(() => { load(); }, [load]);
+
+  const methodLabel = profile.preferred === 'om' ? 'Orange Money' : 'Wave';
+  const methodNumber = profile.phone || 'À configurer';
 
   return (
     <View style={styles.root}>
@@ -30,8 +52,8 @@ export default function Portefeuille() {
           </Pressable>
           <Text style={styles.title}>Portefeuille</Text>
           <View style={{ flex: 1 }} />
-          <Pressable style={styles.back}>
-            <Ionicons name="ellipsis-horizontal" size={22} color={Afryko.textDim} />
+          <Pressable style={styles.back} onPress={load}>
+            <Ionicons name="refresh" size={20} color={Afryko.textDim} />
           </Pressable>
         </View>
 
@@ -43,60 +65,52 @@ export default function Portefeuille() {
       </SafeAreaView>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 16, paddingBottom: 48 }}>
-        {tab === 'wallet' ? <WalletTab onWithdraw={() => setWithdraw(true)} /> : <StatsTab />}
+        {loading ? (
+          <View style={{ paddingVertical: 60, alignItems: 'center' }}><ActivityIndicator color={Afryko.violet} /></View>
+        ) : tab === 'wallet' ? (
+          <WalletTab summary={summary} methodLabel={methodLabel} methodNumber={methodNumber} onWithdraw={() => setWithdraw(true)} />
+        ) : (
+          <StatsTab summary={summary} />
+        )}
       </ScrollView>
 
-      <WithdrawSheet visible={withdraw} onClose={() => setWithdraw(false)} />
+      <WithdrawSheet
+        visible={withdraw}
+        available={summary.available}
+        currency={summary.currency}
+        methodLabel={methodLabel}
+        methodNumber={methodNumber}
+        onClose={() => setWithdraw(false)}
+      />
     </View>
   );
 }
 
 /* ---------------- Portefeuille ---------------- */
 
-function WalletTab({ onWithdraw }: { onWithdraw: () => void }) {
+function WalletTab({ summary, methodLabel, methodNumber, onWithdraw }: { summary: WalletSummary; methodLabel: string; methodNumber: string; onWithdraw: () => void }) {
   const router = useRouter();
-  const { reposts } = useReposts();
-  // Commissions générées par tes repartages (affiliation)
-  const repostEarned = reposts.reduce((s, r) => s + (r.affiliate?.earned ?? 0), 0);
-  const repostSales = reposts.reduce((s, r) => s + (r.affiliate?.sales ?? 0), 0);
-  const repostTx: WalletTx[] = reposts
-    .filter((r) => r.affiliate && r.affiliate.sales > 0)
-    .map((r) => ({
-      id: `rt-${r.id}`,
-      kind: 'affiliation',
-      label: `Repartage · ${r.post.product?.title ?? 'produit'}`,
-      sub: `${r.affiliate!.sales} vente(s) · ${r.affiliate!.commission} de commission`,
-      amount: r.affiliate!.earned,
-      date: 'récent',
-    }));
-  // Creator Rewards — rémunération à la vue (100 F / 1 000 vues qualifiées)
-  const rewardsEarned = viewsEarning(creatorRewards.qualifiedViews30d);
-  const rewardsTx: WalletTx[] = [{ id: 'rw', kind: 'tip', label: 'Creator Rewards · vues', sub: `${creatorRewards.qualifiedViews30d.toLocaleString('fr-FR')} vues qualifiées`, amount: rewardsEarned, date: 'ce mois' }];
-
-  const available = wallet.available + repostEarned + rewardsEarned;
-  const extra = [
-    ...(rewardsEarned > 0 ? [{ label: 'Rémunération vidéos (Rewards)', value: rewardsEarned }] : []),
-    ...(repostEarned > 0 ? [{ label: 'Commissions repartages', value: repostEarned }] : []),
-  ];
-  const breakdown = extra.length ? [...wallet.breakdown.slice(0, -1), ...extra, wallet.breakdown[wallet.breakdown.length - 1]] : wallet.breakdown;
+  const { available, pending, currency, breakdown, transactions, rewardsNet } = summary;
   const net = breakdown.reduce((s, b) => s + b.value, 0);
-  const txs = [...rewardsTx, ...repostTx, ...walletTx];
+  const canWithdraw = available >= 1000;
 
   return (
     <>
       {/* Carte solde */}
       <LinearGradient colors={[Afryko.violet, Afryko.violet2]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.balanceCard}>
         <Text style={styles.balanceLabel}>Solde disponible</Text>
-        <Text style={styles.balanceValue}>{fmt(available)} <Text style={styles.balanceCur}>{wallet.currency}</Text></Text>
+        <Text style={styles.balanceValue}>{fmt(available)} <Text style={styles.balanceCur}>{currency}</Text></Text>
 
-        <View style={styles.pendingRow}>
-          <Ionicons name="lock-closed" size={13} color="#ffffffcc" />
-          <Text style={styles.pendingText}>{fmt(wallet.pending)} {wallet.currency} en séquestre · libéré à la livraison</Text>
-        </View>
+        {pending > 0 && (
+          <View style={styles.pendingRow}>
+            <Ionicons name="lock-closed" size={13} color="#ffffffcc" />
+            <Text style={styles.pendingText}>{fmt(pending)} {currency} en séquestre · libéré à la livraison</Text>
+          </View>
+        )}
 
-        <Pressable style={styles.withdrawBtn} onPress={onWithdraw}>
+        <Pressable style={[styles.withdrawBtn, !canWithdraw && { opacity: 0.55 }]} disabled={!canWithdraw} onPress={onWithdraw}>
           <Ionicons name="arrow-down-circle" size={18} color={Afryko.violet} />
-          <Text style={styles.withdrawText}>Retirer</Text>
+          <Text style={styles.withdrawText}>{canWithdraw ? 'Retirer' : 'Retrait dès 1 000 F'}</Text>
         </Pressable>
       </LinearGradient>
 
@@ -105,7 +119,7 @@ function WalletTab({ onWithdraw }: { onWithdraw: () => void }) {
         <View style={styles.rewardsIcon}><Ionicons name="cash" size={20} color="#16A34A" /></View>
         <View style={{ flex: 1 }}>
           <Text style={styles.rewardsTitle}>Creator Rewards</Text>
-          <Text style={styles.rewardsSub}>{fmt(rewardsEarned)} F ce mois · 100 F / 1 000 vues</Text>
+          <Text style={styles.rewardsSub}>{fmt(rewardsNet)} F ce mois · 100 F / 1 000 vues</Text>
         </View>
         <Ionicons name="chevron-forward" size={18} color={Afryko.textFaint} />
       </Pressable>
@@ -114,58 +128,53 @@ function WalletTab({ onWithdraw }: { onWithdraw: () => void }) {
       <View style={styles.card}>
         <View style={styles.rowBetween}>
           <Text style={styles.cardTitle}>Méthode de retrait</Text>
-          <Text style={styles.link}>Modifier</Text>
+          <Text style={styles.link} onPress={() => router.push('/settings')}>Modifier</Text>
         </View>
         <View style={styles.methodRow}>
           <View style={styles.methodIcon}>
             <Ionicons name="phone-portrait" size={20} color={Afryko.violet} />
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={styles.methodName}>{wallet.method.label}</Text>
-            <Text style={styles.methodSub}>{wallet.method.number}</Text>
+            <Text style={styles.methodName}>{methodLabel}</Text>
+            <Text style={styles.methodSub}>{methodNumber}</Text>
           </View>
           <View style={styles.defaultTag}><Text style={styles.defaultTagText}>Par défaut</Text></View>
         </View>
       </View>
 
-      {/* Revenus de la semaine */}
-      <View style={styles.card}>
-        <View style={styles.rowBetween}>
-          <Text style={styles.cardTitle}>Revenus · 7 jours</Text>
-          <Text style={styles.link}>Exporter</Text>
-        </View>
-        {breakdown.map((b: { label: string; value: number; dim?: boolean }, i: number) => (
-          <View key={i} style={styles.line}>
-            <Text style={[styles.lineLabel, b.dim && { color: Afryko.textFaint }]}>{b.label}</Text>
-            <Text style={[styles.lineValue, b.dim && { color: Afryko.textFaint }, b.label === 'Commissions repartages' && { color: '#16A34A' }]}>{b.value < 0 ? '−' : ''}{fmt(Math.abs(b.value))} F</Text>
-          </View>
-        ))}
-        <View style={styles.divider} />
-        <View style={styles.line}>
-          <Text style={styles.netLabel}>Net perçu</Text>
-          <Text style={styles.netValue}>{fmt(net)} F</Text>
-        </View>
-      </View>
-
-      {/* Résumé affiliation repartages */}
-      {repostEarned > 0 && (
+      {/* Répartition des revenus */}
+      {breakdown.length > 0 && (
         <View style={styles.card}>
-          <View style={styles.rowBetween}>
-            <Text style={styles.cardTitle}>Tes repartages</Text>
-            <Ionicons name="repeat" size={18} color="#16A34A" />
+          <Text style={styles.cardTitle}>Répartition des revenus</Text>
+          {breakdown.map((b, i) => (
+            <View key={i} style={styles.line}>
+              <Text style={[styles.lineLabel, b.dim && { color: Afryko.textFaint }]}>{b.label}</Text>
+              <Text style={[styles.lineValue, b.dim && { color: Afryko.textFaint }, b.label.startsWith('Commissions') && { color: '#16A34A' }]}>{b.value < 0 ? '−' : ''}{fmt(Math.abs(b.value))} F</Text>
+            </View>
+          ))}
+          <View style={styles.divider} />
+          <View style={styles.line}>
+            <Text style={styles.netLabel}>Net perçu</Text>
+            <Text style={styles.netValue}>{fmt(net)} F</Text>
           </View>
-          <Text style={styles.methodSub}>{repostSales} vente(s) générée(s) via tes liens d'affiliation.</Text>
-          <Text style={[styles.netValue, { color: '#16A34A', fontSize: 22, marginTop: 6 }]}>{fmt(repostEarned)} F <Text style={{ color: Afryko.textDim, fontSize: 13, fontFamily: Font.medium }}>de commissions</Text></Text>
         </View>
       )}
 
       {/* Historique */}
       <Text style={styles.sectionTitle}>Transactions</Text>
-      <View style={styles.card}>
-        {txs.map((t, i) => (
-          <TxRow key={t.id} tx={t} last={i === txs.length - 1} />
-        ))}
-      </View>
+      {transactions.length === 0 ? (
+        <View style={[styles.card, styles.empty]}>
+          <Ionicons name="receipt-outline" size={30} color={Afryko.textFaint} />
+          <Text style={styles.emptyTitle}>Aucune transaction</Text>
+          <Text style={styles.emptySub}>Tes ventes, commissions d'affiliation et Creator Rewards apparaîtront ici.</Text>
+        </View>
+      ) : (
+        <View style={styles.card}>
+          {transactions.map((t, i) => (
+            <TxRow key={t.id} tx={t} last={i === transactions.length - 1} />
+          ))}
+        </View>
+      )}
     </>
   );
 }
@@ -199,58 +208,55 @@ function TxRow({ tx, last }: { tx: WalletTx; last: boolean }) {
 
 /* ---------------- Statistiques ---------------- */
 
-function StatsTab() {
-  const maxViews = Math.max(...studioDays.map((d) => d.views));
+function StatsTab({ summary }: { summary: WalletSummary }) {
+  const { reach, available, pending, topPosts } = summary;
+  const revenue = available + pending;
+  const maxViews = Math.max(...topPosts.map((p) => p.view_count), 1);
+
   return (
     <>
       <View style={styles.kpiGrid}>
-        <Kpi icon="eye" label="Vues" value={studioKpis.views7d} trend={studioKpis.viewsTrend} color={Afryko.violet} />
-        <Kpi icon="bag-check" label="Ventes" value={studioKpis.sales7d} trend={studioKpis.salesTrend} color={Afryko.green} />
-        <Kpi icon="cash" label="Revenus (F)" value={studioKpis.revenue7d} trend={studioKpis.revenueTrend} color={Afryko.gold} />
-        <Kpi icon="people" label="Abonnés" value={studioKpis.followers7d} trend="7j" color={Afryko.live} />
+        <Kpi icon="eye" label="Vues" value={fmt(reach.views)} trend="total" color={Afryko.violet} />
+        <Kpi icon="bag-check" label="Ventes" value={String(reach.sales)} trend="total" color={Afryko.green} />
+        <Kpi icon="cash" label="Revenus (F)" value={fmt(revenue)} trend="total" color={Afryko.gold} />
+        <Kpi icon="people" label="Abonnés" value={fmt(reach.followers)} trend="total" color={Afryko.live} />
       </View>
 
-      <View style={styles.card}>
-        <Text style={styles.cardTitle}>Vues par jour</Text>
-        <View style={styles.chart}>
-          {studioDays.map((d) => (
-            <View key={d.d} style={styles.barCol}>
-              <View style={styles.barTrack}>
-                <LinearGradient colors={[Afryko.violet2, Afryko.violet]} style={[styles.bar, { height: `${(d.views / maxViews) * 100}%` }]} />
+      {topPosts.length > 0 ? (
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>Tes posts les plus vus</Text>
+          {topPosts.map((p, i) => (
+            <View key={p.id} style={styles.viralRow}>
+              <Text style={styles.rank}>{i + 1}</Text>
+              <Image source={{ uri: p.thumbnail_url || p.media_url || undefined }} style={styles.viralThumb} contentFit="cover" />
+              <View style={{ flex: 1 }}>
+                <Text style={styles.viralViews}>{fmt(p.view_count)} vues</Text>
+                <View style={styles.viralTrack}>
+                  <View style={[styles.viralFill, { width: `${(p.view_count / maxViews) * 100}%` }]} />
+                </View>
               </View>
-              <Text style={styles.barLabel}>{d.d}</Text>
             </View>
           ))}
         </View>
-      </View>
-
-      <View style={styles.card}>
-        <Text style={styles.cardTitle}>Top viralité</Text>
-        {studioTopPosts.map((p, i) => (
-          <View key={p.id} style={styles.viralRow}>
-            <Text style={styles.rank}>{i + 1}</Text>
-            <Image source={{ uri: p.image }} style={styles.viralThumb} contentFit="cover" />
-            <View style={{ flex: 1 }}>
-              <Text style={styles.viralViews}>{p.views} vues · {p.sales} ventes</Text>
-              <View style={styles.viralTrack}>
-                <View style={[styles.viralFill, { width: `${p.viral}%` }]} />
-              </View>
-            </View>
-            <Text style={styles.viralScore}>{p.viral}</Text>
-          </View>
-        ))}
-      </View>
+      ) : (
+        <View style={[styles.card, styles.empty]}>
+          <Ionicons name="stats-chart-outline" size={30} color={Afryko.textFaint} />
+          <Text style={styles.emptyTitle}>Pas encore de statistiques</Text>
+          <Text style={styles.emptySub}>Publie des vidéos et vends pour suivre tes performances en temps réel.</Text>
+        </View>
+      )}
     </>
   );
 }
 
 /* ---------------- Sheet retrait ---------------- */
 
-function WithdrawSheet({ visible, onClose }: { visible: boolean; onClose: () => void }) {
+function WithdrawSheet({ visible, available, currency, methodLabel, methodNumber, onClose }: { visible: boolean; available: number; currency: string; methodLabel: string; methodNumber: string; onClose: () => void }) {
   const [amount, setAmount] = useState('');
   const [done, setDone] = useState(false);
   const n = parseInt(amount.replace(/\D/g, ''), 10) || 0;
-  const valid = n >= 1000 && n <= wallet.available;
+  const hasMethod = methodNumber !== 'À configurer';
+  const valid = n >= 1000 && n <= available && hasMethod;
 
   const close = () => { setAmount(''); setDone(false); onClose(); };
 
@@ -262,16 +268,16 @@ function WithdrawSheet({ visible, onClose }: { visible: boolean; onClose: () => 
         {done ? (
           <View style={{ alignItems: 'center', paddingVertical: 12 }}>
             <View style={styles.okIcon}><Ionicons name="checkmark" size={34} color="#fff" /></View>
-            <Text style={styles.okTitle}>Retrait envoyé</Text>
-            <Text style={styles.okSub}>{fmt(n)} {wallet.currency} vers {wallet.method.label} {wallet.method.number}. Réception sous quelques minutes.</Text>
+            <Text style={styles.okTitle}>Retrait demandé</Text>
+            <Text style={styles.okSub}>{fmt(n)} {currency} vers {methodLabel} {methodNumber}. Réception sous quelques minutes.</Text>
             <Pressable style={styles.primaryBtn} onPress={close}>
               <Text style={styles.primaryText}>Terminé</Text>
             </Pressable>
           </View>
         ) : (
           <>
-            <Text style={styles.sheetTitle}>Retirer vers {wallet.method.label}</Text>
-            <Text style={styles.sheetSub}>Solde disponible : {fmt(wallet.available)} {wallet.currency}</Text>
+            <Text style={styles.sheetTitle}>Retirer vers {methodLabel}</Text>
+            <Text style={styles.sheetSub}>Solde disponible : {fmt(available)} {currency}</Text>
 
             <View style={styles.amountWrap}>
               <TextInput
@@ -282,12 +288,12 @@ function WithdrawSheet({ visible, onClose }: { visible: boolean; onClose: () => 
                 placeholderTextColor={Afryko.textFaint}
                 style={styles.amountInput}
               />
-              <Text style={styles.amountCur}>{wallet.currency}</Text>
+              <Text style={styles.amountCur}>{currency}</Text>
             </View>
 
             <View style={styles.quickRow}>
-              {[10000, 50000, wallet.available].map((q, i) => (
-                <Pressable key={i} style={styles.quick} onPress={() => setAmount(String(q))}>
+              {[10000, 50000, available].map((q, i) => (
+                <Pressable key={i} style={styles.quick} onPress={() => setAmount(String(Math.max(0, q)))}>
                   <Text style={styles.quickText}>{i === 2 ? 'Tout' : fmt(q)}</Text>
                 </Pressable>
               ))}
@@ -295,12 +301,12 @@ function WithdrawSheet({ visible, onClose }: { visible: boolean; onClose: () => 
 
             <View style={styles.destRow}>
               <Ionicons name="phone-portrait" size={18} color={Afryko.violet} />
-              <Text style={styles.destText}>{wallet.method.label} · {wallet.method.number}</Text>
+              <Text style={styles.destText}>{methodLabel} · {methodNumber}</Text>
             </View>
 
-            {n > 0 && !valid && (
-              <Text style={styles.errText}>{n < 1000 ? 'Minimum 1 000 FCFA.' : 'Montant supérieur au solde.'}</Text>
-            )}
+            {!hasMethod && <Text style={styles.errText}>Ajoute un numéro Wave/OM dans Réglages pour retirer.</Text>}
+            {hasMethod && n > 0 && n < 1000 && <Text style={styles.errText}>Minimum 1 000 FCFA.</Text>}
+            {hasMethod && n > available && <Text style={styles.errText}>Montant supérieur au solde.</Text>}
 
             <Pressable style={[styles.primaryBtn, !valid && styles.primaryDisabled]} disabled={!valid} onPress={() => setDone(true)}>
               <Text style={styles.primaryText}>{n > 0 ? `Retirer ${fmt(n)} F` : 'Retirer'}</Text>
@@ -365,6 +371,9 @@ const styles = StyleSheet.create({
   rewardsSub: { color: Afryko.textDim, fontSize: 13, marginTop: 1 },
   cardTitle: { color: Afryko.text, fontSize: 16, fontFamily: Font.bold, marginBottom: 14 },
   sectionTitle: { color: Afryko.text, fontSize: 16, fontFamily: Font.bold, marginTop: 22, marginBottom: -2 },
+  empty: { alignItems: 'center', paddingVertical: 28 },
+  emptyTitle: { color: Afryko.text, fontSize: 15, fontFamily: Font.bold, marginTop: 10 },
+  emptySub: { color: Afryko.textDim, fontSize: 13, textAlign: 'center', marginTop: 4, lineHeight: 18, paddingHorizontal: 20 },
   rowBetween: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   link: { color: Afryko.violet, fontSize: 13, fontFamily: Font.semibold, marginBottom: 14 },
 

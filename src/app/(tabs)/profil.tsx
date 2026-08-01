@@ -10,11 +10,19 @@ import { RepostSheet, MediaPreview } from '@/components/repost-sheet';
 import { Afryko, Font, Radius, Type } from '@/constants/brand';
 import { useAuth } from '@/lib/auth';
 import { deleteProduct, getMyProfile, isProAccount, listMyProducts } from '@/lib/db';
+import { EMPTY_WALLET, getWalletSummary, type WalletSummary } from '@/lib/wallet';
 import { useReposts, type Repost } from '@/lib/reposts';
 import { useStories } from '@/lib/stories';
 import { useAlwaysShowTabBar } from '@/lib/tabbar';
 import { myLives, myPosts, myProducts, myProfile, myPurchases, photo, type MyLive, type Purchase } from '@/lib/mock';
 import type { Profile } from '@/types/db';
+
+/** Format compact : 1234 → "1,2 K", 2_300_000 → "2,3 M". */
+function nf(n: number): string {
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1).replace('.', ',').replace(',0', '')} M`;
+  if (n >= 1_000) return `${(n / 1_000).toFixed(1).replace('.', ',').replace(',0', '')} K`;
+  return String(n);
+}
 
 /** Forme d'affichage commune (produit réel ou démo). */
 type DisplayProduct = { id: string; title: string; price: string; stock: number; sold: number; image: string; active: boolean; real: boolean };
@@ -28,6 +36,7 @@ export default function Profil() {
   const isOwner = true; // l'onglet Profil est toujours TON profil ; le profil visiteur est /creator/[id]
   const [menuOpen, setMenuOpen] = useState(false);
   const [dbProfile, setDbProfile] = useState<Profile | null>(null);
+  const [stats, setStats] = useState<WalletSummary>(EMPTY_WALLET);
   const showTabBar = useAlwaysShowTabBar();
   const { myStory } = useStories();
   const openStory = () => (myStory ? router.push({ pathname: '/story/[uid]', params: { uid: myStory.id } }) : router.push('/creer'));
@@ -35,7 +44,12 @@ export default function Profil() {
   useFocusEffect(
     useCallback(() => {
       showTabBar(); // pas de masquage de nav sur le profil
-      if (session) getMyProfile().then(setDbProfile);
+      if (session) {
+        getMyProfile().then((prof) => {
+          setDbProfile(prof);
+          getWalletSummary(prof?.id ?? null).then(setStats).catch(() => setStats(EMPTY_WALLET));
+        });
+      }
     }, [session, showTabBar]),
   );
 
@@ -113,16 +127,16 @@ export default function Profil() {
             )}
           </Pressable>
           <View style={styles.statsRow}>
-            <Stat value={myProfile.followers} label="Abonnés" />
+            <Stat value={nf(stats.reach.followers)} label="Abonnés" />
             {isPro ? (
               <>
-                <Stat value={myProfile.sales} label="Ventes" />
-                <Stat value="2.3 M" label="Chiffre d'affaires" />
+                <Stat value={nf(stats.reach.sales)} label="Ventes" />
+                <Stat value={nf(stats.available + stats.pending)} label="Chiffre d'affaires" />
               </>
             ) : (
               <>
-                <Stat value={myProfile.following} label="Abonnements" />
-                <Stat value={myProfile.views} label="Vues" />
+                <Stat value={nf(stats.reach.posts)} label="Posts" />
+                <Stat value={nf(stats.reach.views)} label="Vues" />
               </>
             )}
           </View>

@@ -3,7 +3,7 @@
  * Les écritures passent par RLS : owner_id / author_id doivent = auth.uid().
  */
 import { supabase } from './supabase';
-import type { Post, Product, Profile } from '@/types/db';
+import type { Order, Post, Product, Profile } from '@/types/db';
 
 async function requireUserId(): Promise<string> {
   const {
@@ -199,6 +199,49 @@ export async function deletePost(id: string): Promise<void> {
 export async function updatePostCaption(id: string, caption: string): Promise<void> {
   const { error } = await supabase.from('posts').update({ caption }).eq('id', id);
   if (error) throw error;
+}
+
+// ---- Commandes / gains (portefeuille réel) ----
+/** Toutes les commandes où je suis vendeur OU revendeur (affilié). [] si non connecté. */
+export async function listMyOrders(): Promise<Order[]> {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return [];
+  const { data, error } = await supabase
+    .from('orders')
+    .select('*')
+    .or(`seller_id.eq.${user.id},reseller_id.eq.${user.id}`)
+    .order('created_at', { ascending: false });
+  if (error) return [];
+  return (data as Order[]) ?? [];
+}
+
+export type ReachStats = {
+  followers: number;
+  posts: number;
+  views: number;
+  topPosts: { id: string; thumbnail_url: string | null; media_url: string | null; view_count: number }[];
+};
+
+/** Portée réelle du compte connecté (abonnés, posts, vues). Tout à 0 pour un nouveau compte. */
+export async function getMyReachStats(): Promise<ReachStats> {
+  const empty: ReachStats = { followers: 0, posts: 0, views: 0, topPosts: [] };
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return empty;
+  const [postsRes, followersRes] = await Promise.all([
+    supabase.from('posts').select('id,thumbnail_url,media_url,view_count').eq('author_id', user.id).order('view_count', { ascending: false }),
+    supabase.from('follows').select('*', { count: 'exact', head: true }).eq('following_id', user.id),
+  ]);
+  const posts = (postsRes.data ?? []) as ReachStats['topPosts'];
+  return {
+    followers: followersRes.count ?? 0,
+    posts: posts.length,
+    views: posts.reduce((s, p) => s + (p.view_count || 0), 0),
+    topPosts: posts.slice(0, 5),
+  };
 }
 
 // ---- Feed (posts + auteur + produits attachés) ----
