@@ -1,12 +1,13 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { useFocusEffect, useRouter } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { Animated, Pressable, ScrollView, Share, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Avatar, IconButton } from '@/components/ui-kit';
 import { PaymentSheet } from '@/components/payment-sheet';
+import { PostOptionsSheet } from '@/components/post-options-sheet';
 import { RateSheet } from '@/components/rate-sheet';
 import { RatingStar } from '@/components/rating-star';
 import { ReportSheet } from '@/components/report-sheet';
@@ -110,7 +111,12 @@ function PostCard({ post, isPro, myHandle }: { post: Post; isPro: boolean; myHan
   const [payOpen, setPayOpen] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
   const [repostOpen, setRepostOpen] = useState(false);
+  const [optionsOpen, setOptionsOpen] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [hidden, setHidden] = useState(false);
   const [revealed, setRevealed] = useState(false);
+  const lastTap = useRef(0);
+  const pop = useRef(new Animated.Value(0)).current;
 
   // Repartage = seulement pour les produits en affiliation (le vendeur a défini une commission)
   const canAffiliate = !!post.product?.commission;
@@ -122,11 +128,28 @@ function PostCard({ post, isPro, myHandle }: { post: Post; isPro: boolean; myHan
   const repost = () => { if (gate('republier')) setRepostOpen(true); };
   const openComments = () => router.push({ pathname: '/comments/[id]', params: { id: post.id } });
 
+  // Double-tap image = j'aime + pop d'animation (dopamine)
+  const heartPop = () => {
+    pop.setValue(0);
+    Animated.sequence([
+      Animated.spring(pop, { toValue: 1, friction: 4, tension: 120, useNativeDriver: true }),
+      Animated.timing(pop, { toValue: 0, duration: 350, delay: 250, useNativeDriver: true }),
+    ]).start();
+  };
+  const onMediaTap = () => {
+    const now = Date.now();
+    if (now - lastTap.current < 300) { if (gate('aimer')) { setLiked(true); heartPop(); } }
+    lastTap.current = now;
+  };
+  const share = async () => { try { await Share.share({ message: `${post.name} sur Afylo : ${post.caption}` }); } catch {} };
+
   const openProfile = () =>
     router.push({
       pathname: '/creator/[id]',
       params: { id: post.handle, name: post.name, avatar: post.avatar, badge: post.badge ?? '' },
     });
+
+  if (hidden) return null;
 
   return (
     <View style={styles.card}>
@@ -144,13 +167,13 @@ function PostCard({ post, isPro, myHandle }: { post: Post; isPro: boolean; myHan
         <Pressable onPress={toggleFollow} style={[styles.followBtn, followed && styles.followBtnOn]}>
           <Text style={[styles.followText, followed && styles.followTextOn]}>{followed ? 'Suivi' : 'Suivre'}</Text>
         </Pressable>
-        <Pressable onPress={() => setReportOpen(true)} style={styles.moreBtn}>
+        <Pressable onPress={() => setOptionsOpen(true)} style={styles.moreBtn}>
           <Ionicons name="ellipsis-horizontal" size={20} color={Afylo.inkDim} />
         </Pressable>
       </View>
 
-      {/* Média */}
-      <Pressable style={styles.media} onPress={toggleLike}>
+      {/* Média — plein cadre, sans arrondi. Double-tap = j'aime */}
+      <Pressable style={styles.media} onPress={onMediaTap}>
         <Image source={{ uri: post.image }} style={styles.mediaImg} contentFit="cover" transition={250} blurRadius={post.sensitive && !revealed ? 30 : 0} />
         <View style={styles.playBadge}>
           <Ionicons name="play" size={13} color="#fff" />
@@ -164,8 +187,12 @@ function PostCard({ post, isPro, myHandle }: { post: Post; isPro: boolean; myHan
             <View style={styles.sensitiveBtn}><Text style={styles.sensitiveBtnText}>Afficher</Text></View>
           </Pressable>
         )}
+        <Animated.View pointerEvents="none" style={[styles.heartPop, { opacity: pop, transform: [{ scale: pop.interpolate({ inputRange: [0, 1], outputRange: [0.3, 1] }) }] }]}>
+          <Ionicons name="star" size={110} color="#fff" style={styles.heartPopShadow} />
+        </Animated.View>
       </Pressable>
 
+      <View style={styles.body}>
       {/* Barre "Acheter" (live shopping) */}
       {post.product && (
         <View style={styles.buyBar}>
@@ -221,6 +248,18 @@ function PostCard({ post, isPro, myHandle }: { post: Post; isPro: boolean; myHan
           <Text style={styles.soundText} numberOfLines={1}>{post.sound.title} · {post.sound.artist}</Text>
         </Pressable>
       )}
+      </View>
+
+      <PostOptionsSheet
+        visible={optionsOpen}
+        saved={saved}
+        onClose={() => setOptionsOpen(false)}
+        onShare={share}
+        onInterested={() => setLiked(true)}
+        onNotInterested={() => setHidden(true)}
+        onSave={() => setSaved((v) => !v)}
+        onReport={() => setReportOpen(true)}
+      />
 
       <RateSheet
         visible={rateOpen}
@@ -318,15 +357,12 @@ const styles = StyleSheet.create({
 
   card: {
     backgroundColor: Afylo.card,
-    marginHorizontal: 12,
-    marginBottom: 16,
-    borderRadius: Radius.xl,
-    padding: 12,
-    overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: Afylo.border,
+    marginBottom: 10,
+    borderBottomWidth: 8,
+    borderBottomColor: Afylo.surfaceAlt,
   },
-  cardHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 12 },
+  body: { paddingHorizontal: 14, paddingTop: 10, paddingBottom: 4 },
+  cardHeader: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, paddingTop: 12, paddingBottom: 10 },
   cardHeaderTap: { flexDirection: 'row', alignItems: 'center', flex: 1 },
   name: { color: Afylo.ink, fontFamily: Font.semibold, fontSize: 15, letterSpacing: -0.2 },
   time: { color: Afylo.textFaint, fontFamily: Font.regular, fontSize: 12, marginTop: 2 },
@@ -341,8 +377,10 @@ const styles = StyleSheet.create({
   sensitiveSub: { color: '#ffffffcc', ...Type.small, textAlign: 'center' },
   sensitiveBtn: { backgroundColor: '#ffffff22', borderWidth: 1, borderColor: '#ffffff88', paddingHorizontal: 18, paddingVertical: 8, borderRadius: Radius.pill, marginTop: 8 },
   sensitiveBtnText: { color: '#fff', fontFamily: Font.semibold, fontSize: 14 },
-  media: { borderRadius: Radius.lg, overflow: 'hidden', aspectRatio: 1.05, backgroundColor: Afylo.surfaceAlt },
-  mediaImg: { flex: 1 },
+  media: { aspectRatio: 1, backgroundColor: Afylo.surfaceAlt, alignItems: 'center', justifyContent: 'center' },
+  mediaImg: { ...StyleSheet.absoluteFillObject },
+  heartPop: { position: 'absolute' },
+  heartPopShadow: { textShadowColor: '#00000066', textShadowRadius: 12, textShadowOffset: { width: 0, height: 2 } },
   playBadge: {
     position: 'absolute',
     bottom: 10,
