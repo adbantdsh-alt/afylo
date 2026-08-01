@@ -14,7 +14,8 @@ import { ReportSheet } from '@/components/report-sheet';
 import { RepostSheet } from '@/components/repost-sheet';
 import { Afryko, Font, Radius, Type } from '@/constants/brand';
 import { useAuthGate } from '@/lib/auth-gate';
-import { getMyProfile, isProAccount } from '@/lib/db';
+import { getMyProfile, isProAccount, listFeed } from '@/lib/db';
+import { mapFeedPost } from '@/lib/feed-map';
 import { useReposts } from '@/lib/reposts';
 import { useAlwaysShowTabBar } from '@/lib/tabbar';
 import { me, posts, type Post } from '@/lib/mock';
@@ -28,11 +29,14 @@ export default function Feed() {
   const showTabBar = useAlwaysShowTabBar();
   const [isPro, setIsPro] = useState(false);
   const [myHandle, setMyHandle] = useState('moi');
+  const [feed, setFeed] = useState<Post[]>(posts); // mock affiché tout de suite, puis remplacé par la base
 
   // Nav bar persistante sur l'accueil (pas de masquage au scroll)
   useFocusEffect(useCallback(() => { showTabBar(); }, [showTabBar]));
   useEffect(() => {
     getMyProfile().then((p) => { setIsPro(isProAccount(p?.account_type)); if (p?.handle) setMyHandle(p.handle); }).catch(() => {});
+    // Vrai réseau : on lit le feed depuis Supabase, repli sur le mock si vide/erreur
+    listFeed().then((rows) => { if (rows && rows.length) setFeed(rows.map(mapFeedPost)); }).catch(() => {});
   }, []);
 
   return (
@@ -90,7 +94,7 @@ export default function Feed() {
           ))}
         </ScrollView>
 
-        {posts.map((p) => (
+        {feed.map((p) => (
           <PostCard key={p.id} post={p} isPro={isPro} myHandle={myHandle} />
         ))}
       </ScrollView>

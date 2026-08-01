@@ -167,7 +167,7 @@ export type FeedPost = Post & {
 export async function listFeed(): Promise<FeedPost[]> {
   const { data, error } = await supabase
     .from('posts')
-    .select('*, author:profiles(*), post_products(product:products(*))')
+    .select('*, author:profiles!posts_author_id_fkey(*), post_products(product:products(*))')
     .order('created_at', { ascending: false })
     .limit(30);
   if (error) throw error;
