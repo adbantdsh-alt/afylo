@@ -11,7 +11,7 @@ import { useEffect } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
-import { Afryko } from '@/constants/brand';
+import { Afryko, isDark } from '@/constants/brand';
 import '../global.css';
 import { AuthProvider, useAuth } from '@/lib/auth';
 import { AuthGateProvider } from '@/lib/auth-gate';
@@ -101,7 +101,7 @@ export default function RootLayout() {
 
   return (
     <SafeAreaProvider>
-      <StatusBar style="dark" />
+      <StatusBar style={isDark ? 'light' : 'dark'} />
       <AuthProvider>
         <AuthGateProvider>
           <MeProvider>

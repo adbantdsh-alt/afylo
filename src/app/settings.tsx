@@ -5,7 +5,11 @@ import { useEffect, useState } from 'react';
 import { ActivityIndicator, Linking, Modal, Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { Afryko, Font, Radius, Type } from '@/constants/brand';
+import { Afryko, applyThemePref, Font, getThemePref, Radius, Type, type ThemePref } from '@/constants/brand';
+
+// Correspondance libellé FR ↔ préférence de thème
+const THEME_LABELS: Record<ThemePref, string> = { light: 'Clair', dark: 'Sombre', system: 'Système' };
+const THEME_FROM_LABEL: Record<string, ThemePref> = { Clair: 'light', Sombre: 'dark', Système: 'system' };
 import { useAuth } from '@/lib/auth';
 import { changeEmail, changePassword, deactivateAccount, deleteAccount, getAccountInfo } from '@/lib/db';
 import { maskCard, useCheckoutProfile, type PayMethod } from '@/lib/checkout-profile';
@@ -44,7 +48,11 @@ export default function Settings() {
   // Réglages ouverts en panneau
   const [detail, setDetail] = useState<DetailKey | null>(null);
   const [lang, setLang] = useState('Français');
-  const [theme, setTheme] = useState('Clair');
+  const [theme, setTheme] = useState(THEME_LABELS[getThemePref()]);
+  const changeTheme = (label: string) => {
+    setTheme(label);
+    applyThemePref(THEME_FROM_LABEL[label] ?? 'system'); // enregistre + recharge (web) pour appliquer
+  };
   const [storyVis, setStoryVis] = useState('Tout le monde');
   const [msgFrom, setMsgFrom] = useState('Tout le monde');
   const [mentionFrom, setMentionFrom] = useState('Tout le monde');
@@ -219,7 +227,7 @@ export default function Settings() {
         which={detail}
         onClose={() => setDetail(null)}
         hasSession={!!session}
-        state={{ lang, setLang, theme, setTheme, storyVis, setStoryVis, msgFrom, setMsgFrom, mentionFrom, setMentionFrom, linked, setLinked, blocked, setBlocked, devices }}
+        state={{ lang, setLang, theme, setTheme: changeTheme, storyVis, setStoryVis, msgFrom, setMsgFrom, mentionFrom, setMentionFrom, linked, setLinked, blocked, setBlocked, devices }}
       />
 
       {/* Confirmation désactivation / suppression */}
@@ -312,7 +320,7 @@ function DetailPanel({ which, onClose, hasSession, state }: { which: DetailKey |
             <Choice title="Langue de l'application" options={['Français', 'English', 'Wolof']} value={state.lang} onChange={state.setLang} note="Certaines traductions arrivent bientôt." />
           )}
           {which === 'theme' && (
-            <Choice title="Apparence" options={['Clair', 'Sombre', 'Système']} value={state.theme} onChange={state.setTheme} note="Le mode sombre arrive dans une prochaine version." />
+            <Choice title="Apparence" options={['Clair', 'Sombre', 'Système']} value={state.theme} onChange={state.setTheme} note="« Système » suit le réglage de ton appareil. Sur le web, le changement s'applique immédiatement." />
           )}
         </ScrollView>
       </View>
