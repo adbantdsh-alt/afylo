@@ -96,6 +96,34 @@ export async function unfollowUser(targetId: string): Promise<void> {
   if (error) throw error;
 }
 
+/** Les comptes que JE suis (abonnements). PRIVÉ : uniquement pour moi-même. */
+export async function listMyFollowing(): Promise<Profile[]> {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return [];
+  const { data } = await supabase
+    .from('follows')
+    .select('profile:profiles!follows_following_id_fkey(*)')
+    .eq('follower_id', user.id)
+    .limit(300);
+  return ((data ?? []) as any[]).map((r) => r.profile).filter(Boolean) as Profile[];
+}
+
+/** Les comptes qui ME suivent (abonnés). PRIVÉ : uniquement pour moi-même. */
+export async function listMyFollowers(): Promise<Profile[]> {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return [];
+  const { data } = await supabase
+    .from('follows')
+    .select('profile:profiles!follows_follower_id_fkey(*)')
+    .eq('following_id', user.id)
+    .limit(300);
+  return ((data ?? []) as any[]).map((r) => r.profile).filter(Boolean) as Profile[];
+}
+
 export type SearchPost = {
   id: string;
   thumbnail_url: string | null;

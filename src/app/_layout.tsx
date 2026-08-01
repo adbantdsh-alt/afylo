@@ -67,6 +67,7 @@ function RootNavigator() {
       <Stack.Screen name="creator/[id]" />
       <Stack.Screen name="affiliation" />
       <Stack.Screen name="settings" />
+      <Stack.Screen name="connections" />
       <Stack.Screen name="notifications" />
       <Stack.Screen name="search" />
       <Stack.Screen name="sound/[id]" />

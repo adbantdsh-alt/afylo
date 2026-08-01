@@ -177,16 +177,17 @@ export default function Profil() {
         </View>
         <Text style={styles.handleText}>{handle}</Text>
 
-        {/* Compteurs remontés AVANT la bio — Abonnements · Abonnés (+ Ventes si Pro) */}
+        {/* Compteurs remontés AVANT la bio. Abonnements/Abonnés cliquables →
+            liste PRIVÉE (visible uniquement par toi). */}
         <View style={styles.countsRow}>
-          <View style={styles.count}>
+          <Pressable style={styles.count} onPress={() => router.push({ pathname: '/connections', params: { tab: 'following' } })}>
             <Text style={styles.countN}>{nf(stats.reach.following)}</Text>
             <Text style={styles.countL}> Abonnements</Text>
-          </View>
-          <View style={styles.count}>
+          </Pressable>
+          <Pressable style={styles.count} onPress={() => router.push({ pathname: '/connections', params: { tab: 'followers' } })}>
             <Text style={styles.countN}>{nf(stats.reach.followers)}</Text>
             <Text style={styles.countL}> Abonnés</Text>
-          </View>
+          </Pressable>
           {isPro && (
             <View style={styles.count}>
               <Text style={styles.countN}>{nf(stats.reach.sales)}</Text>
