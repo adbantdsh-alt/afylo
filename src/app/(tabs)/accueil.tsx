@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { useFocusEffect, useRouter } from 'expo-router';
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -9,8 +9,10 @@ import { Avatar, IconButton } from '@/components/ui-kit';
 import { PaymentSheet } from '@/components/payment-sheet';
 import { RateSheet } from '@/components/rate-sheet';
 import { ReportSheet } from '@/components/report-sheet';
+import { RepostSheet } from '@/components/repost-sheet';
 import { Afylo, Font, Radius, Type } from '@/constants/brand';
 import { useAuthGate } from '@/lib/auth-gate';
+import { getMyProfile, isProAccount } from '@/lib/db';
 import { useAlwaysShowTabBar } from '@/lib/tabbar';
 import { me, posts, type Post } from '@/lib/mock';
 import { useStories } from '@/lib/stories';
@@ -19,9 +21,11 @@ export default function Feed() {
   const router = useRouter();
   const { stories, myStory } = useStories();
   const showTabBar = useAlwaysShowTabBar();
+  const [isPro, setIsPro] = useState(false);
 
   // Nav bar persistante sur l'accueil (pas de masquage au scroll)
   useFocusEffect(useCallback(() => { showTabBar(); }, [showTabBar]));
+  useEffect(() => { getMyProfile().then((p) => setIsPro(isProAccount(p?.account_type))).catch(() => {}); }, []);
 
   return (
     <View style={styles.root}>
@@ -79,14 +83,14 @@ export default function Feed() {
         </ScrollView>
 
         {posts.map((p) => (
-          <PostCard key={p.id} post={p} />
+          <PostCard key={p.id} post={p} isPro={isPro} />
         ))}
       </ScrollView>
     </View>
   );
 }
 
-function PostCard({ post }: { post: Post }) {
+function PostCard({ post, isPro }: { post: Post; isPro: boolean }) {
   const router = useRouter();
   const gate = useAuthGate();
   const [followed, setFollowed] = useState(false);
@@ -98,12 +102,16 @@ function PostCard({ post }: { post: Post }) {
   const [rateOpen, setRateOpen] = useState(false);
   const [payOpen, setPayOpen] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
+  const [repostOpen, setRepostOpen] = useState(false);
   const [revealed, setRevealed] = useState(false);
+
+  // Repartage = seulement pour les produits en affiliation (le vendeur a défini une commission)
+  const canAffiliate = !!post.product?.commission;
 
   const toggleFollow = () => { if (gate('suivre ce créateur')) setFollowed((v) => !v); };
   const toggleLike = () => { if (gate('aimer')) setLiked((v) => !v); };
   const buy = () => { if (gate('acheter')) setPayOpen(true); };
-  const repost = () => { if (gate('republier')) setReposted((v) => !v); };
+  const repost = () => { if (gate('republier')) setRepostOpen(true); };
   const openComments = () => router.push({ pathname: '/comments/[id]', params: { id: post.id } });
 
   const openProfile = () =>
@@ -188,7 +196,7 @@ function PostCard({ post }: { post: Post }) {
           <Stat icon="chatbubble-ellipses" label={post.comments} />
         </Pressable>
         <Pressable onPress={repost}>
-          <Stat icon="repeat" label={reposted ? 'Republié' : post.shares} color={reposted ? Afylo.green : Afylo.inkDim} />
+          <Stat icon="repeat" label={reposted ? 'Republié' : post.shares} color={reposted ? Afylo.green : canAffiliate ? Afylo.inkDim : Afylo.textFaint} />
         </Pressable>
         <View style={{ flex: 1 }} />
         <Stat icon="eye" label={post.views} />
@@ -219,6 +227,16 @@ function PostCard({ post }: { post: Post }) {
       />
 
       <ReportSheet visible={reportOpen} onClose={() => setReportOpen(false)} />
+
+      <RepostSheet
+        visible={repostOpen}
+        post={{ name: post.name, avatar: post.avatar, caption: post.caption, image: post.image, product: post.product }}
+        isPro={isPro}
+        canAffiliate={canAffiliate}
+        onClose={() => setRepostOpen(false)}
+        onUpgrade={() => router.push('/upgrade-pro')}
+        onReposted={() => setReposted(true)}
+      />
     </View>
   );
 }

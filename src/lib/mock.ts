@@ -150,6 +150,21 @@ export const posts: Post[] = [
     caption: 'Nouveau son 🎧 Qui veut le beatpack complet ?',
     product: { title: 'Beatpack Afro 2026', price: '9 900 FCFA', commission: '30%' },
   },
+  {
+    id: 'p4',
+    name: 'Cheikh Diop',
+    handle: '@cheikh.vlog',
+    avatar: avatar(3),
+    badge: 'créateur',
+    time: 'il y a 6 h',
+    image: face('afylo-vlog', 700, 800),
+    likes: '3.4 K',
+    comments: '128',
+    views: '41 K',
+    shares: '19',
+    caption: 'Coucher de soleil sur la corniche 🌅 Dakar tu es belle.',
+    // Pas de produit / pas d'affiliation → non repartageable
+  },
 ];
 
 export type ExploreItem = {
