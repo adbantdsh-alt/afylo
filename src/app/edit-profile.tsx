@@ -103,8 +103,10 @@ export default function EditProfile() {
         handle: handle.trim().replace(/^@/, ''),
         bio: bio.trim(),
         avatar_url: avatar.trim() || null,
-        banner_url: banner.trim() || null,
         website: website.trim() || null,
+        // n'inclut banner_url que si une bannière est définie (évite l'erreur si la
+        // colonne n'existe pas encore — migration 0007 requise pour la persister)
+        ...(banner.trim() ? { banner_url: banner.trim() } : {}),
       });
       (router.canGoBack() ? router.back() : router.replace('/accueil'));
     } catch (e: any) {
