@@ -2,7 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Animated, Pressable, ScrollView, Share, StyleSheet, Text, View } from 'react-native';
+import { Animated, Modal, Pressable, ScrollView, Share, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Avatar, IconButton } from '@/components/ui-kit';
@@ -25,11 +25,23 @@ const REPOSTED_COLOR = '#16A34A'; // vert vif, bien visible une fois republié
 
 export default function Feed() {
   const router = useRouter();
+  const gate = useAuthGate();
   const { stories, myStory } = useStories();
   const showTabBar = useAlwaysShowTabBar();
   const [isPro, setIsPro] = useState(false);
   const [myHandle, setMyHandle] = useState('moi');
   const [feed, setFeed] = useState<Post[]>(posts); // mock affiché tout de suite, puis remplacé par la base
+  const [composeOpen, setComposeOpen] = useState(false);
+  const [composeText, setComposeText] = useState('');
+
+  const publishText = () => {
+    const t = composeText.trim();
+    if (!t) return;
+    const post: Post = { id: `txt${Date.now()}`, name: me.name, handle: `@${myHandle}`, avatar: me.avatar, time: "à l'instant", image: '', likes: '0', comments: '0', views: '0', shares: '0', caption: t, textOnly: true };
+    setFeed((prev) => [post, ...prev]);
+    setComposeText('');
+    setComposeOpen(false);
+  };
 
   // Nav bar persistante sur l'accueil (pas de masquage au scroll)
   useFocusEffect(useCallback(() => { showTabBar(); }, [showTabBar]));
@@ -47,6 +59,7 @@ export default function Feed() {
             Afryko<Text style={{ color: Afryko.violet }}>.</Text>
           </Text>
           <View style={{ flexDirection: 'row', gap: 10 }}>
+            <IconButton name="create-outline" onPress={() => { if (gate('publier')) setComposeOpen(true); }} />
             <IconButton name="search" onPress={() => router.push('/search')} />
             <IconButton name="notifications-outline" onPress={() => router.push('/notifications')} />
           </View>
@@ -98,6 +111,32 @@ export default function Feed() {
           <PostCard key={p.id} post={p} isPro={isPro} myHandle={myHandle} />
         ))}
       </ScrollView>
+
+      {/* Composer une publication texte (façon X) */}
+      <Modal visible={composeOpen} animationType="slide" onRequestClose={() => setComposeOpen(false)}>
+        <SafeAreaView style={{ flex: 1, backgroundColor: Afryko.bg }}>
+          <View style={styles.composeHead}>
+            <Pressable onPress={() => setComposeOpen(false)}><Text style={styles.composeCancel}>Annuler</Text></Pressable>
+            <Pressable onPress={publishText} disabled={!composeText.trim()} style={[styles.composePublish, !composeText.trim() && { opacity: 0.5 }]}>
+              <Text style={styles.composePublishText}>Publier</Text>
+            </Pressable>
+          </View>
+          <View style={styles.composeBody}>
+            <Avatar uri={me.avatar} size={44} />
+            <TextInput
+              style={styles.composeInput}
+              value={composeText}
+              onChangeText={setComposeText}
+              placeholder="Quoi de neuf ?"
+              placeholderTextColor={Afryko.textFaint}
+              multiline
+              autoFocus
+              maxLength={500}
+            />
+          </View>
+          <Text style={styles.composeCount}>{composeText.length}/500</Text>
+        </SafeAreaView>
+      </Modal>
     </View>
   );
 }
@@ -177,27 +216,32 @@ function PostCard({ post, isPro, myHandle }: { post: Post; isPro: boolean; myHan
         </Pressable>
       </View>
 
-      {/* Média — plein cadre, sans arrondi. Double-tap = j'aime */}
-      <Pressable style={styles.media} onPress={onMediaTap}>
-        <Image source={{ uri: post.image }} style={styles.mediaImg} contentFit="cover" transition={250} blurRadius={post.sensitive && !revealed ? 30 : 0} />
-        <View style={styles.playBadge}>
-          <Ionicons name="play" size={13} color="#fff" />
-          <Text style={styles.playText}>0:24</Text>
-        </View>
-        {post.sensitive && !revealed && (
-          <Pressable style={styles.sensitiveOverlay} onPress={() => setRevealed(true)}>
-            <Ionicons name="eye-off-outline" size={28} color="#fff" />
-            <Text style={styles.sensitiveTitle}>Contenu sensible</Text>
-            <Text style={styles.sensitiveSub}>{post.sensitive} · appuie pour afficher</Text>
-            <View style={styles.sensitiveBtn}><Text style={styles.sensitiveBtnText}>Afficher</Text></View>
-          </Pressable>
-        )}
-        <Animated.View pointerEvents="none" style={[styles.heartPop, { opacity: pop, transform: [{ scale: pop.interpolate({ inputRange: [0, 1], outputRange: [0.3, 1] }) }] }]}>
-          <Ionicons name="star" size={110} color="#fff" style={styles.heartPopShadow} />
-        </Animated.View>
-      </Pressable>
+      {/* Média — plein cadre, sans arrondi. Double-tap = j'aime (masqué pour les posts texte) */}
+      {!post.textOnly && (
+        <Pressable style={styles.media} onPress={onMediaTap}>
+          <Image source={{ uri: post.image }} style={styles.mediaImg} contentFit="cover" transition={250} blurRadius={post.sensitive && !revealed ? 30 : 0} />
+          <View style={styles.playBadge}>
+            <Ionicons name="play" size={13} color="#fff" />
+            <Text style={styles.playText}>0:24</Text>
+          </View>
+          {post.sensitive && !revealed && (
+            <Pressable style={styles.sensitiveOverlay} onPress={() => setRevealed(true)}>
+              <Ionicons name="eye-off-outline" size={28} color="#fff" />
+              <Text style={styles.sensitiveTitle}>Contenu sensible</Text>
+              <Text style={styles.sensitiveSub}>{post.sensitive} · appuie pour afficher</Text>
+              <View style={styles.sensitiveBtn}><Text style={styles.sensitiveBtnText}>Afficher</Text></View>
+            </Pressable>
+          )}
+          <Animated.View pointerEvents="none" style={[styles.heartPop, { opacity: pop, transform: [{ scale: pop.interpolate({ inputRange: [0, 1], outputRange: [0.3, 1] }) }] }]}>
+            <Ionicons name="star" size={110} color="#fff" style={styles.heartPopShadow} />
+          </Animated.View>
+        </Pressable>
+      )}
 
       <View style={styles.body}>
+      {/* Publication texte (façon X) */}
+      {post.textOnly && <Text style={styles.textPost}>{post.caption}</Text>}
+
       {/* Barre "Acheter" (live shopping) */}
       {post.product && (
         <View style={styles.buyBar}>
@@ -236,16 +280,14 @@ function PostCard({ post, isPro, myHandle }: { post: Post; isPro: boolean; myHan
         <Pressable onPress={openComments}>
           <Stat icon="chatbubble-ellipses" label={post.comments} />
         </Pressable>
-        {canAffiliate && (
-          <Pressable onPress={repost}>
-            <Stat icon="repeat" label={reposted ? 'Republié' : post.shares} color={reposted ? REPOSTED_COLOR : Afryko.inkDim} bold={reposted} />
-          </Pressable>
-        )}
+        <Pressable onPress={repost}>
+          <Stat icon="repeat" label={reposted ? 'Republié' : post.shares} color={reposted ? REPOSTED_COLOR : Afryko.inkDim} bold={reposted} />
+        </Pressable>
         <View style={{ flex: 1 }} />
         <Stat icon="eye" label={post.views} />
       </View>
 
-      <Text style={styles.caption}>{post.caption}</Text>
+      {!post.textOnly && <Text style={styles.caption}>{post.caption}</Text>}
 
       {post.sound && (
         <Pressable onPress={() => router.push({ pathname: '/sound/[id]', params: { id: post.sound!.id } })} style={styles.soundRow}>
@@ -289,7 +331,7 @@ function PostCard({ post, isPro, myHandle }: { post: Post; isPro: boolean; myHan
         isPro={isPro}
         onClose={() => setRepostOpen(false)}
         onUpgrade={() => router.push('/upgrade-pro')}
-        onPublish={(p) => addRepost({ mode: p.mode, text: p.text, media: p.media, by: myHandle, post: { id: post.id, name: post.name, avatar: post.avatar, caption: post.caption, image: post.image, product: post.product } })}
+        onPublish={(p) => addRepost({ mode: p.mode, text: p.text, media: p.media, by: myHandle, pro: isPro, post: { id: post.id, name: post.name, avatar: post.avatar, caption: post.caption, image: post.image, product: post.product } })}
       />
     </View>
   );
@@ -382,6 +424,14 @@ const styles = StyleSheet.create({
   sensitiveSub: { color: '#ffffffcc', ...Type.small, textAlign: 'center' },
   sensitiveBtn: { backgroundColor: '#ffffff22', borderWidth: 1, borderColor: '#ffffff88', paddingHorizontal: 18, paddingVertical: 8, borderRadius: Radius.pill, marginTop: 8 },
   sensitiveBtnText: { color: '#fff', fontFamily: Font.semibold, fontSize: 14 },
+  composeHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, height: 52, borderBottomWidth: 1, borderBottomColor: Afryko.border },
+  composeCancel: { color: Afryko.textDim, fontFamily: Font.semibold, fontSize: 15 },
+  composePublish: { backgroundColor: Afryko.violet, paddingHorizontal: 20, paddingVertical: 9, borderRadius: Radius.pill },
+  composePublishText: { color: '#fff', fontFamily: Font.bold, fontSize: 14 },
+  composeBody: { flexDirection: 'row', gap: 12, padding: 16, flex: 1 },
+  composeInput: { flex: 1, color: Afryko.text, fontSize: 19, lineHeight: 26, textAlignVertical: 'top', paddingTop: 6 },
+  composeCount: { color: Afryko.textFaint, fontSize: 13, textAlign: 'right', paddingHorizontal: 16, paddingBottom: 8 },
+  textPost: { color: Afryko.text, fontSize: 20, lineHeight: 28, marginBottom: 12 },
   media: { aspectRatio: 1, backgroundColor: Afryko.surfaceAlt, alignItems: 'center', justifyContent: 'center' },
   mediaImg: { ...StyleSheet.absoluteFillObject },
   heartPop: { position: 'absolute' },

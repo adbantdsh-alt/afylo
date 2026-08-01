@@ -75,7 +75,7 @@ export function RepostSheet({
   };
 
   const commission = post?.product?.commission;
-  const needPro = !editing && !isPro;
+  const affiliate = !!commission && isPro; // affiliation = produit affilié + compte Pro
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={close}>
@@ -88,14 +88,6 @@ export function RepostSheet({
               <View style={styles.okIcon}><Ionicons name="repeat" size={30} color="#fff" /></View>
               <Text style={styles.okTitle}>{editing ? 'Repartage modifié' : done === 'quote' ? 'Citation publiée' : 'Republié !'}</Text>
               <Text style={styles.okSub}>Visible dans ton profil › Republications.{commission ? ` Tu gagnes ${commission} sur chaque vente.` : ''}</Text>
-            </View>
-          ) : needPro ? (
-            <View style={styles.center}>
-              <View style={[styles.okIcon, { backgroundColor: Afryko.violet }]}><Ionicons name="repeat" size={28} color="#fff" /></View>
-              <Text style={styles.okTitle}>Le repartage est Pro</Text>
-              <Text style={styles.okSub}>Passe en compte Pro pour repartager les produits en affiliation et gagner une commission sur chaque vente via ton audience.</Text>
-              <Pressable onPress={() => { close(); onUpgrade(); }} style={styles.primaryBtn}><Text style={styles.primaryText}>Passer en Pro</Text></Pressable>
-              <Pressable onPress={close} style={styles.ghostBtn}><Text style={styles.ghostText}>Plus tard</Text></Pressable>
             </View>
           ) : (
             <>
@@ -118,12 +110,18 @@ export function RepostSheet({
                 </View>
               )}
 
-              {commission && (
+              {affiliate ? (
                 <View style={styles.commBanner}>
                   <Ionicons name="cash" size={16} color={Afryko.green} />
                   <Text style={styles.commText}>Affiliation active — tu touches <Text style={{ fontFamily: Font.bold }}>{commission}</Text> sur chaque vente via ton repartage.</Text>
                 </View>
-              )}
+              ) : commission ? (
+                <Pressable style={styles.upsellBanner} onPress={() => { close(); onUpgrade(); }}>
+                  <Ionicons name="lock-closed" size={15} color={Afryko.violet} />
+                  <Text style={styles.upsellText}>Passe en <Text style={{ fontFamily: Font.bold }}>Pro</Text> pour toucher {commission} de commission sur les ventes.</Text>
+                  <Ionicons name="chevron-forward" size={15} color={Afryko.violet} />
+                </Pressable>
+              ) : null}
 
               {step === 'choose' ? (
                 <>
@@ -255,6 +253,8 @@ const styles = StyleSheet.create({
 
   commBanner: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: Afryko.green + '18', borderRadius: Radius.md, padding: 12, marginTop: 12 },
   commText: { flex: 1, color: Afryko.text, fontSize: 13, lineHeight: 18 },
+  upsellBanner: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#3E5BFF12', borderWidth: 1, borderColor: '#3E5BFF33', borderRadius: Radius.md, padding: 12, marginTop: 12 },
+  upsellText: { flex: 1, color: Afryko.text, fontSize: 13, lineHeight: 18 },
 
   choice: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: Afryko.surfaceAlt },
   choiceIcon: { width: 44, height: 44, borderRadius: 22, backgroundColor: Afryko.surfaceAlt, alignItems: 'center', justifyContent: 'center' },

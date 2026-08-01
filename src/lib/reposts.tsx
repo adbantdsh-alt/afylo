@@ -37,7 +37,7 @@ function commissionFor(price: string, pct: string): number {
 type Ctx = {
   reposts: Repost[];
   hasReposted: (postId: string) => boolean;
-  addRepost: (r: Omit<Repost, 'id' | 'createdAt' | 'affiliate'>) => void;
+  addRepost: (r: Omit<Repost, 'id' | 'createdAt' | 'affiliate'> & { pro?: boolean }) => void;
   updateRepost: (id: string, patch: Partial<Pick<Repost, 'text' | 'media' | 'mode'>>) => void;
   removeRepost: (id: string) => void;
 };
@@ -46,14 +46,14 @@ const RepostsCtx = createContext<Ctx | null>(null);
 export function RepostsProvider({ children }: { children: ReactNode }) {
   const [reposts, setReposts] = useState<Repost[]>([]);
 
-  const addRepost: Ctx['addRepost'] = (r) => {
+  const addRepost: Ctx['addRepost'] = ({ pro, ...r }) => {
     const id = `rp${rid++}`;
     const createdAt = safeNow();
-    // Création automatique du lien d'affiliation au nom du republieur (si produit affilié)
+    // Création automatique du lien d'affiliation au nom du republieur (si produit affilié + Pro)
     const commission = r.post.product?.commission;
     const code = `${slug(r.by)}-${r.post.id}`;
     let affiliate: RepostAffiliate | undefined;
-    if (commission && r.post.product) {
+    if (commission && r.post.product && pro) {
       // Conversions initiales attribuées à ton audience (1 à 3 ventes, déterministe par produit)
       const sales = 1 + (hashCode(r.post.id) % 3);
       const earned = commissionFor(r.post.product.price, commission) * sales;

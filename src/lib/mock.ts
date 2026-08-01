@@ -95,6 +95,7 @@ export type Post = {
   products?: { title: string; price: string }[]; // jusqu'à 5 produits liés
   sound?: { id: string; title: string; artist: string };
   sensitive?: string; // raison si contenu sensible (affiche un avertissement)
+  textOnly?: boolean; // publication texte (façon X) — pas de média
 };
 
 export const posts: Post[] = [
