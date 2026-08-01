@@ -46,6 +46,37 @@ export async function upgradeToPro(): Promise<void> {
 /** Un compte 'buyer' est SIMPLE ; tout le reste est PRO (vendeur/affilié). */
 export const isProAccount = (t?: string | null) => !!t && t !== 'buyer';
 
+// ---- Profil public d'un créateur (vue visiteur) ----
+export async function getProfileByHandle(handle: string): Promise<Profile | null> {
+  const h = handle.replace(/^@/, '');
+  const { data } = await supabase.from('profiles').select('*').eq('handle', h).maybeSingle();
+  return data;
+}
+
+export type CreatorData = {
+  profile: Profile;
+  posts: { id: string; thumbnail_url: string | null; media_url: string | null; kind: string; view_count: number }[];
+  followers: number;
+  views: number;
+};
+
+/** Profil + posts + abonnés d'un créateur (par handle). null si introuvable. */
+export async function getCreatorData(handle: string): Promise<CreatorData | null> {
+  const profile = await getProfileByHandle(handle);
+  if (!profile) return null;
+  const [postsRes, followersRes] = await Promise.all([
+    supabase.from('posts').select('id,thumbnail_url,media_url,kind,view_count').eq('author_id', profile.id).order('created_at', { ascending: false }).limit(60),
+    supabase.from('follows').select('*', { count: 'exact', head: true }).eq('following_id', profile.id),
+  ]);
+  const posts = postsRes.data ?? [];
+  return {
+    profile,
+    posts,
+    followers: followersRes.count ?? 0,
+    views: posts.reduce((s, p) => s + (p.view_count || 0), 0),
+  };
+}
+
 // ---- Compte / sécurité ----
 export async function getAccountInfo(): Promise<{ email: string | null; phone: string | null }> {
   const {

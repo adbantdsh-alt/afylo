@@ -1,23 +1,37 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Avatar, PillButton } from '@/components/ui-kit';
 import { Afryko, Font, Type } from '@/constants/brand';
-import { face, myPosts } from '@/lib/mock';
+import { getCreatorData, type CreatorData } from '@/lib/db';
+import { fmtCount } from '@/lib/feed-map';
+import { face, myPosts, photo } from '@/lib/mock';
 
 /** Profil VISITEUR (celui d'un autre créateur, ouvert depuis une publication). */
 export default function CreatorProfile() {
   const router = useRouter();
   const params = useLocalSearchParams<{ id: string; name?: string; avatar?: string; badge?: string }>();
   const [followed, setFollowed] = useState(false);
+  const [data, setData] = useState<CreatorData | null>(null);
 
-  const name = params.name || 'Créateur';
-  const handle = params.id?.startsWith('@') ? params.id : `@${params.id ?? 'afryko'}`;
-  const avatar = params.avatar || face(params.id ?? 'afryko');
+  // Vrai profil depuis Supabase (repli sur les params passés depuis le feed)
+  useEffect(() => {
+    if (params.id) getCreatorData(params.id).then(setData).catch(() => {});
+  }, [params.id]);
+
+  const p = data?.profile;
+  const name = p?.display_name || params.name || 'Créateur';
+  const handle = p?.handle ? `@${p.handle}` : params.id?.startsWith('@') ? params.id : `@${params.id ?? 'afryko'}`;
+  const avatar = p?.avatar_url || params.avatar || face(params.id ?? 'afryko');
+  const bio = p?.bio || 'Créateur Afryko · Contenu, boutique et lives. Suis pour ne rien rater 🔥';
+  const verified = p?.is_verified === true;
+  const gridPosts = data?.posts?.length
+    ? data.posts.map((x) => ({ id: x.id, image: x.thumbnail_url || x.media_url || photo(x.id, 300, 380), video: x.kind === 'video', views: fmtCount(x.view_count) }))
+    : myPosts;
 
   return (
     <View style={styles.root}>
@@ -37,16 +51,17 @@ export default function CreatorProfile() {
         <View style={styles.head}>
           <Avatar uri={avatar} size={88} ring />
           <View style={styles.statsRow}>
-            <Stat value="24 K" label="Abonnés" />
-            <Stat value="128" label="Ventes" />
-            <Stat value="410 K" label="Vues" />
+            <Stat value={data ? fmtCount(data.followers) : '24 K'} label="Abonnés" />
+            <Stat value={data ? String(data.posts.length) : '128'} label="Posts" />
+            <Stat value={data ? fmtCount(data.views) : '410 K'} label="Vues" />
           </View>
         </View>
 
         <View style={styles.nameRow}>
           <Text style={styles.name}>{name}</Text>
+          {verified && <Ionicons name="checkmark-circle" size={18} color={Afryko.violet} />}
         </View>
-        <Text style={styles.bio}>Créateur Afryko · Contenu, boutique et lives. Suis pour ne rien rater 🔥</Text>
+        <Text style={styles.bio}>{bio}</Text>
 
         {/* Actions VISITEUR */}
         <View style={styles.actions}>
@@ -62,13 +77,13 @@ export default function CreatorProfile() {
 
         {/* Grille de posts */}
         <View style={styles.grid}>
-          {myPosts.map((p) => (
-            <View key={p.id} style={styles.cell}>
-              <Image source={{ uri: p.image }} style={StyleSheet.absoluteFill} contentFit="cover" transition={200} />
-              {p.video && (
+          {gridPosts.map((gp) => (
+            <View key={gp.id} style={styles.cell}>
+              <Image source={{ uri: gp.image }} style={StyleSheet.absoluteFill} contentFit="cover" transition={200} />
+              {gp.video && (
                 <View style={styles.cellTag}>
                   <Ionicons name="play" size={11} color="#fff" />
-                  <Text style={styles.cellTagText}>{p.views}</Text>
+                  <Text style={styles.cellTagText}>{gp.views}</Text>
                 </View>
               )}
             </View>
