@@ -28,6 +28,7 @@ export type ProfileInput = {
   handle?: string;
   bio?: string;
   avatar_url?: string | null;
+  banner_url?: string | null;
   website?: string | null;
   account_type?: 'creator' | 'merchant' | 'buyer';
 };
@@ -217,41 +218,68 @@ export async function listMyOrders(): Promise<Order[]> {
   return (data as Order[]) ?? [];
 }
 
-/** Tous mes posts (pour la grille de profil). [] si non connecté / nouveau compte. */
-export async function getMyPosts(): Promise<{ id: string; media_url: string | null; thumbnail_url: string | null; kind: string; view_count: number }[]> {
+export type MyPost = {
+  id: string;
+  media_url: string | null;
+  thumbnail_url: string | null;
+  kind: string;
+  caption: string | null;
+  view_count: number;
+  like_count: number;
+  comment_count: number;
+  created_at: string;
+};
+
+/** Tous mes posts (pour les onglets média + texte du profil). [] si non connecté. */
+export async function getMyPosts(): Promise<MyPost[]> {
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return [];
   const { data } = await supabase
     .from('posts')
-    .select('id,media_url,thumbnail_url,kind,view_count')
+    .select('id,media_url,thumbnail_url,kind,caption,view_count,like_count,comment_count,created_at')
     .eq('author_id', user.id)
     .order('created_at', { ascending: false });
-  return data ?? [];
+  return (data as MyPost[]) ?? [];
+}
+
+/** Publie un post 100% texte (façon X). Renvoie le post créé. */
+export async function createTextPost(caption: string): Promise<Post> {
+  const author_id = await requireUserId();
+  const { data, error } = await supabase
+    .from('posts')
+    .insert({ author_id, kind: 'text', caption, media_url: null, thumbnail_url: null })
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
 }
 
 export type ReachStats = {
   followers: number;
+  following: number;
   posts: number;
   views: number;
   topPosts: { id: string; thumbnail_url: string | null; media_url: string | null; view_count: number }[];
 };
 
-/** Portée réelle du compte connecté (abonnés, posts, vues). Tout à 0 pour un nouveau compte. */
+/** Portée réelle du compte connecté (abonnés, abonnements, posts, vues). Tout à 0 pour un nouveau compte. */
 export async function getMyReachStats(): Promise<ReachStats> {
-  const empty: ReachStats = { followers: 0, posts: 0, views: 0, topPosts: [] };
+  const empty: ReachStats = { followers: 0, following: 0, posts: 0, views: 0, topPosts: [] };
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return empty;
-  const [postsRes, followersRes] = await Promise.all([
+  const [postsRes, followersRes, followingRes] = await Promise.all([
     supabase.from('posts').select('id,thumbnail_url,media_url,view_count').eq('author_id', user.id).order('view_count', { ascending: false }),
     supabase.from('follows').select('*', { count: 'exact', head: true }).eq('following_id', user.id),
+    supabase.from('follows').select('*', { count: 'exact', head: true }).eq('follower_id', user.id),
   ]);
   const posts = (postsRes.data ?? []) as ReachStats['topPosts'];
   return {
     followers: followersRes.count ?? 0,
+    following: followingRes.count ?? 0,
     posts: posts.length,
     views: posts.reduce((s, p) => s + (p.view_count || 0), 0),
     topPosts: posts.slice(0, 5),

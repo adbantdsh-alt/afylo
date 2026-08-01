@@ -14,7 +14,7 @@ import { ReportSheet } from '@/components/report-sheet';
 import { RepostSheet } from '@/components/repost-sheet';
 import { Afryko, Font, Radius, Type } from '@/constants/brand';
 import { useAuthGate } from '@/lib/auth-gate';
-import { deletePost, listFeed, updatePostCaption } from '@/lib/db';
+import { createTextPost, deletePost, listFeed, updatePostCaption } from '@/lib/db';
 import { mapFeed } from '@/lib/feed-map';
 import { useMe } from '@/lib/me';
 import { useReposts } from '@/lib/reposts';
@@ -44,8 +44,13 @@ export default function Feed() {
       setFeed((prev) => prev.map((x) => (x.id === editingId ? { ...x, caption: t } : x)));
       if (!editingId.startsWith('txt')) updatePostCaption(editingId, t).catch(() => {});
     } else {
-      const post: Post = { id: `txt${Date.now()}`, name: myName, handle: `@${myHandle}`, avatar: myAvatar, time: "à l'instant", image: '', likes: '0', comments: '0', views: '0', shares: '0', caption: t, textOnly: true };
+      // Ajout optimiste puis persistance réelle (le post texte doit survivre + apparaître au profil)
+      const tempId = `txt${Date.now()}`;
+      const post: Post = { id: tempId, name: myName, handle: `@${myHandle}`, avatar: myAvatar, time: "à l'instant", image: '', likes: '0', comments: '0', views: '0', shares: '0', caption: t, textOnly: true };
       setFeed((prev) => [post, ...prev]);
+      createTextPost(t)
+        .then((row) => setFeed((prev) => prev.map((x) => (x.id === tempId ? { ...x, id: row.id } : x))))
+        .catch(() => {});
     }
     setComposeText('');
     setEditingId(null);

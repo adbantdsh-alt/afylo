@@ -33,7 +33,7 @@ export type WalletSummary = {
   feeTotal: number; // total prélevé par Afryko (5 %)
   breakdown: { label: string; value: number; dim?: boolean }[];
   transactions: WalletTx[];
-  reach: { followers: number; posts: number; views: number; sales: number };
+  reach: { followers: number; following: number; posts: number; views: number; sales: number };
   topPosts: { id: string; thumbnail_url: string | null; media_url: string | null; view_count: number }[];
 };
 
@@ -66,7 +66,7 @@ export const EMPTY_WALLET: WalletSummary = {
   feeTotal: 0,
   breakdown: [],
   transactions: [],
-  reach: { followers: 0, posts: 0, views: 0, sales: 0 },
+  reach: { followers: 0, following: 0, posts: 0, views: 0, sales: 0 },
   topPosts: [],
 };
 
@@ -140,7 +140,7 @@ export async function getWalletSummary(myId: string | null, affiliateExtra = 0):
     feeTotal,
     breakdown,
     transactions: txs,
-    reach: { followers: reach.followers, posts: reach.posts, views: reach.views, sales: salesCount },
+    reach: { followers: reach.followers, following: reach.following, posts: reach.posts, views: reach.views, sales: salesCount },
     topPosts: reach.topPosts,
   };
 }

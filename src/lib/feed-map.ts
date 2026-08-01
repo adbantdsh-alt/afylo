@@ -43,6 +43,7 @@ export function mapFeedPost(fp: FeedPost): Post {
   const a = fp.author;
   const prods = (fp.post_products ?? []).map((pp) => pp.product).filter(Boolean);
   const first = prods[0];
+  const isText = fp.kind === 'text' || (!fp.media_url && !fp.thumbnail_url);
   return {
     id: fp.id,
     name: a?.display_name || a?.handle || 'Créateur',
@@ -50,7 +51,8 @@ export function mapFeedPost(fp: FeedPost): Post {
     avatar: a?.avatar_url || avatar(0),
     badge: a?.account_type === 'merchant' ? 'boutique' : 'créateur',
     time: timeAgo(fp.created_at),
-    image: fp.thumbnail_url || fp.media_url || photo(fp.id, 700, 800),
+    image: isText ? '' : fp.thumbnail_url || fp.media_url || photo(fp.id, 700, 800),
+    textOnly: isText || undefined,
     likes: fmtCount(fp.like_count),
     comments: fmtCount(fp.comment_count),
     views: fmtCount(fp.view_count),
@@ -78,5 +80,6 @@ export function mapExploreItem(fp: FeedPost): ExploreItem {
 
 /** Feed accueil mappé + trié (variété, même ordre partout). */
 export const mapFeed = (rows: FeedPost[]): Post[] => rows.map(mapFeedPost).sort(byHash);
-/** Grille explore mappée + triée (alignée avec la visionneuse). */
-export const mapExplore = (rows: FeedPost[]): ExploreItem[] => rows.map(mapExploreItem).sort(byHash);
+/** Grille explore mappée + triée (média uniquement — pas les posts texte). */
+export const mapExplore = (rows: FeedPost[]): ExploreItem[] =>
+  rows.filter((fp) => fp.kind !== 'text' && (fp.media_url || fp.thumbnail_url)).map(mapExploreItem).sort(byHash);

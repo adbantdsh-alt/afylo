@@ -5,7 +5,7 @@
  */
 
 export type AccountType = 'creator' | 'merchant' | 'buyer';
-export type PostKind = 'image' | 'video' | 'story';
+export type PostKind = 'image' | 'video' | 'story' | 'text';
 export type LiveStatus = 'scheduled' | 'live' | 'ended';
 export type OrderStatus =
   | 'pending'
@@ -20,6 +20,7 @@ export interface Profile {
   handle: string | null;
   display_name: string | null;
   avatar_url: string | null;
+  banner_url: string | null;
   bio: string | null;
   website: string | null;
   account_type: AccountType;

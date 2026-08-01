@@ -1,5 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
+import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
@@ -9,11 +11,12 @@ import { Avatar, PillButton } from '@/components/ui-kit';
 import { Afryko, Font, Radius } from '@/constants/brand';
 import { useAuth } from '@/lib/auth';
 import { getMyProfile, updateMyProfile, uploadImage } from '@/lib/db';
-import { myProfile } from '@/lib/mock';
+import { useMe } from '@/lib/me';
 
 export default function EditProfile() {
   const router = useRouter();
   const { session } = useAuth();
+  const me = useMe();
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -21,6 +24,8 @@ export default function EditProfile() {
   const [error, setError] = useState<string | null>(null);
 
   const [avatar, setAvatar] = useState('');
+  const [banner, setBanner] = useState('');
+  const [uploadingBanner, setUploadingBanner] = useState(false);
   const [name, setName] = useState('');
   const [handle, setHandle] = useState('');
   const [bio, setBio] = useState('');
@@ -35,6 +40,7 @@ export default function EditProfile() {
       .then((prof) => {
         if (prof) {
           setAvatar(prof.avatar_url ?? '');
+          setBanner(prof.banner_url ?? '');
           setName(prof.display_name ?? '');
           setHandle(prof.handle ?? '');
           setBio(prof.bio ?? '');
@@ -64,6 +70,26 @@ export default function EditProfile() {
     }
   };
 
+  const pickBanner = async () => {
+    const res = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], allowsEditing: true, aspect: [3, 1], quality: 0.7 });
+    if (res.canceled) return;
+    const uri = res.assets[0].uri;
+    if (!session) {
+      setBanner(uri); // aperçu en mode invité (non sauvegardé)
+      return;
+    }
+    setUploadingBanner(true);
+    setError(null);
+    try {
+      const url = await uploadImage('avatars', uri);
+      setBanner(url);
+    } catch (e: any) {
+      setError(e.message ?? "Échec de l'upload de la bannière.");
+    } finally {
+      setUploadingBanner(false);
+    }
+  };
+
   const save = async () => {
     setError(null);
     if (!session) {
@@ -77,6 +103,7 @@ export default function EditProfile() {
         handle: handle.trim().replace(/^@/, ''),
         bio: bio.trim(),
         avatar_url: avatar.trim() || null,
+        banner_url: banner.trim() || null,
         website: website.trim() || null,
       });
       (router.canGoBack() ? router.back() : router.replace('/accueil'));
@@ -103,11 +130,24 @@ export default function EditProfile() {
         <ActivityIndicator color={Afryko.violet} style={{ marginTop: 40 }} />
       ) : (
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
-          <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 40 }} keyboardShouldPersistTaps="handled">
-            {/* Photo */}
+          <ScrollView contentContainerStyle={{ paddingBottom: 40 }} keyboardShouldPersistTaps="handled">
+            {/* Bannière (façon X) */}
+            <Pressable style={styles.bannerEdit} onPress={pickBanner}>
+              {banner ? (
+                <Image source={{ uri: banner }} style={StyleSheet.absoluteFill} contentFit="cover" />
+              ) : (
+                <LinearGradient colors={[Afryko.violet, Afryko.violet2]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill} />
+              )}
+              <View style={styles.bannerScrim}>
+                {uploadingBanner ? <ActivityIndicator color="#fff" /> : <Ionicons name="camera" size={22} color="#fff" />}
+                <Text style={styles.bannerHint}>Bannière</Text>
+              </View>
+            </Pressable>
+
+            {/* Photo (chevauche la bannière) */}
             <View style={styles.avatarWrap}>
-              <Pressable onPress={pickPhoto}>
-                <Avatar uri={avatar || myProfile.avatar} size={100} ring />
+              <Pressable onPress={pickPhoto} style={styles.avatarEdit}>
+                <Avatar uri={avatar || me.avatar} size={92} />
                 <View style={styles.cameraBadge}>
                   {uploadingPhoto ? <ActivityIndicator color="#fff" size="small" /> : <Ionicons name="camera" size={18} color="#fff" />}
                 </View>
@@ -116,6 +156,8 @@ export default function EditProfile() {
                 <Text style={styles.changePhoto}>Changer la photo</Text>
               </Pressable>
             </View>
+
+            <View style={{ paddingHorizontal: 20 }}>
 
             {!session && (
               <Text style={styles.demoNote}>Mode invité : connecte-toi pour enregistrer tes modifications.</Text>
@@ -128,7 +170,8 @@ export default function EditProfile() {
 
             {error && <Text style={styles.error}>{error}</Text>}
 
-            <PillButton label="Enregistrer" icon="checkmark" onPress={save} loading={saving} style={{ marginTop: 22 }} />
+              <PillButton label="Enregistrer" icon="checkmark" onPress={save} loading={saving} style={{ marginTop: 22 }} />
+            </View>
           </ScrollView>
         </KeyboardAvoidingView>
       )}
@@ -172,7 +215,11 @@ const styles = StyleSheet.create({
   hbtn: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
   title: { color: Afryko.text, fontSize: 18, fontFamily: Font.bold },
 
-  avatarWrap: { alignItems: 'center', marginTop: 8, gap: 10 },
+  bannerEdit: { height: 140, backgroundColor: Afryko.surfaceAlt },
+  bannerScrim: { ...StyleSheet.absoluteFillObject, alignItems: 'center', justifyContent: 'center', gap: 4, backgroundColor: '#00000040' },
+  bannerHint: { color: '#fff', fontSize: 12, fontFamily: Font.semibold },
+  avatarWrap: { alignItems: 'center', marginTop: -46, gap: 10 },
+  avatarEdit: { borderRadius: 50, borderWidth: 4, borderColor: Afryko.bg, backgroundColor: Afryko.bg },
   cameraBadge: { position: 'absolute', bottom: 0, right: 0, width: 34, height: 34, borderRadius: 17, backgroundColor: Afryko.violet, alignItems: 'center', justifyContent: 'center', borderWidth: 3, borderColor: Afryko.bg },
   changePhoto: { color: Afryko.violet, fontSize: 14, fontFamily: Font.semibold },
   demoNote: { color: Afryko.textFaint, fontSize: 12, textAlign: 'center', marginTop: 16 },
