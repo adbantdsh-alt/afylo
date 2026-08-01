@@ -15,7 +15,7 @@ import { RepostSheet } from '@/components/repost-sheet';
 import { Afryko, Font, Radius, Type } from '@/constants/brand';
 import { useAuthGate } from '@/lib/auth-gate';
 import { getMyProfile, isProAccount, listFeed } from '@/lib/db';
-import { mapFeedPost } from '@/lib/feed-map';
+import { mapFeed } from '@/lib/feed-map';
 import { useReposts } from '@/lib/reposts';
 import { useAlwaysShowTabBar } from '@/lib/tabbar';
 import { me, posts, type Post } from '@/lib/mock';
@@ -36,7 +36,7 @@ export default function Feed() {
   useEffect(() => {
     getMyProfile().then((p) => { setIsPro(isProAccount(p?.account_type)); if (p?.handle) setMyHandle(p.handle); }).catch(() => {});
     // Vrai réseau : on lit le feed depuis Supabase, repli sur le mock si vide/erreur
-    listFeed().then((rows) => { if (rows && rows.length) setFeed(rows.map(mapFeedPost)); }).catch(() => {});
+    listFeed().then((rows) => { if (rows && rows.length) setFeed(mapFeed(rows)); }).catch(() => {});
   }, []);
 
   return (

@@ -13,7 +13,7 @@ import { RatingStar } from '@/components/rating-star';
 import { Afryko, Font, Radius } from '@/constants/brand';
 import { useAuthGate } from '@/lib/auth-gate';
 import { listFeed } from '@/lib/db';
-import { mapExploreItem } from '@/lib/feed-map';
+import { mapExplore } from '@/lib/feed-map';
 import { exploreItems, type ExploreItem, video } from '@/lib/mock';
 
 export default function Watch() {
@@ -23,7 +23,7 @@ export default function Watch() {
   // Fil « Découvrir » : Supabase, repli sur le mock (même ordre que la grille explore)
   const [FEED, setFEED] = useState<ExploreItem[]>(exploreItems);
   useEffect(() => {
-    listFeed().then((rows) => { if (rows && rows.length) setFEED(rows.map(mapExploreItem)); }).catch(() => {});
+    listFeed().then((rows) => { if (rows && rows.length) setFEED(mapExplore(rows)); }).catch(() => {});
   }, []);
   const startIdx = Math.min(Math.max(parseInt(start ?? '0', 10) || 0, 0), FEED.length - 1);
   const [active, setActive] = useState(startIdx);

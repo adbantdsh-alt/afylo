@@ -30,6 +30,14 @@ export function fmtCount(n: number): string {
 
 const pct = (n?: number | null) => (n && n > 0 ? `${Math.round(n)}%` : undefined);
 
+/** Hash déterministe d'un id → mélange stable (même ordre partout, évite de regrouper un même auteur). */
+export function hashId(s: string): number {
+  let h = 0;
+  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
+  return h;
+}
+const byHash = <T extends { id: string }>(a: T, b: T) => hashId(a.id) - hashId(b.id);
+
 /** FeedPost (DB) → carte de l'accueil. */
 export function mapFeedPost(fp: FeedPost): Post {
   const a = fp.author;
@@ -54,7 +62,7 @@ export function mapFeedPost(fp: FeedPost): Post {
 }
 
 /** FeedPost (DB) → item de la grille d'explore. */
-export function mapExploreItem(fp: FeedPost, i: number): ExploreItem {
+export function mapExploreItem(fp: FeedPost): ExploreItem {
   const a = fp.author;
   const first = (fp.post_products ?? [])[0]?.product;
   return {
@@ -62,8 +70,13 @@ export function mapExploreItem(fp: FeedPost, i: number): ExploreItem {
     name: a?.display_name || a?.handle || 'Créateur',
     label: a?.bio || fp.caption || 'Afryko',
     image: fp.thumbnail_url || fp.media_url || photo(fp.id, 500, 700),
-    tall: i % 3 === 0,
+    tall: hashId(fp.id) % 3 === 0,
     live: false,
     product: first ? { title: first.title, price: formatCfa(first.price_cfa) } : undefined,
   };
 }
+
+/** Feed accueil mappé + trié (variété, même ordre partout). */
+export const mapFeed = (rows: FeedPost[]): Post[] => rows.map(mapFeedPost).sort(byHash);
+/** Grille explore mappée + triée (alignée avec la visionneuse). */
+export const mapExplore = (rows: FeedPost[]): ExploreItem[] => rows.map(mapExploreItem).sort(byHash);

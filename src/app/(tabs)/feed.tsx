@@ -7,7 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Afryko, Radius } from '@/constants/brand';
 import { listFeed } from '@/lib/db';
-import { mapExploreItem } from '@/lib/feed-map';
+import { mapExplore } from '@/lib/feed-map';
 import { exploreItems, type ExploreItem } from '@/lib/mock';
 import { useHideOnScroll } from '@/lib/tabbar';
 
@@ -18,7 +18,7 @@ export default function Explore() {
 
   // Vrai réseau : grille alimentée par Supabase, repli sur le mock
   useEffect(() => {
-    listFeed().then((rows) => { if (rows && rows.length) setItems(rows.map(mapExploreItem)); }).catch(() => {});
+    listFeed().then((rows) => { if (rows && rows.length) setItems(mapExplore(rows)); }).catch(() => {});
   }, []);
 
   const col = (mod: number) => items.filter((_, i) => i % 2 === mod);
