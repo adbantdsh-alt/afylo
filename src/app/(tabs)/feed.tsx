@@ -1,18 +1,28 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
+import { useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Afryko, Radius } from '@/constants/brand';
+import { listFeed } from '@/lib/db';
+import { mapExploreItem } from '@/lib/feed-map';
 import { exploreItems, type ExploreItem } from '@/lib/mock';
 import { useHideOnScroll } from '@/lib/tabbar';
 
 export default function Explore() {
   const router = useRouter();
   const scroll = useHideOnScroll();
-  const col = (mod: number) => exploreItems.filter((_, i) => i % 2 === mod);
-  const open = (it: ExploreItem) => router.push(`/watch/${exploreItems.indexOf(it)}`);
+  const [items, setItems] = useState<ExploreItem[]>(exploreItems);
+
+  // Vrai réseau : grille alimentée par Supabase, repli sur le mock
+  useEffect(() => {
+    listFeed().then((rows) => { if (rows && rows.length) setItems(rows.map(mapExploreItem)); }).catch(() => {});
+  }, []);
+
+  const col = (mod: number) => items.filter((_, i) => i % 2 === mod);
+  const open = (it: ExploreItem) => router.push(`/watch/${items.indexOf(it)}`);
 
   return (
     <View style={styles.root}>

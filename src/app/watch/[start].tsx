@@ -12,15 +12,19 @@ import { RateSheet } from '@/components/rate-sheet';
 import { RatingStar } from '@/components/rating-star';
 import { Afryko, Font, Radius } from '@/constants/brand';
 import { useAuthGate } from '@/lib/auth-gate';
+import { listFeed } from '@/lib/db';
+import { mapExploreItem } from '@/lib/feed-map';
 import { exploreItems, type ExploreItem, video } from '@/lib/mock';
-
-// Fil « Découvrir » : images + vidéos mélangées (ordre = algo, partagé avec la grille)
-const FEED = exploreItems;
 
 export default function Watch() {
   const router = useRouter();
   const { height, width } = useWindowDimensions();
   const { start } = useLocalSearchParams<{ start?: string }>();
+  // Fil « Découvrir » : Supabase, repli sur le mock (même ordre que la grille explore)
+  const [FEED, setFEED] = useState<ExploreItem[]>(exploreItems);
+  useEffect(() => {
+    listFeed().then((rows) => { if (rows && rows.length) setFEED(rows.map(mapExploreItem)); }).catch(() => {});
+  }, []);
   const startIdx = Math.min(Math.max(parseInt(start ?? '0', 10) || 0, 0), FEED.length - 1);
   const [active, setActive] = useState(startIdx);
 
