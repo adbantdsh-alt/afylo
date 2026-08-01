@@ -55,6 +55,17 @@ export async function getProfileByHandle(handle: string): Promise<Profile | null
   return data;
 }
 
+/** Recherche de comptes par nom OU @handle (vrais profils Supabase). */
+export async function searchProfiles(q: string): Promise<Profile[]> {
+  const term = q.trim().replace(/^@/, '').replace(/[,()%*]/g, ' ').trim();
+  let req = supabase.from('profiles').select('*').limit(40);
+  if (term) req = req.or(`display_name.ilike.%${term}%,handle.ilike.%${term}%`);
+  else req = req.order('created_at', { ascending: false });
+  const { data, error } = await req;
+  if (error) return [];
+  return (data as Profile[]) ?? [];
+}
+
 export type CreatorData = {
   profile: Profile;
   posts: { id: string; thumbnail_url: string | null; media_url: string | null; kind: string; view_count: number }[];

@@ -1,14 +1,16 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
-import { useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { useEffect, useState } from 'react';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Avatar } from '@/components/ui-kit';
 import { Afryko, Font, Radius, Type } from '@/constants/brand';
-import { exploreItems } from '@/lib/mock';
+import { searchProfiles } from '@/lib/db';
+import { face } from '@/lib/mock';
 import { searchSounds } from '@/lib/sounds';
+import type { Profile } from '@/types/db';
 
 const TABS = ['Créateurs', 'Vidéos', 'Sons', 'Tags'];
 const TAGS = ['#dakar', '#waxstyle', '#afrobeats', '#tutoriel', '#liveshopping', '#senegal', '#beaute', '#mode'];
@@ -17,11 +19,24 @@ export default function Search() {
   const router = useRouter();
   const [q, setQ] = useState('');
   const [tab, setTab] = useState(0);
+  const [creators, setCreators] = useState<Profile[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const creators = useMemo(
-    () => exploreItems.filter((c) => (q ? c.name.toLowerCase().includes(q.toLowerCase()) : true)),
-    [q],
-  );
+  // Recherche RÉELLE des comptes (Supabase), avec léger anti-rebond
+  useEffect(() => {
+    let cancel = false;
+    setLoading(true);
+    const t = setTimeout(() => {
+      searchProfiles(q)
+        .then((r) => { if (!cancel) setCreators(r); })
+        .catch(() => { if (!cancel) setCreators([]); })
+        .finally(() => { if (!cancel) setLoading(false); });
+    }, 180);
+    return () => { cancel = true; clearTimeout(t); };
+  }, [q]);
+
+  const openCreator = (p: Profile) =>
+    router.push({ pathname: '/creator/[id]', params: { id: p.handle ?? p.id, name: p.display_name ?? '', avatar: p.avatar_url ?? '' } });
 
   return (
     <View style={styles.root}>
@@ -65,14 +80,24 @@ export default function Search() {
               </Pressable>
             ))}
           </View>
+        ) : loading ? (
+          <ActivityIndicator color={Afryko.violet} style={{ marginTop: 30 }} />
+        ) : creators.length === 0 ? (
+          <Text style={styles.emptyText}>Aucun compte trouvé{q ? ` pour « ${q} »` : ''}.</Text>
         ) : (
-          <View style={styles.grid}>
+          <View>
             {creators.map((c) => (
-              <View key={c.id} style={styles.creator}>
-                <Avatar uri={c.image} size={60} ring={c.live} />
-                <Text style={styles.creatorName} numberOfLines={1}>{c.name}</Text>
-                <Text style={styles.creatorLabel} numberOfLines={1}>{c.label}</Text>
-              </View>
+              <Pressable key={c.id} style={styles.resultRow} onPress={() => openCreator(c)}>
+                <Avatar uri={c.avatar_url || face(c.handle ?? c.id)} size={48} ring={c.is_verified} />
+                <View style={{ flex: 1 }}>
+                  <View style={styles.resultNameRow}>
+                    <Text style={styles.resultName} numberOfLines={1}>{c.display_name || c.handle || 'Créateur'}</Text>
+                    {c.is_verified && <Ionicons name="checkmark-circle" size={15} color={Afryko.violet} />}
+                  </View>
+                  <Text style={styles.resultHandle} numberOfLines={1}>@{c.handle}{c.bio ? ` · ${c.bio}` : ''}</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={18} color={Afryko.textFaint} />
+              </Pressable>
             ))}
           </View>
         )}
@@ -91,10 +116,11 @@ const styles = StyleSheet.create({
   tabOn: { backgroundColor: Afryko.violet },
   tabText: { ...Type.small, fontFamily: Font.semibold, color: Afryko.text },
 
-  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 16 },
-  creator: { width: 80, alignItems: 'center' },
-  creatorName: { ...Type.caption, fontFamily: Font.semibold, color: Afryko.text, marginTop: 6 },
-  creatorLabel: { ...Type.caption, color: Afryko.textDim },
+  emptyText: { color: Afryko.textDim, fontSize: 14, textAlign: 'center', marginTop: 34 },
+  resultRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 10 },
+  resultNameRow: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  resultName: { ...Type.body, fontFamily: Font.semibold, color: Afryko.text, flexShrink: 1 },
+  resultHandle: { ...Type.caption, color: Afryko.textDim, marginTop: 1 },
 
   soundRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 10 },
   soundIcon: { width: 44, height: 44, borderRadius: 10, backgroundColor: Afryko.surfaceAlt, alignItems: 'center', justifyContent: 'center' },
