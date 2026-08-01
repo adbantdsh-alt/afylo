@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useEffect, useState } from 'react';
-import { Linking, Modal, Pressable, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
+import { Linking, Modal, Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
 
 import { Afryko, Font, Radius, Type } from '@/constants/brand';
 import { maskCard, maskPhone, useCheckoutProfile, type PayMethod } from '@/lib/checkout-profile';
@@ -73,6 +73,7 @@ export function PaymentSheet({
         <Pressable style={StyleSheet.absoluteFill} onPress={close} />
         <View style={styles.sheet}>
           <View style={styles.grip} />
+          <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false} bounces={false} keyboardShouldPersistTaps="handled">
 
           {/* En-tête sécurisé */}
           <View style={styles.secure}>
@@ -185,6 +186,7 @@ export function PaymentSheet({
               </Pressable>
             </>
           )}
+          </ScrollView>
         </View>
       </View>
     </Modal>
@@ -193,33 +195,34 @@ export function PaymentSheet({
 
 const styles = StyleSheet.create({
   overlay: { flex: 1, backgroundColor: '#00000066', justifyContent: 'flex-end' },
-  sheet: { backgroundColor: Afryko.glass, borderTopLeftRadius: 28, borderTopRightRadius: 28, padding: 22, paddingBottom: 34, overflow: 'hidden' },
-  grip: { width: 40, height: 4, borderRadius: 2, backgroundColor: Afryko.border, alignSelf: 'center', marginBottom: 16 },
+  sheet: { backgroundColor: Afryko.glass, borderTopLeftRadius: 26, borderTopRightRadius: 26, paddingHorizontal: 18, paddingTop: 10, paddingBottom: 18, maxHeight: '84%', overflow: 'hidden' },
+  scroll: { flexShrink: 1 },
+  grip: { width: 38, height: 4, borderRadius: 2, backgroundColor: Afryko.border, alignSelf: 'center', marginBottom: 10 },
 
-  secure: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, marginBottom: 16 },
+  secure: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, marginBottom: 12 },
   secureText: { ...Type.small, color: Afryko.textDim },
   xpBadge: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   xpDot: { width: 12, height: 12, borderRadius: 6 },
   xpText: { ...Type.small, fontFamily: Font.bold, color: '#1F4E79', marginLeft: 2 },
 
-  product: { alignItems: 'center', marginBottom: 18 },
-  productTitle: { ...Type.body, color: Afryko.textDim },
-  productPrice: { ...Type.title, fontSize: 34, color: Afryko.text, marginTop: 4 },
+  product: { alignItems: 'center', marginBottom: 12 },
+  productTitle: { ...Type.small, color: Afryko.textDim },
+  productPrice: { ...Type.title, fontSize: 26, color: Afryko.text, marginTop: 2 },
 
-  section: { ...Type.small, fontFamily: Font.semibold, color: Afryko.text, marginBottom: 10 },
+  section: { ...Type.small, fontFamily: Font.semibold, color: Afryko.text, marginBottom: 8 },
   chooseRow: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: Afryko.surface, borderRadius: Radius.md, borderWidth: 1, borderColor: Afryko.border, padding: 12 },
   chooseIcon: { width: 36, height: 36, borderRadius: 10, backgroundColor: '#3E5BFF14', alignItems: 'center', justifyContent: 'center' },
   chooseTitle: { ...Type.body, fontFamily: Font.semibold, color: Afryko.text, flex: 1 },
   choosePrice: { ...Type.body, fontFamily: Font.bold, color: Afryko.violet },
-  methods: { gap: 10, marginBottom: 16 },
-  method: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: Afryko.surface, borderRadius: Radius.md, borderWidth: 1, borderColor: Afryko.border, padding: 12 },
-  methodDot: { width: 34, height: 34, borderRadius: 17, alignItems: 'center', justifyContent: 'center' },
+  methods: { gap: 8, marginBottom: 12 },
+  method: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: Afryko.surface, borderRadius: Radius.md, borderWidth: 1, borderColor: Afryko.border, padding: 10 },
+  methodDot: { width: 30, height: 30, borderRadius: 15, alignItems: 'center', justifyContent: 'center' },
   methodDotText: { color: '#fff', fontFamily: Font.bold, fontSize: 15 },
   methodName: { ...Type.body, fontFamily: Font.semibold, color: Afryko.text },
   methodHint: { ...Type.caption, color: Afryko.textDim, marginTop: 1 },
 
-  identity: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: '#3E5BFF0F', borderWidth: 1, borderColor: '#3E5BFF33', borderRadius: Radius.md, padding: 12, marginBottom: 16 },
-  identityIcon: { width: 36, height: 36, borderRadius: 18, backgroundColor: '#3E5BFF1A', alignItems: 'center', justifyContent: 'center' },
+  identity: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: '#3E5BFF0F', borderWidth: 1, borderColor: '#3E5BFF33', borderRadius: Radius.md, padding: 10, marginBottom: 12 },
+  identityIcon: { width: 34, height: 34, borderRadius: 17, backgroundColor: '#3E5BFF1A', alignItems: 'center', justifyContent: 'center' },
   identityName: { ...Type.body, fontFamily: Font.bold, color: Afryko.text },
   identitySub: { ...Type.caption, color: Afryko.textDim, marginTop: 1 },
 
@@ -227,16 +230,16 @@ const styles = StyleSheet.create({
   rememberText: { ...Type.body, fontFamily: Font.semibold, color: Afryko.text },
   rememberSub: { ...Type.caption, color: Afryko.textDim, marginTop: 1 },
 
-  input: { backgroundColor: Afryko.surface, borderRadius: Radius.md, borderWidth: 1, borderColor: Afryko.border, color: Afryko.text, ...Type.body, paddingHorizontal: 16, height: 52, marginBottom: 12 },
+  input: { backgroundColor: Afryko.surface, borderRadius: Radius.md, borderWidth: 1, borderColor: Afryko.border, color: Afryko.text, ...Type.body, paddingHorizontal: 16, height: 48, marginBottom: 10 },
 
-  payBtn: { height: 54, borderRadius: Radius.pill, backgroundColor: Afryko.violet, alignItems: 'center', justifyContent: 'center', marginTop: 6 },
-  payText: { color: '#fff', fontFamily: Font.semibold, fontSize: 17 },
+  payBtn: { height: 50, borderRadius: Radius.pill, backgroundColor: Afryko.violet, alignItems: 'center', justifyContent: 'center', marginTop: 8 },
+  payText: { color: '#fff', fontFamily: Font.semibold, fontSize: 16 },
 
-  footer: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, marginTop: 14 },
+  footer: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, marginTop: 10 },
   footerText: { ...Type.caption, color: Afryko.textDim },
 
-  doneBox: { alignItems: 'center', paddingVertical: 10 },
-  doneCircle: { width: 76, height: 76, borderRadius: 38, backgroundColor: Afryko.green, alignItems: 'center', justifyContent: 'center', marginBottom: 16 },
+  doneBox: { alignItems: 'center', paddingVertical: 8 },
+  doneCircle: { width: 68, height: 68, borderRadius: 34, backgroundColor: Afryko.green, alignItems: 'center', justifyContent: 'center', marginBottom: 14 },
   doneTitle: { ...Type.title, color: Afryko.text },
   doneSub: { ...Type.body, color: Afryko.textDim, textAlign: 'center', marginTop: 8, lineHeight: 22 },
 });
