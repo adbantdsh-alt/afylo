@@ -186,8 +186,7 @@ export default function Profil() {
             <View style={styles.menuHandle} />
             {isOwner && !isPro && <MenuItem icon="briefcase-outline" label="Passer en compte professionnel" onPress={() => { setMenuOpen(false); router.push('/upgrade-pro'); }} />}
             {isPro && <MenuItem icon="repeat" label="Affiliation — produits à revendre" onPress={() => { setMenuOpen(false); router.push('/affiliation'); }} />}
-            {isOwner && isPro && <MenuItem icon="stats-chart" label="Studio & statistiques" onPress={() => { setMenuOpen(false); router.push('/studio'); }} />}
-            {isOwner && isPro && <MenuItem icon="wallet-outline" label="Portefeuille & retraits" onPress={() => { setMenuOpen(false); router.push('/studio'); }} />}
+            {isOwner && isPro && <MenuItem icon="wallet-outline" label="Portefeuille" onPress={() => { setMenuOpen(false); router.push('/studio'); }} />}
             {isOwner && isPro && <MenuItem icon="bag-add-outline" label="Gérer ma boutique" onPress={() => { setMenuOpen(false); setSection('boutique'); }} />}
             <MenuItem icon="share-social-outline" label="Partager le profil" onPress={() => { setMenuOpen(false); share(); }} />
             <MenuItem icon="bookmark-outline" label="Enregistrements" onPress={() => setMenuOpen(false)} />

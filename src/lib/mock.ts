@@ -260,6 +260,30 @@ export const studioTopPosts = [
   { id: 't3', image: face('myp7', 200, 200), views: '58 K', sales: 7, viral: 73 },
 ];
 
+// ---- Portefeuille ----
+export const wallet = {
+  available: 431725, // solde retirable (FCFA)
+  pending: 124500, // en séquestre, libéré à la livraison
+  currency: 'FCFA',
+  method: { kind: 'wave' as 'wave' | 'om', label: 'Wave', number: '+221 77 •• •• 042' },
+  breakdown: [
+    { label: 'Ventes produits', value: 382000 },
+    { label: 'Pourboires lives', value: 35000 },
+    { label: 'Commissions affiliation', value: 18500 },
+    { label: 'Commission Afylo (5%)', value: -21775, dim: true },
+  ],
+};
+
+export type WalletTx = { id: string; kind: 'sale' | 'tip' | 'affiliation' | 'payout' | 'escrow'; label: string; sub: string; amount: number; date: string };
+export const walletTx: WalletTx[] = [
+  { id: 'w1', kind: 'sale', label: 'Vente · Coffret soin visage', sub: 'Awa D. · livré', amount: 12000, date: "Aujourd'hui" },
+  { id: 'w2', kind: 'tip', label: 'Pourboire live', sub: 'de @modoubeats', amount: 3500, date: "Aujourd'hui" },
+  { id: 'w3', kind: 'escrow', label: 'Séquestre · Sneakers urbaines', sub: 'en attente de livraison', amount: 25000, date: 'Hier' },
+  { id: 'w4', kind: 'payout', label: 'Retrait Wave', sub: '+221 77 •• •• 042', amount: -150000, date: 'il y a 3 j' },
+  { id: 'w5', kind: 'affiliation', label: 'Commission affiliation', sub: 'Beatpack Afro 2026', amount: 1980, date: 'il y a 4 j' },
+  { id: 'w6', kind: 'sale', label: 'Vente · Sac wax premium', sub: 'Fatou N. · livré', amount: 18000, date: 'il y a 5 j' },
+];
+
 // ---- Affiliation (marketplace) ----
 export type AffiliationProduct = {
   id: string;
