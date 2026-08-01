@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import { CameraView, useCameraPermissions } from 'expo-camera';
+import { CameraView, useCameraPermissions, useMicrophonePermissions } from 'expo-camera';
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 import { useVideoPlayer, VideoView } from 'expo-video';
@@ -25,7 +25,11 @@ export default function Creer() {
   const { hidden } = useTabBar();
 
   const [permission, requestPermission] = useCameraPermissions();
+  const [micPerm, requestMic] = useMicrophonePermissions();
   const camRef = useRef<CameraView>(null);
+
+  // Autoriser caméra + micro ensemble (le micro est requis pour l'enregistrement vidéo)
+  const allowCamera = async () => { await requestPermission(); await requestMic(); };
 
   const [mode, setMode] = useState<Mode>('Story');
   const [facing, setFacing] = useState<'front' | 'back'>('back');
@@ -86,6 +90,8 @@ export default function Creer() {
 
   const beginRecord = async () => {
     if (!camRef.current || recordingRef.current) return;
+    // Le micro est requis pour recordAsync — on le demande si besoin
+    if (!micPerm?.granted) { const r = await requestMic(); if (!r?.granted) { /* on enregistre sans son si refusé */ } }
     recordingRef.current = true;
     setRecording(true);
     try {
@@ -148,7 +154,7 @@ export default function Creer() {
         <PreviewMedia media={media} />
       ) : permission?.granted ? (
         <>
-          <CameraView key={facing} ref={camRef} style={StyleSheet.absoluteFill} facing={facing} mode="video" />
+          <CameraView key={facing} ref={camRef} style={StyleSheet.absoluteFill} facing={facing} mode="video" mirror={false} />
           {/* Double-tap n'importe où = retourner la caméra */}
           <Pressable style={StyleSheet.absoluteFill} onPress={onCameraTap} />
         </>
@@ -156,7 +162,7 @@ export default function Creer() {
         <View style={[StyleSheet.absoluteFill, styles.stageEmpty]}>
           <View style={styles.cameraCircle}><Ionicons name="camera" size={34} color="#fff" /></View>
           <Text style={styles.stageHint}>{camDenied ? 'Caméra non autorisée' : 'Active la caméra'}</Text>
-          <Pressable onPress={requestPermission} style={styles.allowBtn}><Text style={styles.allowText}>Autoriser la caméra</Text></Pressable>
+          <Pressable onPress={allowCamera} style={styles.allowBtn}><Text style={styles.allowText}>Autoriser caméra & micro</Text></Pressable>
           <Text style={styles.stageSub}>ou choisis depuis la galerie ci-dessous</Text>
         </View>
       )}
@@ -302,7 +308,7 @@ function PreviewVideo({ uri }: { uri: string }) {
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#000' },
+  root: { flex: 1, backgroundColor: '#000', overflow: 'hidden' },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingTop: 8, height: 48 },
   hIcon: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#00000055', alignItems: 'center', justifyContent: 'center' },
 

@@ -691,7 +691,7 @@ function BigPop({ x, y }: { x: number; y: number }) {
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#000' },
+  root: { flex: 1, backgroundColor: '#000', overflow: 'hidden' },
   permWrap: { alignItems: 'center', justifyContent: 'center', gap: 12, backgroundColor: '#111' },
   permBtn: { backgroundColor: Afryko.violet, paddingHorizontal: 18, paddingVertical: 10, borderRadius: Radius.pill },
   permBtnText: { color: '#fff', fontFamily: Font.semibold },

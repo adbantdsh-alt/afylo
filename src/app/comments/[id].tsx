@@ -36,13 +36,20 @@ const seed: Comment[] = [
 
 export default function Comments() {
   const router = useRouter();
-  const params = useLocalSearchParams<{ id: string }>();
+  const params = useLocalSearchParams<{ id: string; owner?: string }>();
   const gate = useAuthGate();
+  const isOwner = params.owner === '1'; // le propriétaire du post peut supprimer n'importe quel commentaire
 
   const [comments, setComments] = useState<Comment[]>(seed);
   const [text, setText] = useState('');
   const [replyTo, setReplyTo] = useState<{ id: string; handle: string } | null>(null);
   const [recording, setRecording] = useState(false);
+
+  const close = () => (router.canGoBack() ? router.back() : router.replace('/accueil'));
+  const deleteComment = (id: string) => {
+    const rec = (list: Comment[]): Comment[] => list.filter((c) => c.id !== id).map((c) => ({ ...c, replies: rec(c.replies) }));
+    setComments(rec);
+  };
 
   const addVoice = () => {
     if (!gate('commenter')) return;
@@ -91,7 +98,7 @@ export default function Comments() {
 
         <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16, paddingBottom: 12 }} showsVerticalScrollIndicator={false}>
           {comments.map((c) => (
-            <CommentRow key={c.id} c={c} onLike={toggleLike} onReply={(t) => setReplyTo(t)} />
+            <CommentRow key={c.id} c={c} isOwner={isOwner} onLike={toggleLike} onReply={(t) => setReplyTo(t)} onDelete={deleteComment} />
           ))}
         </ScrollView>
 
@@ -136,9 +143,10 @@ export default function Comments() {
   );
 }
 
-function CommentRow({ c, onLike, onReply, depth = 0 }: { c: Comment; onLike: (id: string) => void; onReply: (t: { id: string; handle: string }) => void; depth?: number }) {
+function CommentRow({ c, isOwner, onLike, onReply, onDelete, depth = 0 }: { c: Comment; isOwner: boolean; onLike: (id: string) => void; onReply: (t: { id: string; handle: string }) => void; onDelete: (id: string) => void; depth?: number }) {
   const [reaction, setReaction] = useState<string | null>(null);
   const [picker, setPicker] = useState(false);
+  const canDelete = isOwner || c.name === 'Toi'; // propriétaire du post OU auteur du commentaire
 
   return (
     <View style={{ marginLeft: depth * 44, marginBottom: 16 }}>
@@ -162,6 +170,11 @@ function CommentRow({ c, onLike, onReply, depth = 0 }: { c: Comment; onLike: (id
             <Pressable onPress={() => setPicker((p) => !p)}>
               <Text style={styles.cReply}>Réagir</Text>
             </Pressable>
+            {canDelete && (
+              <Pressable onPress={() => onDelete(c.id)}>
+                <Text style={[styles.cReply, { color: Afryko.live }]}>Supprimer</Text>
+              </Pressable>
+            )}
             {reaction && <Text style={{ fontSize: 15 }}>{reaction}</Text>}
           </View>
           {picker && (
@@ -181,7 +194,7 @@ function CommentRow({ c, onLike, onReply, depth = 0 }: { c: Comment; onLike: (id
       </View>
       {c.replies.map((r) => (
         <View key={r.id} style={{ marginTop: 14 }}>
-          <CommentRow c={r} onLike={onLike} onReply={onReply} depth={depth + 1} />
+          <CommentRow c={r} isOwner={isOwner} onLike={onLike} onReply={onReply} onDelete={onDelete} depth={depth + 1} />
         </View>
       ))}
     </View>
@@ -190,7 +203,7 @@ function CommentRow({ c, onLike, onReply, depth = 0 }: { c: Comment; onLike: (id
 
 const styles = StyleSheet.create({
   overlay: { flex: 1, backgroundColor: '#00000066', justifyContent: 'flex-end' },
-  sheet: { height: '82%', backgroundColor: Afryko.bg, borderTopLeftRadius: 24, borderTopRightRadius: 24, overflow: 'hidden' },
+  sheet: { height: '66%', backgroundColor: Afryko.bg, borderTopLeftRadius: 24, borderTopRightRadius: 24, overflow: 'hidden' },
   grip: { width: 40, height: 4, borderRadius: 2, backgroundColor: Afryko.border, alignSelf: 'center', marginTop: 10 },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: Afryko.border },
   title: { ...Type.subtitle, color: Afryko.text },
