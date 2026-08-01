@@ -46,6 +46,26 @@ export async function upgradeToPro(): Promise<void> {
 /** Un compte 'buyer' est SIMPLE ; tout le reste est PRO (vendeur/affilié). */
 export const isProAccount = (t?: string | null) => !!t && t !== 'buyer';
 
+// ---- Compte / sécurité ----
+export async function getAccountInfo(): Promise<{ email: string | null; phone: string | null }> {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  return { email: user?.email ?? null, phone: (user as any)?.phone ?? null };
+}
+
+/** Change l'email (Supabase envoie un email de confirmation). */
+export async function changeEmail(email: string): Promise<void> {
+  const { error } = await supabase.auth.updateUser({ email });
+  if (error) throw error;
+}
+
+/** Change le mot de passe du compte connecté. */
+export async function changePassword(password: string): Promise<void> {
+  const { error } = await supabase.auth.updateUser({ password });
+  if (error) throw error;
+}
+
 /** Désactive le compte (données conservées) puis déconnecte. */
 export async function deactivateAccount(): Promise<void> {
   const id = await requireUserId();
