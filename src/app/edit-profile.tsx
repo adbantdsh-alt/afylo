@@ -1,17 +1,19 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
-import { useEffect, useState } from 'react';
-import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { useEffect, useRef, useState } from 'react';
+import { ActivityIndicator, KeyboardAvoidingView, PanResponder, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Avatar, PillButton } from '@/components/ui-kit';
+import { Skeleton, SkeletonCircle } from '@/components/skeleton';
 import { Afryko, Font, Radius } from '@/constants/brand';
 import { useAuth } from '@/lib/auth';
 import { getMyProfile, updateMyProfile, uploadImage } from '@/lib/db';
 import { useMe } from '@/lib/me';
+
+const DEFAULT_BANNER = require('@/assets/images/default-banner.png');
 
 export default function EditProfile() {
   const router = useRouter();
@@ -26,10 +28,29 @@ export default function EditProfile() {
   const [avatar, setAvatar] = useState('');
   const [banner, setBanner] = useState('');
   const [uploadingBanner, setUploadingBanner] = useState(false);
+  const [bannerPos, setBannerPos] = useState(50); // position verticale de recadrage (0-100)
   const [name, setName] = useState('');
   const [handle, setHandle] = useState('');
   const [bio, setBio] = useState('');
   const [website, setWebsite] = useState('');
+
+  // Repositionnement de la bannière (glisser verticalement) — refs pour éviter les closures obsolètes
+  const BANNER_H = 150;
+  const posRef = useRef(50);
+  const hasBannerRef = useRef(false);
+  useEffect(() => { hasBannerRef.current = !!banner; }, [banner]);
+  const pan = useRef(
+    PanResponder.create({
+      onMoveShouldSetPanResponder: (_, g) => hasBannerRef.current && Math.abs(g.dy) > 3,
+      onPanResponderMove: (_, g) => {
+        const next = Math.max(0, Math.min(100, posRef.current - (g.dy / BANNER_H) * 100));
+        setBannerPos(Math.round(next));
+      },
+      onPanResponderRelease: (_, g) => {
+        posRef.current = Math.max(0, Math.min(100, posRef.current - (g.dy / BANNER_H) * 100));
+      },
+    }),
+  ).current;
 
   useEffect(() => {
     if (!session) {
@@ -41,6 +62,9 @@ export default function EditProfile() {
         if (prof) {
           setAvatar(prof.avatar_url ?? '');
           setBanner(prof.banner_url ?? '');
+          const pos = prof.banner_position ?? 50;
+          setBannerPos(pos);
+          posRef.current = pos;
           setName(prof.display_name ?? '');
           setHandle(prof.handle ?? '');
           setBio(prof.bio ?? '');
@@ -83,6 +107,8 @@ export default function EditProfile() {
     try {
       const url = await uploadImage('avatars', uri);
       setBanner(url);
+      setBannerPos(50); // nouvelle image → recentrer avant repositionnement
+      posRef.current = 50;
     } catch (e: any) {
       setError(e.message ?? "Échec de l'upload de la bannière.");
     } finally {
@@ -104,9 +130,9 @@ export default function EditProfile() {
         bio: bio.trim(),
         avatar_url: avatar.trim() || null,
         website: website.trim() || null,
-        // n'inclut banner_url que si une bannière est définie (évite l'erreur si la
+        // n'inclut banner_url/position que si une bannière est définie (évite l'erreur si la
         // colonne n'existe pas encore — migration 0007 requise pour la persister)
-        ...(banner.trim() ? { banner_url: banner.trim() } : {}),
+        ...(banner.trim() ? { banner_url: banner.trim(), banner_position: Math.round(bannerPos) } : {}),
       });
       (router.canGoBack() ? router.back() : router.replace('/accueil'));
     } catch (e: any) {
@@ -129,22 +155,36 @@ export default function EditProfile() {
       </SafeAreaView>
 
       {loading ? (
-        <ActivityIndicator color={Afryko.violet} style={{ marginTop: 40 }} />
+        <View>
+          <Skeleton w="100%" h={150} radius={0} />
+          <View style={{ alignItems: 'center', marginTop: -46 }}><SkeletonCircle size={92} /></View>
+          <View style={{ padding: 20, gap: 16, marginTop: 12 }}>
+            <Skeleton w="100%" h={50} />
+            <Skeleton w="100%" h={50} />
+            <Skeleton w="100%" h={90} />
+            <Skeleton w="100%" h={50} />
+          </View>
+        </View>
       ) : (
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
           <ScrollView contentContainerStyle={{ paddingBottom: 40 }} keyboardShouldPersistTaps="handled">
-            {/* Bannière (façon X) */}
-            <Pressable style={styles.bannerEdit} onPress={pickBanner}>
-              {banner ? (
-                <Image source={{ uri: banner }} style={StyleSheet.absoluteFill} contentFit="cover" />
-              ) : (
-                <LinearGradient colors={[Afryko.violet, Afryko.violet2]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill} />
-              )}
-              <View style={styles.bannerScrim}>
-                {uploadingBanner ? <ActivityIndicator color="#fff" /> : <Ionicons name="camera" size={22} color="#fff" />}
-                <Text style={styles.bannerHint}>Bannière</Text>
+            {/* Bannière (façon X) — glisser pour repositionner quand une image est définie */}
+            <View style={styles.bannerEdit} {...(banner ? pan.panHandlers : {})}>
+              <Image
+                source={banner ? { uri: banner } : DEFAULT_BANNER}
+                style={StyleSheet.absoluteFill}
+                contentFit="cover"
+                contentPosition={{ left: '50%', top: `${bannerPos}%` }}
+              />
+              <View style={styles.bannerScrim} pointerEvents="box-none">
+                <Pressable onPress={pickBanner} style={styles.bannerCam}>
+                  {uploadingBanner ? <ActivityIndicator color="#fff" size="small" /> : <Ionicons name="camera" size={20} color="#fff" />}
+                </Pressable>
+                <Text style={styles.bannerHint} pointerEvents="none">
+                  {banner ? 'Glisse pour repositionner · appuie pour changer' : 'Appuie pour ajouter une bannière'}
+                </Text>
               </View>
-            </Pressable>
+            </View>
 
             {/* Photo (chevauche la bannière) */}
             <View style={styles.avatarWrap}>
@@ -217,9 +257,10 @@ const styles = StyleSheet.create({
   hbtn: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
   title: { color: Afryko.text, fontSize: 18, fontFamily: Font.bold },
 
-  bannerEdit: { height: 140, backgroundColor: Afryko.surfaceAlt },
-  bannerScrim: { ...StyleSheet.absoluteFillObject, alignItems: 'center', justifyContent: 'center', gap: 4, backgroundColor: '#00000040' },
-  bannerHint: { color: '#fff', fontSize: 12, fontFamily: Font.semibold },
+  bannerEdit: { height: 150, backgroundColor: Afryko.surfaceAlt, overflow: 'hidden' },
+  bannerScrim: { ...StyleSheet.absoluteFillObject, alignItems: 'center', justifyContent: 'center', gap: 8 },
+  bannerCam: { width: 42, height: 42, borderRadius: 21, backgroundColor: '#00000088', alignItems: 'center', justifyContent: 'center' },
+  bannerHint: { color: '#fff', fontSize: 12, fontFamily: Font.semibold, backgroundColor: '#00000077', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 10, overflow: 'hidden' },
   avatarWrap: { alignItems: 'center', marginTop: -46, gap: 10 },
   avatarEdit: { borderRadius: 50, borderWidth: 4, borderColor: Afryko.bg, backgroundColor: Afryko.bg },
   cameraBadge: { position: 'absolute', bottom: 0, right: 0, width: 34, height: 34, borderRadius: 17, backgroundColor: Afryko.violet, alignItems: 'center', justifyContent: 'center', borderWidth: 3, borderColor: Afryko.bg },

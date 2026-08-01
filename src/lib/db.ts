@@ -29,6 +29,7 @@ export type ProfileInput = {
   bio?: string;
   avatar_url?: string | null;
   banner_url?: string | null;
+  banner_position?: number;
   website?: string | null;
   account_type?: 'creator' | 'merchant' | 'buyer';
 };

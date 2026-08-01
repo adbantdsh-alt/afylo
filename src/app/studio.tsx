@@ -3,9 +3,10 @@ import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { CardsSkeleton, Skeleton } from '@/components/skeleton';
 import { Afryko, Font, Radius } from '@/constants/brand';
 import { useCheckoutProfile } from '@/lib/checkout-profile';
 import { useMe } from '@/lib/me';
@@ -66,7 +67,10 @@ export default function Portefeuille() {
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 16, paddingBottom: 48 }}>
         {loading ? (
-          <View style={{ paddingVertical: 60, alignItems: 'center' }}><ActivityIndicator color={Afryko.violet} /></View>
+          <View style={{ gap: 14 }}>
+            <Skeleton w="100%" h={150} radius={20} />
+            <CardsSkeleton count={3} height={80} />
+          </View>
         ) : tab === 'wallet' ? (
           <WalletTab summary={summary} methodLabel={methodLabel} methodNumber={methodNumber} onWithdraw={() => setWithdraw(true)} />
         ) : (

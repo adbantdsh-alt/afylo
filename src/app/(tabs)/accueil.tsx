@@ -2,7 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Animated, Modal, Pressable, ScrollView, Share, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Animated, Modal, Pressable, ScrollView, Share, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Avatar, IconButton } from '@/components/ui-kit';
@@ -12,6 +12,7 @@ import { RateSheet } from '@/components/rate-sheet';
 import { RatingStar } from '@/components/rating-star';
 import { ReportSheet } from '@/components/report-sheet';
 import { RepostSheet } from '@/components/repost-sheet';
+import { FeedSkeleton } from '@/components/skeleton';
 import { Afryko, Font, Radius, Type } from '@/constants/brand';
 import { useAuthGate } from '@/lib/auth-gate';
 import { createTextPost, deletePost, listFeed, updatePostCaption } from '@/lib/db';
@@ -133,7 +134,7 @@ export default function Feed() {
         </ScrollView>
 
         {loading && feed.length === 0 ? (
-          <View style={styles.feedState}><ActivityIndicator color={Afryko.violet} size="large" /></View>
+          <FeedSkeleton count={3} />
         ) : feed.length === 0 ? (
           <View style={styles.feedState}>
             <Ionicons name="planet-outline" size={44} color={Afryko.textFaint} />

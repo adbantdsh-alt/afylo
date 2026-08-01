@@ -1,13 +1,13 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { ActivityIndicator, Linking, Modal, Pressable, ScrollView, Share, StyleSheet, Text, View } from 'react-native';
+import { Linking, Modal, Pressable, ScrollView, Share, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Avatar, PillButton } from '@/components/ui-kit';
 import { RepostSheet, MediaPreview } from '@/components/repost-sheet';
+import { GridSkeleton } from '@/components/skeleton';
 import { Afryko, Font, Radius, Type } from '@/constants/brand';
 import { useAuth } from '@/lib/auth';
 import { deleteProduct, getMyPosts, getMyProfile, isProAccount, listMyProducts, type MyPost } from '@/lib/db';
@@ -19,6 +19,9 @@ import { useStories } from '@/lib/stories';
 import { useAlwaysShowTabBar } from '@/lib/tabbar';
 import { myLives, myProducts, myPurchases, photo, type MyLive, type Purchase } from '@/lib/mock';
 import type { Profile } from '@/types/db';
+
+/** Bannière Afryko par défaut (nouveau compte). Remplaçable par assets/images/default-banner.png. */
+const DEFAULT_BANNER = require('@/assets/images/default-banner.png');
 
 /** Format compact : 1234 → "1,2 K", 2_300_000 → "2,3 M". */
 function nf(n: number): string {
@@ -67,6 +70,7 @@ export default function Profil() {
   const bio = me.bio || 'Ajoute une bio depuis « Éditer le profil ».';
   const website = dbProfile?.website || null;
   const banner = dbProfile?.banner_url || null;
+  const bannerPos = dbProfile?.banner_position ?? 50; // position verticale de recadrage
   const isVerified = dbProfile?.is_verified === true || dbProfile?.handle === 'adbaecomx' || handle === '@adbaecomx';
   const isPro = me.isPro || isProAccount(dbProfile?.account_type);
 
@@ -99,13 +103,15 @@ export default function Profil() {
   return (
     <View style={styles.root}>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 110 }}>
-        {/* Bannière (image de couverture ou dégradé de marque) */}
+        {/* Bannière (image de couverture perso, sinon bannière Afryko par défaut) */}
         <View style={styles.banner}>
-          {banner ? (
-            <Image source={{ uri: banner }} style={StyleSheet.absoluteFill} contentFit="cover" transition={200} />
-          ) : (
-            <LinearGradient colors={[Afryko.violet, Afryko.violet2]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill} />
-          )}
+          <Image
+            source={banner ? { uri: banner } : DEFAULT_BANNER}
+            style={StyleSheet.absoluteFill}
+            contentFit="cover"
+            contentPosition={{ left: '50%', top: `${bannerPos}%` }}
+            transition={200}
+          />
           <SafeAreaView edges={['top']} style={styles.bannerBar}>
             <View style={{ flex: 1 }} />
             <Pressable onPress={() => router.push('/messages')} style={styles.roundBtn}>
@@ -523,7 +529,7 @@ function BoutiqueList({ isOwner }: { isOwner: boolean }) {
         </Pressable>
       )}
 
-      {loading && <ActivityIndicator color={Afryko.violet} style={{ marginVertical: 20 }} />}
+      {loading && <GridSkeleton count={4} />}
 
       {isOwner && session && list.length === 0 && !loading && (
         <Text style={styles.emptyText}>Aucun produit pour l'instant. Crée ton premier article ci-dessus.</Text>

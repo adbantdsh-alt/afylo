@@ -21,6 +21,7 @@ export interface Profile {
   display_name: string | null;
   avatar_url: string | null;
   banner_url: string | null;
+  banner_position: number | null;
   bio: string | null;
   website: string | null;
   account_type: AccountType;

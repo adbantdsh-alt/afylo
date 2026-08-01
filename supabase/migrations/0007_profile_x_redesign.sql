@@ -1,8 +1,9 @@
 -- Refonte profil façon X (Twitter) : bannière + posts 100% texte
 -- À exécuter dans l'éditeur SQL Supabase.
 
--- 1) Bannière de profil (image de couverture)
+-- 1) Bannière de profil (image de couverture) + position verticale de recadrage (0-100)
 alter table public.profiles add column if not exists banner_url text;
+alter table public.profiles add column if not exists banner_position int not null default 50;
 
 -- 2) Autoriser les publications 100% texte (fil façon X)
 alter table public.posts drop constraint if exists posts_kind_check;
