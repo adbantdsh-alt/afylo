@@ -2,7 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { Linking, Modal, Pressable, ScrollView, Share, StyleSheet, Text, View } from 'react-native';
+import { Linking, Modal, Pressable, ScrollView, Share, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Avatar, PillButton } from '@/components/ui-kit';
@@ -10,7 +10,7 @@ import { RepostSheet, MediaPreview } from '@/components/repost-sheet';
 import { GridSkeleton } from '@/components/skeleton';
 import { Afryko, Font, Radius, Type } from '@/constants/brand';
 import { useAuth } from '@/lib/auth';
-import { deleteProduct, getMyPosts, getMyProfile, isProAccount, listMyProducts, type MyPost } from '@/lib/db';
+import { deletePost, deleteProduct, getMyPosts, getMyProfile, isProAccount, listMyProducts, updatePostCaption, type MyPost } from '@/lib/db';
 import { timeAgo } from '@/lib/feed-map';
 import { useMe } from '@/lib/me';
 import { EMPTY_WALLET, getWalletSummary, type WalletSummary } from '@/lib/wallet';
@@ -45,9 +45,35 @@ export default function Profil() {
   const [dbProfile, setDbProfile] = useState<Profile | null>(null);
   const [stats, setStats] = useState<WalletSummary>(EMPTY_WALLET);
   const [myRealPosts, setMyRealPosts] = useState<MyPost[]>([]);
+  const [manage, setManage] = useState<MyPost | null>(null); // post dont le menu de gestion est ouvert
+  const [editing, setEditing] = useState<MyPost | null>(null); // post en cours d'édition (légende)
+  const [editText, setEditText] = useState('');
   const showTabBar = useAlwaysShowTabBar();
   const { myStory } = useStories();
   const openStory = () => (myStory ? router.push({ pathname: '/story/[uid]', params: { uid: myStory.id } }) : router.push('/creer'));
+
+  // --- Gestion des posts (propriétaire) : afficher / modifier / supprimer / partager ---
+  const viewPost = (p: MyPost) => {
+    setManage(null);
+    router.push({ pathname: '/comments/[id]', params: { id: p.id, owner: '1', image: p.thumbnail_url || p.media_url || '' } });
+  };
+  const startEdit = (p: MyPost) => { setEditText(p.caption || ''); setEditing(p); setManage(null); };
+  const saveEdit = () => {
+    if (!editing) return;
+    const t = editText.trim();
+    setMyRealPosts((prev) => prev.map((x) => (x.id === editing.id ? { ...x, caption: t } : x)));
+    updatePostCaption(editing.id, t).catch(() => {});
+    setEditing(null);
+  };
+  const removeMyPost = (p: MyPost) => {
+    setMyRealPosts((prev) => prev.filter((x) => x.id !== p.id));
+    deletePost(p.id).catch(() => {});
+    setManage(null);
+  };
+  const sharePost = (p: MyPost) => {
+    setManage(null);
+    Share.share({ message: `${name} sur Afryko : ${p.caption || handle}` }).catch(() => {});
+  };
 
   useFocusEffect(
     useCallback(() => {
@@ -198,8 +224,8 @@ export default function Profil() {
           <SectionTab icon="repeat" active={section === 'reposts'} onPress={() => setSection('reposts')} />
         </View>
 
-        {section === 'posts' && <PostsGrid posts={mediaPosts} />}
-        {section === 'texte' && <TextPostsList posts={textPosts} name={name} handle={handle} avatar={avatarUri} verified={isVerified} onCompose={() => router.push('/accueil')} />}
+        {section === 'posts' && <PostsGrid posts={mediaPosts} onManage={setManage} />}
+        {section === 'texte' && <TextPostsList posts={textPosts} name={name} handle={handle} avatar={avatarUri} verified={isVerified} onCompose={() => router.push('/accueil')} onManage={setManage} />}
         {section === 'boutique' && (isPro || !isOwner ? <BoutiqueList isOwner={isOwner} /> : <ProUpsell onPress={() => router.push('/upgrade-pro')} what="vendre tes produits" />)}
         {section === 'achats' && <PurchasesList />}
         {section === 'reposts' && <RepostsGrid />}
@@ -222,7 +248,84 @@ export default function Profil() {
           </SafeAreaView>
         </Pressable>
       )}
+
+      {/* Gestion d'un post (propriétaire) : afficher / modifier / partager / supprimer */}
+      {manage && (
+        <PostManageSheet
+          post={manage}
+          onClose={() => setManage(null)}
+          onView={() => viewPost(manage)}
+          onEdit={() => startEdit(manage)}
+          onShare={() => sharePost(manage)}
+          onDelete={() => removeMyPost(manage)}
+        />
+      )}
+
+      {/* Édition de la légende d'un post */}
+      <Modal visible={!!editing} transparent animationType="slide" onRequestClose={() => setEditing(null)}>
+        <Pressable style={styles.mgOverlay} onPress={() => setEditing(null)}>
+          <Pressable style={styles.editSheet} onPress={(e) => e.stopPropagation?.()}>
+            <View style={styles.mgGrip} />
+            <Text style={styles.editTitle}>Modifier le post</Text>
+            <TextInput
+              style={styles.editInput}
+              value={editText}
+              onChangeText={setEditText}
+              multiline
+              autoFocus
+              placeholder="Écris quelque chose…"
+              placeholderTextColor={Afryko.textFaint}
+            />
+            <View style={styles.editActions}>
+              <Pressable style={styles.editCancel} onPress={() => setEditing(null)}><Text style={styles.editCancelText}>Annuler</Text></Pressable>
+              <Pressable style={[styles.editSave, !editText.trim() && { opacity: 0.5 }]} disabled={!editText.trim()} onPress={saveEdit}>
+                <Text style={styles.editSaveText}>Enregistrer</Text>
+              </Pressable>
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </View>
+  );
+}
+
+/** Menu de gestion d'un post du profil (accès propriétaire). */
+function PostManageSheet({ post, onClose, onView, onEdit, onShare, onDelete }: { post: MyPost; onClose: () => void; onView: () => void; onEdit: () => void; onShare: () => void; onDelete: () => void }) {
+  const [confirm, setConfirm] = useState(false);
+  const preview = (post.caption || (post.kind === 'text' ? 'Post texte' : 'Publication')).slice(0, 60);
+  return (
+    <Modal visible transparent animationType="slide" onRequestClose={onClose}>
+      <Pressable style={styles.mgOverlay} onPress={onClose}>
+        <Pressable style={styles.mgSheet} onPress={(e) => e.stopPropagation?.()}>
+          <View style={styles.mgGrip} />
+          <Text style={styles.mgPreview} numberOfLines={1}>{preview}</Text>
+          {confirm ? (
+            <View style={{ gap: 10 }}>
+              <Text style={styles.mgConfirmTitle}>Supprimer ce post ?</Text>
+              <Text style={styles.mgConfirmSub}>Cette action est définitive et ne peut pas être annulée.</Text>
+              <Pressable style={styles.mgDanger} onPress={onDelete}><Text style={styles.mgDangerText}>Supprimer définitivement</Text></Pressable>
+              <Pressable style={styles.mgCancel} onPress={() => setConfirm(false)}><Text style={styles.mgCancelText}>Annuler</Text></Pressable>
+            </View>
+          ) : (
+            <View style={styles.mgList}>
+              <ManageRow icon="eye-outline" label="Afficher le post" onPress={onView} />
+              <ManageRow icon="create-outline" label="Modifier" onPress={onEdit} />
+              <ManageRow icon="share-social-outline" label="Partager" onPress={onShare} />
+              <ManageRow icon="trash-outline" label="Supprimer" danger onPress={() => setConfirm(true)} last />
+            </View>
+          )}
+        </Pressable>
+      </Pressable>
+    </Modal>
+  );
+}
+
+function ManageRow({ icon, label, onPress, danger, last }: { icon: keyof typeof Ionicons.glyphMap; label: string; onPress: () => void; danger?: boolean; last?: boolean }) {
+  return (
+    <Pressable style={[styles.mgRow, !last && styles.mgRowBorder]} onPress={onPress}>
+      <Ionicons name={icon} size={22} color={danger ? Afryko.live : Afryko.text} />
+      <Text style={[styles.mgRowText, danger && { color: Afryko.live }]}>{label}</Text>
+    </Pressable>
   );
 }
 
@@ -253,7 +356,7 @@ function BadgeVerified({ size = 19 }: { size?: number }) {
 }
 
 /** Onglet Texte : les publications 100% texte façon X (avec accès propriétaire). */
-function TextPostsList({ posts, name, handle, avatar, verified, onCompose }: { posts: MyPost[]; name: string; handle: string; avatar: string; verified: boolean; onCompose: () => void }) {
+function TextPostsList({ posts, name, handle, avatar, verified, onCompose, onManage }: { posts: MyPost[]; name: string; handle: string; avatar: string; verified: boolean; onCompose: () => void; onManage: (p: MyPost) => void }) {
   if (posts.length === 0) {
     return (
       <View style={styles.gridEmpty}>
@@ -270,13 +373,17 @@ function TextPostsList({ posts, name, handle, avatar, verified, onCompose }: { p
   return (
     <View>
       {posts.map((p) => (
-        <View key={p.id} style={styles.tweet}>
+        <Pressable key={p.id} style={styles.tweet} onPress={() => onManage(p)}>
           <Image source={{ uri: avatar }} style={styles.tweetAvatar} contentFit="cover" />
           <View style={{ flex: 1 }}>
             <View style={styles.tweetHead}>
               <Text style={styles.tweetName} numberOfLines={1}>{name}</Text>
               {verified && <BadgeVerified size={15} />}
               <Text style={styles.tweetHandle} numberOfLines={1}>{handle} · {timeAgo(p.created_at)}</Text>
+              <View style={{ flex: 1 }} />
+              <Pressable hitSlop={8} onPress={() => onManage(p)} style={styles.tweetMenu}>
+                <Ionicons name="ellipsis-horizontal" size={18} color={Afryko.textDim} />
+              </Pressable>
             </View>
             {!!p.caption && <Text style={styles.tweetText}>{p.caption}</Text>}
             <View style={styles.tweetStats}>
@@ -285,13 +392,13 @@ function TextPostsList({ posts, name, handle, avatar, verified, onCompose }: { p
               <View style={styles.tweetStat}><Ionicons name="bar-chart-outline" size={15} color={Afryko.textFaint} /><Text style={styles.tweetStatN}>{p.view_count || 0}</Text></View>
             </View>
           </View>
-        </View>
+        </Pressable>
       ))}
     </View>
   );
 }
 
-function PostsGrid({ posts }: { posts: { id: string; media_url: string | null; thumbnail_url: string | null; kind: string; view_count: number }[] }) {
+function PostsGrid({ posts, onManage }: { posts: MyPost[]; onManage: (p: MyPost) => void }) {
   if (posts.length === 0) {
     return (
       <View style={styles.gridEmpty}>
@@ -304,15 +411,16 @@ function PostsGrid({ posts }: { posts: { id: string; media_url: string | null; t
   return (
     <View style={styles.mediaGrid}>
       {posts.map((p) => (
-        <View key={p.id} style={styles.cell}>
+        <Pressable key={p.id} style={styles.cell} onPress={() => onManage(p)}>
           <Image source={{ uri: p.thumbnail_url || p.media_url || undefined }} style={StyleSheet.absoluteFill} contentFit="cover" transition={200} />
+          <View style={styles.cellMenu}><Ionicons name="ellipsis-horizontal" size={15} color="#fff" /></View>
           {p.kind === 'video' && (
             <View style={styles.cellTag}>
               <Ionicons name="play" size={11} color="#fff" />
               <Text style={styles.cellTagText}>{p.view_count > 0 ? p.view_count.toLocaleString('fr-FR') : ''}</Text>
             </View>
           )}
-        </View>
+        </Pressable>
       ))}
     </View>
   );
@@ -671,6 +779,33 @@ const styles = StyleSheet.create({
   tweetStatN: { color: Afryko.textFaint, fontSize: 13 },
   composeCta: { flexDirection: 'row', alignItems: 'center', gap: 7, backgroundColor: Afryko.violet, borderRadius: Radius.pill, paddingHorizontal: 18, paddingVertical: 11, marginTop: 16 },
   composeCtaText: { color: '#fff', fontFamily: Font.bold, fontSize: 14 },
+  tweetMenu: { padding: 2 },
+
+  // --- Gestion des posts (bottom sheets) ---
+  cellMenu: { position: 'absolute', top: 6, right: 6, width: 24, height: 24, borderRadius: 12, backgroundColor: '#00000077', alignItems: 'center', justifyContent: 'center' },
+  mgOverlay: { flex: 1, backgroundColor: '#00000066', justifyContent: 'flex-end' },
+  mgSheet: { backgroundColor: Afryko.bg, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 16, paddingBottom: 28 },
+  mgGrip: { width: 40, height: 4, borderRadius: 2, backgroundColor: Afryko.border, alignSelf: 'center', marginBottom: 12 },
+  mgPreview: { color: Afryko.textDim, fontSize: 13, fontFamily: Font.medium, textAlign: 'center', marginBottom: 14 },
+  mgList: { backgroundColor: Afryko.surface, borderWidth: 1, borderColor: Afryko.border, borderRadius: Radius.lg, overflow: 'hidden' },
+  mgRow: { flexDirection: 'row', alignItems: 'center', gap: 14, paddingHorizontal: 16, paddingVertical: 15 },
+  mgRowBorder: { borderBottomWidth: 1, borderBottomColor: Afryko.bg },
+  mgRowText: { ...Type.body, fontFamily: Font.semibold, color: Afryko.text },
+  mgConfirmTitle: { color: Afryko.text, fontSize: 17, fontFamily: Font.bold, textAlign: 'center' },
+  mgConfirmSub: { color: Afryko.textDim, fontSize: 13, textAlign: 'center', lineHeight: 18, marginBottom: 6 },
+  mgDanger: { backgroundColor: Afryko.live, borderRadius: Radius.pill, paddingVertical: 14, alignItems: 'center' },
+  mgDangerText: { color: '#fff', fontFamily: Font.bold, fontSize: 15 },
+  mgCancel: { paddingVertical: 12, alignItems: 'center' },
+  mgCancelText: { color: Afryko.textDim, fontFamily: Font.semibold, fontSize: 15 },
+
+  editSheet: { backgroundColor: Afryko.bg, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 18, paddingBottom: 28 },
+  editTitle: { color: Afryko.text, fontSize: 17, fontFamily: Font.bold, marginBottom: 12 },
+  editInput: { backgroundColor: Afryko.surface, borderWidth: 1, borderColor: Afryko.border, borderRadius: Radius.md, color: Afryko.text, fontSize: 15, lineHeight: 21, padding: 14, minHeight: 110, textAlignVertical: 'top' },
+  editActions: { flexDirection: 'row', gap: 12, marginTop: 16 },
+  editCancel: { flex: 1, height: 48, borderRadius: Radius.pill, borderWidth: 1, borderColor: Afryko.border, alignItems: 'center', justifyContent: 'center' },
+  editCancelText: { color: Afryko.text, fontFamily: Font.semibold, fontSize: 15 },
+  editSave: { flex: 1, height: 48, borderRadius: Radius.pill, backgroundColor: Afryko.violet, alignItems: 'center', justifyContent: 'center' },
+  editSaveText: { color: '#fff', fontFamily: Font.bold, fontSize: 15 },
 
   head: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 18, marginTop: 12, gap: 20 },
   addStoryBadge: { position: 'absolute', bottom: 0, right: 0, width: 26, height: 26, borderRadius: 13, backgroundColor: Afryko.violet, alignItems: 'center', justifyContent: 'center', borderWidth: 2.5, borderColor: Afryko.bg },
