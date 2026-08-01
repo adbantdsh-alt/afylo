@@ -173,7 +173,7 @@ function Reel({ post, index, active, height, width, onNotInterested }: { post: P
   const share = () => { if (gate('republier')) setReposted((v) => !v); };
   const rate = () => { if (gate('noter')) setRateOpen(true); };
   const buy = () => { if (gate('acheter')) setPayOpen(true); };
-  const openComments = () => router.push({ pathname: '/comments/[id]', params: { id: post.id } });
+  const openComments = () => router.push({ pathname: '/comments/[id]', params: { id: post.id, image: post.image } });
 
   return (
     <View style={{ height, width, backgroundColor: '#000' }}>

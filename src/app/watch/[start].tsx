@@ -95,7 +95,7 @@ function Slide({ item, index, active, height, width }: { item: ExploreItem; inde
           onPress={like}
           onLongPress={rate}
         />
-        <Act icon="chatbubble-ellipses" label="340" onPress={() => router.push({ pathname: '/comments/[id]', params: { id: item.id } })} />
+        <Act icon="chatbubble-ellipses" label="340" onPress={() => router.push({ pathname: '/comments/[id]', params: { id: item.id, image: item.image } })} />
         <Act icon={saved ? 'bookmark' : 'bookmark-outline'} color={saved ? Afryko.gold : '#fff'} label="Enreg." onPress={() => setSaved((v) => !v)} />
         <Act icon="arrow-redo" label="88" />
       </View>

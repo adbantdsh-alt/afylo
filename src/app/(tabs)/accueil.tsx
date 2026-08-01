@@ -131,7 +131,7 @@ function PostCard({ post, isPro, myHandle }: { post: Post; isPro: boolean; myHan
   const buy = () => { if (gate('acheter')) setPayOpen(true); };
   const repost = () => { if (gate('republier')) setRepostOpen(true); };
   const owns = post.handle === `@${myHandle}` || post.handle === myHandle;
-  const openComments = () => router.push({ pathname: '/comments/[id]', params: { id: post.id, owner: owns ? '1' : '' } });
+  const openComments = () => router.push({ pathname: '/comments/[id]', params: { id: post.id, owner: owns ? '1' : '', image: post.image } });
 
   // Double-tap image = j'aime + pop d'animation (dopamine)
   const heartPop = () => {

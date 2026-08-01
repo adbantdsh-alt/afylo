@@ -1,4 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
+import { Image } from 'expo-image';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useState } from 'react';
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
@@ -36,7 +37,7 @@ const seed: Comment[] = [
 
 export default function Comments() {
   const router = useRouter();
-  const params = useLocalSearchParams<{ id: string; owner?: string }>();
+  const params = useLocalSearchParams<{ id: string; owner?: string; image?: string }>();
   const gate = useAuthGate();
   const isOwner = params.owner === '1'; // le propriétaire du post peut supprimer n'importe quel commentaire
 
@@ -86,8 +87,13 @@ export default function Comments() {
 
   return (
     <View style={styles.overlay}>
-      {/* Zone haute : la publication reste visible derrière (tap pour fermer) */}
-      <Pressable style={StyleSheet.absoluteFill} onPress={() => (router.canGoBack() ? router.back() : router.replace('/accueil'))} />
+      {/* Média du post en fond — visible au-dessus du panneau (façon TikTok/Insta) */}
+      {params.image ? (
+        <Image source={{ uri: params.image }} style={StyleSheet.absoluteFill} contentFit="cover" transition={150} />
+      ) : null}
+      <View style={[StyleSheet.absoluteFill, styles.scrim]} />
+      {/* Tap sur la zone haute = fermer */}
+      <Pressable style={StyleSheet.absoluteFill} onPress={close} />
 
       <View style={styles.sheet}>
         <View style={styles.grip} />
@@ -202,7 +208,8 @@ function CommentRow({ c, isOwner, onLike, onReply, onDelete, depth = 0 }: { c: C
 }
 
 const styles = StyleSheet.create({
-  overlay: { flex: 1, backgroundColor: '#00000066', justifyContent: 'flex-end' },
+  overlay: { flex: 1, backgroundColor: '#0B0B0F', justifyContent: 'flex-end' },
+  scrim: { backgroundColor: '#00000040' },
   sheet: { height: '66%', backgroundColor: Afryko.bg, borderTopLeftRadius: 24, borderTopRightRadius: 24, overflow: 'hidden' },
   grip: { width: 40, height: 4, borderRadius: 2, backgroundColor: Afryko.border, alignSelf: 'center', marginTop: 10 },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: Afryko.border },
