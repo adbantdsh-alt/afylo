@@ -89,6 +89,8 @@ export type Post = {
   time: string;
   image: string;
   images?: string[]; // carrousel (plusieurs médias)
+  ratio?: number; // proportion largeur/hauteur du média
+  video?: boolean; // le média principal est une vidéo (lecture dans le feed)
   likes: string;
   comments: string;
   views: string;

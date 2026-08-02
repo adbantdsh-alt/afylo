@@ -29,3 +29,7 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
 });
 
 export const isSupabaseConfigured = () => Boolean(supabaseUrl && supabaseAnonKey);
+
+// URL + clé publique exposées pour l'upload direct (XHR avec progression).
+export const SUPABASE_URL = supabaseUrl;
+export const SUPABASE_ANON_KEY = supabaseAnonKey;

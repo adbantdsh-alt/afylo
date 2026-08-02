@@ -20,6 +20,7 @@ import { RepostsProvider } from '@/lib/reposts';
 import { CheckoutProfileProvider } from '@/lib/checkout-profile';
 import { BuzzProvider } from '@/lib/buzz';
 import { MeProvider } from '@/lib/me';
+import { PendingUploadProvider } from '@/lib/pending-upload';
 
 // Routes accessibles sans être connecté
 const PUBLIC = ['index', 'login'];
@@ -111,7 +112,9 @@ export default function RootLayout() {
               <RepostsProvider>
                 <CheckoutProfileProvider>
                   <BuzzProvider>
-                    <RootNavigator />
+                    <PendingUploadProvider>
+                      <RootNavigator />
+                    </PendingUploadProvider>
                   </BuzzProvider>
                 </CheckoutProfileProvider>
               </RepostsProvider>

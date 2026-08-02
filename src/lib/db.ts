@@ -729,6 +729,7 @@ export type CreatePostInput = {
   caption?: string;
   media_url?: string | null;
   media_urls?: string[]; // carrousel : toute la galerie (media_url = 1er)
+  aspect_ratio?: number | null; // largeur/hauteur du 1er média
   thumbnail_url?: string | null;
   productIds?: string[];
 };
@@ -744,6 +745,7 @@ export async function createPost(input: CreatePostInput): Promise<Post> {
       caption: input.caption,
       media_url: input.media_url ?? gallery[0] ?? null,
       media_urls: gallery,
+      aspect_ratio: input.aspect_ratio ?? null,
       thumbnail_url: input.thumbnail_url,
     })
     .select()

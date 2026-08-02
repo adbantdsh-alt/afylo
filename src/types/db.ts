@@ -59,6 +59,7 @@ export interface Post {
   kind: PostKind;
   media_url: string | null;
   media_urls: string[] | null; // carrousel (0013)
+  aspect_ratio: number | null; // proportion largeur/hauteur (0014)
   thumbnail_url: string | null;
   caption: string | null;
   duration_seconds: number | null;

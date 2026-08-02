@@ -4,22 +4,26 @@ import * as ImagePicker from 'expo-image-picker';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useVideoPlayer, VideoView } from 'expo-video';
 import { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Image as RNImage, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { CropModal } from '@/components/crop-modal';
 import { SoundPicker } from '@/components/sound-picker';
 import { Avatar, PillButton } from '@/components/ui-kit';
 import { Afryko, Font, Radius } from '@/constants/brand';
 import { useAuth } from '@/lib/auth';
-import { createPost, listMyProducts, searchProfiles } from '@/lib/db';
+import { listMyProducts, searchProfiles } from '@/lib/db';
+import { clampRatio } from '@/lib/feed-map';
 import { face, photo } from '@/lib/mock';
 import { classifyText } from '@/lib/moderation';
+import { usePendingUpload } from '@/lib/pending-upload';
 import { findSound, type Sound } from '@/lib/sounds';
 import type { Product, Profile } from '@/types/db';
 
-type Media = { uri: string; type: 'image' | 'video' };
+type Media = { uri: string; type: 'image' | 'video'; ratio?: number };
 const MAX_MEDIA = 10;
 const MAX_PRODUCTS = 5;
+const ratioOf = (w?: number, h?: number) => (w && h ? clampRatio(w / h) : undefined);
 
 export default function PostNew() {
   const router = useRouter();
@@ -34,13 +38,26 @@ export default function PostNew() {
   })();
   const [media, setMedia] = useState<Media[]>(seed);
   const [active, setActive] = useState(0);
+  const [cropOpen, setCropOpen] = useState(false);
+  const { publish: publishInBackground } = usePendingUpload();
 
   const [caption, setCaption] = useState('');
   const [products, setProducts] = useState<Product[]>([]);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [loadingProducts, setLoadingProducts] = useState(false);
-  const [publishing, setPublishing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Résout la proportion des médias qui n'en ont pas encore (venus de la caméra).
+  useEffect(() => {
+    media.forEach((m, i) => {
+      if (m.ratio != null) return;
+      RNImage.getSize(
+        m.uri,
+        (w, h) => setMedia((cur) => cur.map((x, idx) => (idx === i && x.uri === m.uri ? { ...x, ratio: ratioOf(w, h) } : x))),
+        () => {},
+      );
+    });
+  }, [media]);
   const [sound, setSound] = useState<Sound | null>(
     params.soundId ? findSound(params.soundId) ?? (params.soundTitle ? ({ id: params.soundId, title: params.soundTitle, artist: 'Son', cover: '', duration: '', uses: '', audio: '' } as Sound) : null) : null,
   );
@@ -81,20 +98,20 @@ export default function PostNew() {
       quality: 0.9,
     });
     if (res.canceled) return;
-    const next = res.assets.map((a) => ({ uri: a.uri, type: 'image' as const }));
+    const next = res.assets.map((a) => ({ uri: a.uri, type: 'image' as const, ratio: ratioOf(a.width, a.height) }));
     setMedia((cur) => [...cur, ...next].slice(0, MAX_MEDIA));
   };
   const addVideo = async () => {
     const res = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['videos'], quality: 1 });
     if (res.canceled) return;
-    setMedia((cur) => [...cur, { uri: res.assets[0].uri, type: 'video' as const }].slice(0, MAX_MEDIA));
+    const a = res.assets[0];
+    setMedia((cur) => [...cur, { uri: a.uri, type: 'video' as const, ratio: ratioOf(a.width, a.height) }].slice(0, MAX_MEDIA));
   };
-  // Recadrer / remplacer l'image active (ouvre l'éditeur natif de recadrage)
-  const cropActive = async () => {
-    if (media[active]?.type !== 'image') return;
-    const res = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], allowsEditing: true, quality: 0.9 });
-    if (res.canceled) return;
-    setMedia((cur) => cur.map((m, i) => (i === active ? { uri: res.assets[0].uri, type: 'image' } : m)));
+  // Recadrer l'image active (proportion + rotation)
+  const cropActive = () => { if (media[active]?.type === 'image') setCropOpen(true); };
+  const onCropDone = (uri: string, ratio: number) => {
+    setMedia((cur) => cur.map((m, i) => (i === active ? { ...m, uri, ratio: clampRatio(ratio) } : m)));
+    setCropOpen(false);
   };
   const removeAt = (i: number) => {
     setMedia((cur) => cur.filter((_, idx) => idx !== i));
@@ -110,29 +127,22 @@ export default function PostNew() {
     });
   };
 
-  const publish = async () => {
+  const publish = () => {
     setError(null);
     if (!session) { setError('Connecte-toi avec un vrai compte pour publier (le mode invité ne peut pas).'); return; }
     if (!media.length) { setError('Ajoute au moins une photo ou une vidéo.'); return; }
     const verdict = classifyText(caption);
     if (verdict.level === 'blocked') { setError(`🚫 Publication refusée : ${verdict.reason}`); return; }
-    setPublishing(true);
-    try {
-      const finalCaption = [sound ? `🎵 ${sound.title} · ${sound.artist}` : '', caption.trim()].filter(Boolean).join('\n');
-      const urls = media.map((m) => m.uri);
-      await createPost({
-        kind: media[0].type === 'video' ? 'video' : 'image',
-        caption: finalCaption || undefined,
-        media_url: urls[0],
-        media_urls: urls,
-        productIds: [...selected],
-      });
-      router.replace('/accueil');
-    } catch (e: any) {
-      setError(e.message ?? 'Erreur lors de la publication.');
-    } finally {
-      setPublishing(false);
-    }
+    const finalCaption = [sound ? `🎵 ${sound.title} · ${sound.artist}` : '', caption.trim()].filter(Boolean).join('\n');
+    // Upload + création en tâche de fond : on revient tout de suite à l'accueil,
+    // la barre de progression s'affiche dans le feed jusqu'à la fin de l'envoi.
+    publishInBackground({
+      media: media.map((m) => ({ uri: m.uri, type: m.type })),
+      caption: finalCaption || undefined,
+      aspect_ratio: media[0].ratio ?? null,
+      productIds: [...selected],
+    });
+    router.replace('/accueil');
   };
 
   const current = media[active];
@@ -153,7 +163,7 @@ export default function PostNew() {
         <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 40 }} keyboardShouldPersistTaps="handled">
           {/* ---- Média / carrousel ---- */}
           {current ? (
-            <View style={styles.stage}>
+            <View style={[styles.stage, { aspectRatio: current.ratio ?? 0.8 }]}>
               {current.type === 'video' ? (
                 <StageVideo uri={current.uri} />
               ) : (
@@ -283,11 +293,12 @@ export default function PostNew() {
 
           {error && <Text style={styles.error}>{error}</Text>}
 
-          <PillButton label="Publier" icon="send" onPress={publish} loading={publishing} style={{ marginTop: 22 }} />
+          <PillButton label="Publier" icon="send" onPress={publish} style={{ marginTop: 22 }} />
         </ScrollView>
       </KeyboardAvoidingView>
 
       <SoundPicker visible={soundOpen} onSelect={(s) => { setSound(s); setSoundOpen(false); }} onClose={() => setSoundOpen(false)} />
+      <CropModal visible={cropOpen} uri={current?.type === 'image' ? current.uri : null} onClose={() => setCropOpen(false)} onDone={onCropDone} />
     </View>
   );
 }

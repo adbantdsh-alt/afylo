@@ -1,8 +1,9 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
+import { useVideoPlayer, VideoView } from 'expo-video';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Animated, Dimensions, Modal, Pressable, ScrollView, Share, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Animated, Dimensions, Modal, Pressable, ScrollView, Share, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Avatar, IconButton } from '@/components/ui-kit';
@@ -20,6 +21,7 @@ import { Afryko, Font, Radius, Type } from '@/constants/brand';
 import { useAuthGate } from '@/lib/auth-gate';
 import { createTextPost, deletePost, followUser, listConversations, listFeed, unfollowUser, unreadNotifCount, updatePostCaption } from '@/lib/db';
 import { mapFeed } from '@/lib/feed-map';
+import { usePendingUpload } from '@/lib/pending-upload';
 import { useMe } from '@/lib/me';
 import { useReposts } from '@/lib/reposts';
 import { useAlwaysShowTabBar } from '@/lib/tabbar';
@@ -41,6 +43,7 @@ export default function Feed() {
   const [composeText, setComposeText] = useState('');
   const [editingId, setEditingId] = useState<string | null>(null);
   const [unread, setUnread] = useState(0); // notifications + messages non lus (badge cloche)
+  const { pending, feedVersion, retry, dismiss } = usePendingUpload(); // publication en cours (barre de progression)
 
   const publishText = () => {
     const t = composeText.trim();
@@ -75,9 +78,10 @@ export default function Feed() {
       .catch(() => {});
   }, [showTabBar]));
   useEffect(() => {
-    // Vrai réseau : uniquement les posts de Supabase (aucune donnée fictive)
+    // Vrai réseau : uniquement les posts de Supabase (aucune donnée fictive).
+    // Se recharge aussi quand une publication en tâche de fond se termine (feedVersion).
     listFeed().then((rows) => setFeed(mapFeed(rows ?? []))).catch(() => {}).finally(() => setLoading(false));
-  }, []);
+  }, [feedVersion]);
 
   return (
     <View style={styles.root}>
@@ -141,6 +145,36 @@ export default function Feed() {
             </Pressable>
           ))}
         </ScrollView>
+
+        {/* Publication en cours (upload) */}
+        {pending && (
+          <View style={styles.uploadBar}>
+            <Image source={{ uri: pending.thumb }} style={styles.uploadThumb} contentFit="cover" />
+            <View style={{ flex: 1 }}>
+              <Text style={styles.uploadTitle}>
+                {pending.status === 'error' ? 'Échec de la publication' : pending.count > 1 ? `Publication de ${pending.count} médias…` : 'Publication en cours…'}
+              </Text>
+              {pending.status === 'error' ? (
+                <Text style={styles.uploadErr} numberOfLines={1}>{pending.error}</Text>
+              ) : (
+                <>
+                  <View style={styles.uploadTrack}>
+                    <View style={[styles.uploadFill, { width: `${Math.round(pending.progress * 100)}%` }]} />
+                  </View>
+                  <Text style={styles.uploadPct}>{Math.round(pending.progress * 100)}%</Text>
+                </>
+              )}
+            </View>
+            {pending.status === 'error' ? (
+              <>
+                <Pressable onPress={retry} style={styles.uploadRetry}><Text style={styles.uploadRetryText}>Réessayer</Text></Pressable>
+                <Pressable onPress={dismiss} hitSlop={8}><Ionicons name="close" size={18} color={Afryko.textDim} /></Pressable>
+              </>
+            ) : (
+              <ActivityIndicator color={Afryko.violet} />
+            )}
+          </View>
+        )}
 
         {loading && feed.length === 0 ? (
           <FeedSkeleton count={3} />
@@ -273,16 +307,14 @@ function PostCard({ post, isPro, myHandle, onDeletePost, onEditPost }: { post: P
 
       {/* Média — plein cadre, sans arrondi. Double-tap = j'aime (masqué pour les posts texte) */}
       {!post.textOnly && (
-        <Pressable style={styles.media} onPress={onMediaTap}>
-          {post.images && post.images.length > 1 ? (
+        <Pressable style={[styles.media, post.ratio ? { aspectRatio: post.ratio } : null]} onPress={onMediaTap}>
+          {post.video ? (
+            <FeedVideo uri={post.image} />
+          ) : post.images && post.images.length > 1 ? (
             <PostCarousel images={post.images} blur={post.sensitive && !revealed ? 30 : 0} />
           ) : (
             <Image source={{ uri: post.image }} style={styles.mediaImg} contentFit="cover" transition={250} blurRadius={post.sensitive && !revealed ? 30 : 0} />
           )}
-          <View style={styles.playBadge}>
-            <Ionicons name="play" size={13} color="#fff" />
-            <Text style={styles.playText}>0:24</Text>
-          </View>
           {post.sensitive && !revealed && (
             <Pressable style={styles.sensitiveOverlay} onPress={() => setRevealed(true)}>
               <Ionicons name="eye-off-outline" size={28} color="#fff" />
@@ -401,6 +433,12 @@ function PostCard({ post, isPro, myHandle, onDeletePost, onEditPost }: { post: P
 
 /** +1 visuel quand on like (les compteurs façon "7.2k" restent tels quels). */
 const SCREEN_W = Dimensions.get('window').width;
+
+/** Lecture vidéo dans le feed (muette, en boucle). */
+function FeedVideo({ uri }: { uri: string }) {
+  const player = useVideoPlayer(uri, (p) => { p.loop = true; p.muted = true; p.play(); });
+  return <VideoView player={player} style={styles.mediaImg} contentFit="cover" nativeControls={false} />;
+}
 
 /** Carrousel plein cadre (plusieurs médias) avec points de pagination. */
 function PostCarousel({ images, blur }: { images: string[]; blur: number }) {
@@ -526,6 +564,15 @@ const styles = StyleSheet.create({
   textPost: { color: Afryko.text, fontSize: 20, lineHeight: 28, marginBottom: 12 },
   media: { aspectRatio: 1, backgroundColor: Afryko.surfaceAlt, alignItems: 'center', justifyContent: 'center' },
   mediaImg: { ...StyleSheet.absoluteFillObject },
+  uploadBar: { flexDirection: 'row', alignItems: 'center', gap: 12, marginHorizontal: 12, marginBottom: 8, padding: 10, backgroundColor: Afryko.surface, borderRadius: Radius.md, borderWidth: 1, borderColor: Afryko.border },
+  uploadThumb: { width: 46, height: 46, borderRadius: 8, backgroundColor: Afryko.surfaceAlt },
+  uploadTitle: { color: Afryko.text, fontSize: 14, fontFamily: Font.semibold },
+  uploadErr: { color: Afryko.live, fontSize: 12, marginTop: 3 },
+  uploadTrack: { height: 6, borderRadius: 3, backgroundColor: Afryko.surfaceAlt, marginTop: 6, overflow: 'hidden' },
+  uploadFill: { height: 6, borderRadius: 3, backgroundColor: Afryko.violet },
+  uploadPct: { color: Afryko.textDim, fontSize: 11, marginTop: 3, fontFamily: Font.medium },
+  uploadRetry: { backgroundColor: Afryko.violet, paddingHorizontal: 12, paddingVertical: 7, borderRadius: Radius.pill },
+  uploadRetryText: { color: '#fff', fontSize: 13, fontFamily: Font.semibold },
   dots: { position: 'absolute', bottom: 10, left: 0, right: 0, flexDirection: 'row', justifyContent: 'center', gap: 5 },
   dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#ffffff88' },
   dotOn: { backgroundColor: '#fff', width: 7, height: 7, borderRadius: 3.5 },
