@@ -35,6 +35,10 @@ const pct = (n?: number | null) => (n && n > 0 ? `${Math.round(n)}%` : undefined
  *  0.56 ≈ 9:16 (portrait plein) · 1.91 ≈ paysage large (comme Instagram). */
 export const clampRatio = (r: number) => Math.max(0.56, Math.min(1.91, r));
 
+/** Vrai fichier vidéo (upload réel) — évite de traiter les vieux posts « vidéo » à vignette image comme des vidéos. */
+const looksLikeVideo = (u?: string | null) =>
+  !!u && (/\.(mp4|mov|webm|m4v)(\?|$)/i.test(u) || u.includes('/storage/v1/object'));
+
 /** Hash déterministe d'un id → mélange stable (même ordre partout, évite de regrouper un même auteur). */
 export function hashId(s: string): number {
   let h = 0;
@@ -61,7 +65,7 @@ export function mapFeedPost(fp: FeedPost): Post {
     image: isText ? '' : fp.thumbnail_url || fp.media_url || photo(fp.id, 700, 800),
     images: !isText && fp.media_urls && fp.media_urls.length > 1 ? fp.media_urls : undefined,
     ratio: fp.aspect_ratio ? clampRatio(fp.aspect_ratio) : undefined,
-    video: fp.kind === 'video' ? true : undefined,
+    video: fp.kind === 'video' && looksLikeVideo(fp.media_url) ? true : undefined,
     textOnly: isText || undefined,
     likes: fmtCount(fp.like_count),
     comments: fmtCount(fp.comment_count),
