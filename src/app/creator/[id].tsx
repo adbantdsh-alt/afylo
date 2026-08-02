@@ -6,11 +6,13 @@ import { ActivityIndicator, Linking, Pressable, ScrollView, StyleSheet, Text, Vi
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Avatar } from '@/components/ui-kit';
+import { PaymentSheet } from '@/components/payment-sheet';
 import { Afryko, Font, Radius, Type } from '@/constants/brand';
-import { followUser, getCreatorData, isFollowing, unfollowUser, type CreatorData } from '@/lib/db';
+import { followUser, getCreatorData, isFollowing, isProAccount, listProductsByOwner, unfollowUser, type CreatorData } from '@/lib/db';
 import { fmtCount } from '@/lib/feed-map';
 import { useMe } from '@/lib/me';
 import { face, photo } from '@/lib/mock';
+import { formatCfa, type Product } from '@/types/db';
 
 const DEFAULT_BANNER = require('@/assets/images/default-banner.png');
 
@@ -33,15 +35,23 @@ export default function CreatorProfile() {
   const [followed, setFollowed] = useState(false);
   const [busy, setBusy] = useState(false);
   const [bump, setBump] = useState(0); // ajustement optimiste du nombre d'abonnés
+  const [section, setSection] = useState<'posts' | 'boutique'>('posts');
+  const [products, setProducts] = useState<Product[]>([]);
+  const [payItems, setPayItems] = useState<{ title: string; price: string }[] | null>(null);
 
   useEffect(() => {
     if (!params.id) return;
     setLoading(true);
     setBump(0);
+    setSection('posts');
+    setProducts([]);
     getCreatorData(params.id)
       .then((d) => {
         setData(d);
-        if (d?.profile?.id) isFollowing(d.profile.id).then(setFollowed).catch(() => {});
+        if (d?.profile?.id) {
+          isFollowing(d.profile.id).then(setFollowed).catch(() => {});
+          if (isProAccount(d.profile.account_type)) listProductsByOwner(d.profile.id).then(setProducts).catch(() => {});
+        }
       })
       .catch(() => {})
       .finally(() => setLoading(false));
@@ -59,6 +69,9 @@ export default function CreatorProfile() {
   const isSelf = !!p?.id && !!me.id && p.id === me.id;
   const followers = Math.max(0, (data?.followers ?? 0) + bump);
   const posts = data?.posts ?? [];
+  const creatorPro = isProAccount(p?.account_type); // Pro (vendeur) → onglet Boutique visible
+
+  const buyProduct = (pr: Product) => setPayItems([{ title: pr.title, price: formatCfa(pr.promo_cfa ?? pr.price_cfa) }]);
 
   const toggleFollow = async () => {
     if (!p?.id || isSelf || busy) return;
@@ -148,9 +161,50 @@ export default function CreatorProfile() {
           </View>
         )}
 
-        {/* Grille de posts (réelle) */}
+        {/* Onglets — Pro (vendeur) : Posts + Boutique ; Simple : Posts seul */}
+        {creatorPro && (
+          <View style={styles.tabs}>
+            <Pressable style={[styles.tab, section === 'posts' && styles.tabOn]} onPress={() => setSection('posts')}>
+              <Ionicons name="grid-outline" size={20} color={section === 'posts' ? Afryko.text : Afryko.textFaint} />
+            </Pressable>
+            <Pressable style={[styles.tab, section === 'boutique' && styles.tabOn]} onPress={() => setSection('boutique')}>
+              <Ionicons name="bag-handle-outline" size={20} color={section === 'boutique' ? Afryko.text : Afryko.textFaint} />
+            </Pressable>
+          </View>
+        )}
+
         {loading ? (
           <ActivityIndicator color={Afryko.violet} style={{ marginTop: 34 }} />
+        ) : section === 'boutique' ? (
+          products.length === 0 ? (
+            <View style={styles.gridEmpty}>
+              <Ionicons name="bag-handle-outline" size={30} color={Afryko.textFaint} />
+              <Text style={styles.gridEmptyText}>Aucun produit en vente</Text>
+            </View>
+          ) : (
+            <View style={styles.prodGrid}>
+              {products.map((pr) => (
+                <View key={pr.id} style={styles.prodCard}>
+                  <View style={styles.prodImg}>
+                    <Image source={{ uri: pr.image_url || pr.images?.[0] || photo(pr.id, 300, 300) }} style={StyleSheet.absoluteFill} contentFit="cover" transition={200} />
+                    {pr.stock <= 0 && <View style={styles.prodOut}><Text style={styles.prodOutText}>Épuisé</Text></View>}
+                  </View>
+                  <Text style={styles.prodTitle} numberOfLines={1}>{pr.title}</Text>
+                  {pr.promo_cfa ? (
+                    <View style={styles.priceRow}>
+                      <Text style={styles.prodPrice}>{pr.promo_cfa.toLocaleString('fr-FR')} F</Text>
+                      <Text style={styles.prodPriceOld}>{pr.price_cfa.toLocaleString('fr-FR')} F</Text>
+                    </View>
+                  ) : (
+                    <Text style={styles.prodPrice}>{pr.price_cfa.toLocaleString('fr-FR')} F</Text>
+                  )}
+                  <Pressable style={styles.buyBtn} onPress={() => buyProduct(pr)}>
+                    <Text style={styles.buyBtnText}>Acheter</Text>
+                  </Pressable>
+                </View>
+              ))}
+            </View>
+          )
         ) : posts.length === 0 ? (
           <View style={styles.gridEmpty}>
             <Ionicons name="camera-outline" size={30} color={Afryko.textFaint} />
@@ -172,6 +226,8 @@ export default function CreatorProfile() {
           </View>
         )}
       </ScrollView>
+
+      <PaymentSheet visible={!!payItems} items={payItems ?? []} onClose={() => setPayItems(null)} />
     </View>
   );
 }
@@ -208,6 +264,22 @@ const styles = StyleSheet.create({
   metaRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 14, paddingHorizontal: 18, marginTop: 10 },
   meta: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   metaText: { ...Type.small, color: Afryko.textDim },
+
+  tabs: { flexDirection: 'row', marginTop: 18, borderBottomWidth: 1, borderBottomColor: Afryko.surfaceAlt },
+  tab: { flex: 1, alignItems: 'center', paddingVertical: 12, borderBottomWidth: 2, borderBottomColor: 'transparent' },
+  tabOn: { borderBottomColor: Afryko.text },
+
+  prodGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, paddingHorizontal: 12, paddingTop: 12 },
+  prodCard: { width: '48%', backgroundColor: Afryko.surface, borderWidth: 1, borderColor: Afryko.border, borderRadius: Radius.md, padding: 8 },
+  prodImg: { aspectRatio: 1, borderRadius: Radius.sm, overflow: 'hidden', backgroundColor: Afryko.surfaceAlt, marginBottom: 8 },
+  prodOut: { ...StyleSheet.absoluteFillObject, backgroundColor: '#000000AA', alignItems: 'center', justifyContent: 'center' },
+  prodOutText: { color: '#fff', fontFamily: Font.bold, fontSize: 13 },
+  prodTitle: { color: Afryko.text, fontSize: 14, fontFamily: Font.semibold, paddingHorizontal: 2 },
+  priceRow: { flexDirection: 'row', alignItems: 'baseline', gap: 6, paddingHorizontal: 2, marginTop: 2 },
+  prodPrice: { color: Afryko.gold, fontSize: 15, fontFamily: Font.bold, paddingHorizontal: 2, marginTop: 2 },
+  prodPriceOld: { color: Afryko.textFaint, fontSize: 12, fontFamily: Font.semibold, textDecorationLine: 'line-through' },
+  buyBtn: { backgroundColor: Afryko.violet, borderRadius: Radius.pill, paddingVertical: 9, alignItems: 'center', marginTop: 8 },
+  buyBtnText: { color: '#fff', fontFamily: Font.bold, fontSize: 13 },
 
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 2, marginTop: 18 },
   cell: { width: '33%', aspectRatio: 0.8, backgroundColor: Afryko.surfaceAlt, flexGrow: 1 },

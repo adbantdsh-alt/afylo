@@ -269,6 +269,16 @@ export async function getProduct(id: string): Promise<Product | null> {
   return data;
 }
 
+/** Produits d'un créateur (vue visiteur de sa boutique). */
+export async function listProductsByOwner(ownerId: string): Promise<Product[]> {
+  const { data } = await supabase
+    .from('products')
+    .select('*')
+    .eq('owner_id', ownerId)
+    .order('created_at', { ascending: false });
+  return data ?? [];
+}
+
 export async function createProduct(input: ProductInput): Promise<Product> {
   const owner_id = await requireUserId();
   const { data, error } = await supabase
