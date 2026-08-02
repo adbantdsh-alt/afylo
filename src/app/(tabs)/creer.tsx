@@ -11,6 +11,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Afryko, Font, Radius } from '@/constants/brand';
 import { useAuthGate } from '@/lib/auth-gate';
+import { startLive } from '@/lib/db';
+import { useMe } from '@/lib/me';
 import { myProducts } from '@/lib/mock';
 import { useStories, type StoryProduct } from '@/lib/stories';
 import { useTabBar } from '@/lib/tabbar';
@@ -21,6 +23,7 @@ const MODES: Mode[] = ['Publication', 'Story', 'Reel', 'Live'];
 export default function Creer() {
   const router = useRouter();
   const gate = useAuthGate();
+  const me = useMe();
   const { addStory } = useStories();
   const { hidden } = useTabBar();
 
@@ -105,7 +108,11 @@ export default function Creer() {
   };
   const endRecord = () => { if (recordingRef.current) camRef.current?.stopRecording(); };
 
-  const goLive = () => { if (gate('passer en live')) router.push({ pathname: '/live', params: { role: 'host' } }); };
+  const goLive = async () => {
+    if (!gate('passer en live')) return;
+    const live = await startLive({ title: `Live · ${me.name}`, kind: me.isPro ? 'sell' : 'simple', thumbnail_url: me.avatar }).catch(() => null);
+    router.push({ pathname: '/live', params: { role: 'host', liveId: live?.id ?? '', name: me.name, avatar: me.avatar } });
+  };
 
   // Geste du déclencheur : tap = photo · appui long = vidéo · glisser haut = verrouiller
   const shutterPan = useRef(

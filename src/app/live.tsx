@@ -11,6 +11,7 @@ import { Avatar } from '@/components/ui-kit';
 import { GiftSheet } from '@/components/gift-sheet';
 import { PaymentSheet } from '@/components/payment-sheet';
 import { Afryko, Font, Radius } from '@/constants/brand';
+import { endLive, setLiveViewers } from '@/lib/db';
 import { useMe } from '@/lib/me';
 import { affiliationProducts, avatar, myProducts, video } from '@/lib/mock';
 
@@ -46,8 +47,9 @@ export default function Live() {
   const router = useRouter();
   const me = useMe();
   const { width, height } = useWindowDimensions();
-  const params = useLocalSearchParams<{ role?: string; name?: string; avatar?: string }>();
+  const params = useLocalSearchParams<{ role?: string; name?: string; avatar?: string; liveId?: string }>();
   const isHost = params.role !== 'viewer';
+  const liveId = params.liveId || null;
   const name = params.name || (isHost ? 'Ton live' : 'Fatou Ndiaye');
   const hostAvatar = params.avatar || avatar(5);
 
@@ -82,8 +84,21 @@ export default function Live() {
   const [endConfirm, setEndConfirm] = useState(false); // confirmation avant de terminer le live (vendeur)
   const lastTap = useRef(0);
 
-  const leave = () => (router.canGoBack() ? router.back() : router.replace('/accueil'));
+  const leave = () => {
+    if (isHost && liveId) endLive(liveId).catch(() => {}); // ferme le live en base
+    router.canGoBack() ? router.back() : router.replace('/accueil');
+  };
   const seq = useRef(0); // compteur d'ids (persiste avec l'état, pas de collision au Fast Refresh)
+
+  // Heartbeat : met à jour le nb de spectateurs affiché dans le Feed (hôte)
+  useEffect(() => {
+    if (!isHost || !liveId) return;
+    setLiveViewers(liveId, viewers).catch(() => {});
+    const t = setInterval(() => setLiveViewers(liveId, viewers).catch(() => {}), 10000);
+    // sécurité : ferme le live si l'écran est démonté
+    return () => { clearInterval(t); endLive(liveId).catch(() => {}); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isHost, liveId, viewers]);
 
   const showToast = (m: string) => { setToast(m); setTimeout(() => setToast((cur) => (cur === m ? null : cur)), 1700); };
   const nid = (p: string) => `${p}${seq.current++}`; // id calculé UNE fois, hors updater
@@ -236,7 +251,7 @@ export default function Live() {
         <View style={styles.setupDim} />
         <SafeAreaView style={{ flex: 1 }}>
           <View style={styles.setupHeader}>
-            <Pressable onPress={() => (router.canGoBack() ? router.back() : router.replace('/accueil'))} style={styles.close}><Ionicons name="close" size={24} color="#fff" /></Pressable>
+            <Pressable onPress={() => (isHost ? setEndConfirm(true) : leave())} style={styles.close}><Ionicons name="close" size={24} color="#fff" /></Pressable>
             <Text style={styles.setupTitle}>Préparer ton live</Text>
             <Pressable onPress={() => setFacing((f) => (f === 'front' ? 'back' : 'front'))} style={styles.close}><Ionicons name="camera-reverse-outline" size={22} color="#fff" /></Pressable>
           </View>

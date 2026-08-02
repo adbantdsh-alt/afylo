@@ -67,6 +67,54 @@ export async function searchProfiles(q: string): Promise<Profile[]> {
   return (data as Profile[]) ?? [];
 }
 
+// ---- Lives (feed en direct) ----
+export type LiveRow = {
+  id: string;
+  host_id: string;
+  title: string | null;
+  status: 'scheduled' | 'live' | 'ended';
+  kind: 'simple' | 'sell';
+  thumbnail_url: string | null;
+  viewer_count: number;
+  started_at: string | null;
+  host?: { id: string; display_name: string | null; handle: string | null; avatar_url: string | null; is_verified: boolean; account_type: string } | null;
+};
+
+/** Démarre un live (crée la ligne en base) et renvoie son id. */
+export async function startLive(input: { title?: string; kind?: 'simple' | 'sell'; thumbnail_url?: string | null }): Promise<LiveRow | null> {
+  const host_id = await requireUserId();
+  const { data, error } = await supabase
+    .from('lives')
+    .insert({ host_id, title: input.title ?? null, kind: input.kind ?? 'simple', thumbnail_url: input.thumbnail_url ?? null, status: 'live', started_at: new Date().toISOString(), viewer_count: 1 })
+    .select()
+    .single();
+  if (error) return null;
+  return data as LiveRow;
+}
+
+/** Termine un live. */
+export async function endLive(id: string): Promise<void> {
+  await supabase.from('lives').update({ status: 'ended', ended_at: new Date().toISOString(), viewer_count: 0 }).eq('id', id);
+}
+
+/** Lives EN DIRECT (avec l'hôte), pour le Feed. */
+export async function listLiveNow(): Promise<LiveRow[]> {
+  const { data, error } = await supabase
+    .from('lives')
+    .select('id,host_id,title,status,kind,thumbnail_url,viewer_count,started_at, host:profiles!lives_host_id_fkey(id,display_name,handle,avatar_url,is_verified,account_type)')
+    .eq('status', 'live')
+    .order('viewer_count', { ascending: false })
+    .order('started_at', { ascending: false })
+    .limit(50);
+  if (error) return [];
+  return (data as unknown as LiveRow[]) ?? [];
+}
+
+/** Met à jour le nombre de spectateurs (heartbeat). */
+export async function setLiveViewers(id: string, n: number): Promise<void> {
+  await supabase.from('lives').update({ viewer_count: Math.max(0, n) }).eq('id', id);
+}
+
 // ---- Messagerie directe ----
 export type ChatPartner = { id: string; display_name: string | null; handle: string | null; avatar_url: string | null };
 export type MsgKind = 'text' | 'image' | 'product' | 'voice' | 'video' | 'file';
@@ -418,6 +466,23 @@ export async function listMyProducts(): Promise<Product[]> {
 export async function getProduct(id: string): Promise<Product | null> {
   const { data } = await supabase.from('products').select('*').eq('id', id).maybeSingle();
   return data;
+}
+
+export type FeedProduct = Product & {
+  owner: { id: string; display_name: string | null; handle: string | null; avatar_url: string | null; is_verified: boolean; account_type: string } | null;
+};
+
+/** Feed shoppable : produits actifs + leur créateur, classés par popularité. */
+export async function listFeedProducts(): Promise<FeedProduct[]> {
+  const { data, error } = await supabase
+    .from('products')
+    .select('*, owner:profiles!products_owner_id_fkey(id,display_name,handle,avatar_url,is_verified,account_type)')
+    .eq('is_active', true)
+    .order('sold_count', { ascending: false })
+    .order('created_at', { ascending: false })
+    .limit(60);
+  if (error) return [];
+  return (data as FeedProduct[]) ?? [];
 }
 
 /** Produits d'un créateur (vue visiteur de sa boutique). */

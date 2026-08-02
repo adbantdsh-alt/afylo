@@ -1,58 +1,115 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
-import { useRouter } from 'expo-router';
-import { useEffect, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useFocusEffect, useRouter } from 'expo-router';
+import { useCallback, useState } from 'react';
+import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { Afryko, Radius } from '@/constants/brand';
-import { listFeed } from '@/lib/db';
-import { mapExplore } from '@/lib/feed-map';
-import { type ExploreItem } from '@/lib/mock';
+import { Avatar } from '@/components/ui-kit';
+import { VerifiedBadge, verifiedKind } from '@/components/verified';
+import { Afryko, Font, Radius, Type } from '@/constants/brand';
+import { useAuthGate } from '@/lib/auth-gate';
+import { listLiveNow, type LiveRow } from '@/lib/db';
+import { face } from '@/lib/mock';
 import { useHideOnScroll } from '@/lib/tabbar';
 
-export default function Explore() {
+const FILTERS = ['Tout', '🛍 Ventes', 'Discussions'] as const;
+const fmtViewers = (n: number) => (n >= 1000 ? `${(n / 1000).toFixed(1).replace('.0', '')} k` : String(n));
+
+export default function Feed() {
   const router = useRouter();
   const scroll = useHideOnScroll();
-  const [items, setItems] = useState<ExploreItem[]>([]); // réseau réel — plus de mock
+  const gate = useAuthGate();
+  const [lives, setLives] = useState<LiveRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [filter, setFilter] = useState<(typeof FILTERS)[number]>('Tout');
 
-  useEffect(() => {
-    listFeed().then((rows) => setItems(mapExplore(rows ?? []))).catch(() => {});
+  const load = useCallback((soft?: boolean) => {
+    if (!soft) setLoading(true);
+    listLiveNow().then(setLives).catch(() => {}).finally(() => { setLoading(false); setRefreshing(false); });
   }, []);
 
-  const col = (mod: number) => items.filter((_, i) => i % 2 === mod);
-  const open = (it: ExploreItem) => router.push(`/watch/${items.indexOf(it)}`);
+  useFocusEffect(useCallback(() => { load(); }, [load]));
+
+  const list = lives.filter((l) => (filter === '🛍 Ventes' ? l.kind === 'sell' : filter === 'Discussions' ? l.kind === 'simple' : true));
+
+  const join = (l: LiveRow) =>
+    router.push({ pathname: '/live', params: { role: 'viewer', liveId: l.id, name: l.host?.display_name ?? l.host?.handle ?? 'Créateur', avatar: l.host?.avatar_url ?? '' } });
+  const goLive = () => { if (gate('passer en live')) router.push('/creer'); };
 
   return (
     <View style={styles.root}>
       <SafeAreaView edges={['top']} style={{ backgroundColor: Afryko.bg }}>
-        <Pressable style={styles.searchWrap} onPress={() => router.push('/search')}>
-          <Ionicons name="search" size={18} color={Afryko.textDim} />
-          <Text style={styles.searchPlaceholder}>Chercher un créateur, une vidéo, un produit</Text>
-        </Pressable>
+        <View style={styles.header}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <View style={styles.liveDotBig} />
+            <Text style={styles.brand}>En direct</Text>
+          </View>
+          <Pressable onPress={goLive} style={styles.goLiveBtn}>
+            <Ionicons name="radio" size={16} color="#fff" />
+            <Text style={styles.goLiveText}>Passer en live</Text>
+          </Pressable>
+        </View>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chips}>
+          {FILTERS.map((f) => (
+            <Pressable key={f} onPress={() => setFilter(f)} style={[styles.chip, filter === f && styles.chipOn]}>
+              <Text style={[styles.chipText, filter === f && styles.chipTextOn]}>{f}</Text>
+            </Pressable>
+          ))}
+        </ScrollView>
       </SafeAreaView>
 
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.grid} {...scroll}>
-        <View style={styles.column}>{col(0).map((it) => <GridCard key={it.id} item={it} onPress={() => open(it)} />)}</View>
-        <View style={styles.column}>{col(1).map((it) => <GridCard key={it.id} item={it} onPress={() => open(it)} />)}</View>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.grid}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(true); }} tintColor={Afryko.violet} />}
+        {...scroll}>
+        {loading ? (
+          <Text style={styles.dim}>Recherche des lives…</Text>
+        ) : list.length === 0 ? (
+          <View style={styles.empty}>
+            <Ionicons name="radio-outline" size={44} color={Afryko.textFaint} />
+            <Text style={styles.emptyTitle}>Aucun live pour l'instant</Text>
+            <Text style={styles.dim}>Sois le premier à passer en direct — vends tes produits ou échange avec ta communauté.</Text>
+            <Pressable onPress={goLive} style={styles.emptyBtn}><Ionicons name="radio" size={18} color="#fff" /><Text style={styles.emptyBtnText}>Démarrer un live</Text></Pressable>
+          </View>
+        ) : (
+          list.map((l) => <LiveCard key={l.id} l={l} onPress={() => join(l)} />)
+        )}
       </ScrollView>
     </View>
   );
 }
 
-function GridCard({ item, onPress }: { item: ExploreItem; onPress: () => void }) {
+function LiveCard({ l, onPress }: { l: LiveRow; onPress: () => void }) {
+  const thumb = l.thumbnail_url || l.host?.avatar_url || face(l.host?.handle ?? l.id);
+  const sell = l.kind === 'sell';
   return (
-    <Pressable style={[styles.gcard, { aspectRatio: item.tall ? 0.72 : 1 }]} onPress={onPress}>
-      <Image source={{ uri: item.image }} style={StyleSheet.absoluteFill} contentFit="cover" transition={250} />
-      {item.live && (
-        <View style={styles.liveTag}>
-          <View style={styles.dot} />
-          <Text style={styles.liveTagText}>LIVE</Text>
+    <Pressable style={styles.card} onPress={onPress}>
+      <Image source={{ uri: thumb }} style={StyleSheet.absoluteFill} contentFit="cover" transition={200} />
+      <View style={styles.cardScrim} />
+
+      {/* Haut : LIVE + spectateurs */}
+      <View style={styles.cardTop}>
+        <View style={styles.liveBadge}><View style={styles.liveDot} /><Text style={styles.liveBadgeText}>LIVE</Text></View>
+        <View style={styles.viewers}><Ionicons name="eye" size={12} color="#fff" /><Text style={styles.viewersText}>{fmtViewers(l.viewer_count)}</Text></View>
+      </View>
+
+      {/* Type de live */}
+      <View style={[styles.kindTag, sell ? styles.kindSell : styles.kindSimple]}>
+        <Ionicons name={sell ? 'bag-handle' : 'chatbubbles'} size={11} color="#fff" />
+        <Text style={styles.kindText}>{sell ? 'Vente' : 'Live'}</Text>
+      </View>
+
+      {/* Bas : hôte + titre */}
+      <View style={styles.cardBottom}>
+        <View style={styles.hostRow}>
+          <Avatar uri={l.host?.avatar_url || face(l.host?.handle ?? l.id)} size={26} />
+          <Text style={styles.hostName} numberOfLines={1}>{l.host?.display_name || l.host?.handle || 'Créateur'}</Text>
+          <VerifiedBadge kind={verifiedKind(l.host)} size={13} />
         </View>
-      )}
-      <View style={styles.gcardFooter}>
-        <Text style={styles.gcardName}>{item.name}</Text>
-        <Text style={styles.gcardLabel}>{item.label}</Text>
+        {!!l.title && <Text style={styles.cardTitle} numberOfLines={2}>{l.title}</Text>}
       </View>
     </Pressable>
   );
@@ -60,42 +117,38 @@ function GridCard({ item, onPress }: { item: ExploreItem; onPress: () => void })
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: Afryko.bg },
-  searchWrap: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    backgroundColor: Afryko.surface,
-    marginHorizontal: 16,
-    marginTop: 8,
-    paddingHorizontal: 16,
-    height: 48,
-    borderRadius: Radius.pill,
-  },
-  searchPlaceholder: { color: Afryko.textFaint, fontSize: 14 },
-  filters: { paddingHorizontal: 16, paddingVertical: 14, gap: 10 },
-  chip: { paddingHorizontal: 16, paddingVertical: 9, borderRadius: Radius.pill, backgroundColor: Afryko.surface },
-  chipActive: { backgroundColor: Afryko.violet },
-  chipText: { color: Afryko.textDim, fontWeight: '600', fontSize: 13 },
-  chipTextActive: { color: '#fff' },
+  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingTop: 6, paddingBottom: 4 },
+  brand: { ...Type.title, fontSize: 24, color: Afryko.text },
+  liveDotBig: { width: 10, height: 10, borderRadius: 5, backgroundColor: Afryko.live },
+  goLiveBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: Afryko.live, borderRadius: Radius.pill, paddingHorizontal: 14, height: 38 },
+  goLiveText: { color: '#fff', fontFamily: Font.bold, fontSize: 13 },
+  chips: { paddingHorizontal: 16, paddingVertical: 8, gap: 8 },
+  chip: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: Radius.pill, backgroundColor: Afryko.surfaceAlt },
+  chipOn: { backgroundColor: Afryko.violet },
+  chipText: { ...Type.small, fontFamily: Font.semibold, color: Afryko.textDim },
+  chipTextOn: { color: '#fff' },
 
-  grid: { flexDirection: 'row', paddingHorizontal: 12, gap: 10, paddingBottom: 110 },
-  column: { flex: 1, gap: 10 },
-  gcard: { borderRadius: Radius.lg, overflow: 'hidden', backgroundColor: Afryko.surfaceAlt, justifyContent: 'flex-end' },
-  gcardFooter: { padding: 10, backgroundColor: '#00000055' },
-  gcardName: { color: '#fff', fontWeight: '800', fontSize: 15 },
-  gcardLabel: { color: '#ffffffcc', fontSize: 12, marginTop: 1 },
-  liveTag: {
-    position: 'absolute',
-    top: 10,
-    left: 10,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    backgroundColor: Afryko.live,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: Radius.pill,
-  },
-  dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#fff' },
-  liveTagText: { color: '#fff', fontSize: 10, fontWeight: '800' },
+  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, paddingHorizontal: 12, paddingTop: 4, paddingBottom: 120 },
+  dim: { color: Afryko.textDim, fontSize: 14, textAlign: 'center', width: '100%', marginTop: 30 },
+  empty: { width: '100%', alignItems: 'center', paddingHorizontal: 30, paddingVertical: 50, gap: 8 },
+  emptyTitle: { color: Afryko.text, fontSize: 17, fontFamily: Font.bold, marginTop: 8 },
+  emptyBtn: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: Afryko.live, borderRadius: Radius.pill, paddingHorizontal: 20, paddingVertical: 13, marginTop: 16 },
+  emptyBtnText: { color: '#fff', fontFamily: Font.bold, fontSize: 15 },
+
+  card: { width: '48%', aspectRatio: 0.72, borderRadius: Radius.lg, overflow: 'hidden', backgroundColor: Afryko.surfaceAlt, justifyContent: 'space-between', flexGrow: 1 },
+  cardScrim: { ...StyleSheet.absoluteFillObject, backgroundColor: '#00000022' },
+  cardTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 8 },
+  liveBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: Afryko.live, borderRadius: 6, paddingHorizontal: 7, paddingVertical: 3 },
+  liveDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#fff' },
+  liveBadgeText: { color: '#fff', fontSize: 10, fontFamily: Font.bold, letterSpacing: 0.5 },
+  viewers: { flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: '#00000066', borderRadius: 8, paddingHorizontal: 7, paddingVertical: 3 },
+  viewersText: { color: '#fff', fontSize: 11, fontFamily: Font.semibold },
+  kindTag: { position: 'absolute', top: 40, left: 8, flexDirection: 'row', alignItems: 'center', gap: 4, borderRadius: 6, paddingHorizontal: 7, paddingVertical: 3 },
+  kindSell: { backgroundColor: Afryko.green },
+  kindSimple: { backgroundColor: '#00000088' },
+  kindText: { color: '#fff', fontSize: 10, fontFamily: Font.bold },
+  cardBottom: { padding: 10, gap: 6 },
+  hostRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  hostName: { color: '#fff', fontSize: 13, fontFamily: Font.bold, flexShrink: 1 },
+  cardTitle: { color: '#fff', fontSize: 13, lineHeight: 17, opacity: 0.95 },
 });
