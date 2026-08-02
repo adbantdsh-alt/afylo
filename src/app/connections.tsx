@@ -5,6 +5,7 @@ import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, 
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Avatar } from '@/components/ui-kit';
+import { VerifiedBadge, verifiedKind } from '@/components/verified';
 import { Afryko, Font, Radius, Type } from '@/constants/brand';
 import { followUser, listMyFollowers, listMyFollowing, unfollowUser } from '@/lib/db';
 import { useMe } from '@/lib/me';
@@ -106,7 +107,7 @@ export default function Connections() {
                   <View style={{ flex: 1 }}>
                     <View style={styles.rowNameLine}>
                       <Text style={styles.rowName} numberOfLines={1}>{p.display_name || p.handle || 'Créateur'}</Text>
-                      {p.is_verified && <Ionicons name="checkmark-circle" size={14} color={Afryko.violet} />}
+                      <VerifiedBadge kind={verifiedKind(p)} size={14} />
                     </View>
                     <Text style={styles.rowHandle} numberOfLines={1}>@{p.handle}</Text>
                   </View>

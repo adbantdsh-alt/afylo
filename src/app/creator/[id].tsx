@@ -9,6 +9,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Avatar } from '@/components/ui-kit';
 import { PaymentSheet } from '@/components/payment-sheet';
 import { ReportSheet } from '@/components/report-sheet';
+import { VerifiedBadge, verifiedKind } from '@/components/verified';
 import { Afryko, Font, Radius, Type } from '@/constants/brand';
 import { followUser, getCreatorData, isFollowing, isProAccount, listProductsByOwner, listRepostsByOwner, unfollowUser, type CreatorData } from '@/lib/db';
 import { fmtCount, timeAgo } from '@/lib/feed-map';
@@ -88,6 +89,7 @@ export default function CreatorProfile() {
   const banner = p?.banner_url || null;
   const bannerPos = p?.banner_position ?? 50;
   const verified = p?.is_verified === true;
+  const vkind = verifiedKind({ handle, is_verified: verified, verified_type: (p as any)?.verified_type });
   const isSelf = !!p?.id && !!me.id && p.id === me.id;
   const followers = Math.max(0, (data?.followers ?? 0) + bump);
   const posts = data?.posts ?? [];
@@ -185,7 +187,7 @@ export default function CreatorProfile() {
         {/* Nom + badge */}
         <View style={styles.nameRow}>
           <Text style={styles.name}>{name}</Text>
-          {verified && <BadgeVerified />}
+          <VerifiedBadge kind={vkind} size={18} />
         </View>
         <Text style={styles.handleText}>{handle}</Text>
 
@@ -262,7 +264,7 @@ export default function CreatorProfile() {
                   <View style={{ flex: 1 }}>
                     <View style={styles.tweetHead}>
                       <Text style={styles.tweetName} numberOfLines={1}>{name}</Text>
-                      {verified && <BadgeVerified size={14} />}
+                      <VerifiedBadge kind={vkind} size={14} />
                       <Text style={styles.tweetHandle} numberOfLines={1}>{handle} · {timeAgo(x.created_at)}</Text>
                     </View>
                     {!!x.caption && <Text style={styles.tweetText}>{x.caption}</Text>}

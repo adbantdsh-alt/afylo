@@ -5,6 +5,7 @@ import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, 
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Avatar } from '@/components/ui-kit';
+import { VerifiedBadge, verifiedKind } from '@/components/verified';
 import { Afryko, Font, Radius, Type } from '@/constants/brand';
 import { listConversations, type Conversation } from '@/lib/db';
 import { timeAgo } from '@/lib/feed-map';
@@ -88,7 +89,10 @@ export default function Messages() {
               <Avatar uri={c.other?.avatar_url || face(c.other?.handle ?? c.otherId)} size={56} ring={c.unread > 0} />
               <View style={{ flex: 1, marginLeft: 12 }}>
                 <View style={styles.rowTop}>
-                  <Text style={styles.name} numberOfLines={1}>{c.other?.display_name || c.other?.handle || 'Créateur'}</Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, flex: 1, marginRight: 8 }}>
+                    <Text style={styles.name} numberOfLines={1}>{c.other?.display_name || c.other?.handle || 'Créateur'}</Text>
+                    <VerifiedBadge kind={verifiedKind(c.other)} size={14} />
+                  </View>
                   <Text style={styles.time}>{timeAgo(c.last.created_at)}</Text>
                 </View>
                 <View style={styles.rowBottom}>

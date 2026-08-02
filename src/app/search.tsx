@@ -6,6 +6,7 @@ import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, 
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Avatar } from '@/components/ui-kit';
+import { VerifiedBadge, verifiedKind } from '@/components/verified';
 import { Afryko, Font, Radius, Type } from '@/constants/brand';
 import { searchPosts, searchProfiles, type SearchPost } from '@/lib/db';
 import { face, photo } from '@/lib/mock';
@@ -108,7 +109,7 @@ export default function Search() {
                 <View style={{ flex: 1 }}>
                   <View style={styles.resultNameRow}>
                     <Text style={styles.resultName} numberOfLines={1}>{c.display_name || c.handle || 'Créateur'}</Text>
-                    {c.is_verified && <Ionicons name="checkmark-circle" size={15} color={Afryko.violet} />}
+                    <VerifiedBadge kind={verifiedKind(c)} size={15} />
                   </View>
                   <Text style={styles.resultHandle} numberOfLines={1}>@{c.handle}{c.bio ? ` · ${c.bio}` : ''}</Text>
                 </View>

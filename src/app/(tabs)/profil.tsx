@@ -8,6 +8,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Avatar, PillButton } from '@/components/ui-kit';
 import { RepostSheet, MediaPreview } from '@/components/repost-sheet';
 import { GridSkeleton } from '@/components/skeleton';
+import { VerifiedBadge, verifiedKind } from '@/components/verified';
 import { Afryko, Font, Radius, Type } from '@/constants/brand';
 import { useAuth } from '@/lib/auth';
 import { deletePost, deleteProduct, getMyPosts, getMyProfile, isProAccount, listMyProducts, updatePostCaption, type MyPost } from '@/lib/db';
@@ -98,6 +99,7 @@ export default function Profil() {
   const banner = dbProfile?.banner_url || null;
   const bannerPos = dbProfile?.banner_position ?? 50; // position verticale de recadrage
   const isVerified = dbProfile?.is_verified === true || dbProfile?.handle === 'adbaecomx' || handle === '@adbaecomx';
+  const vkind = verifiedKind({ handle, is_verified: isVerified, verified_type: (dbProfile as any)?.verified_type });
   const isPro = me.isPro || isProAccount(dbProfile?.account_type);
 
   const mediaPosts = myRealPosts.filter((x) => x.kind !== 'text' && (x.media_url || x.thumbnail_url));
@@ -173,7 +175,7 @@ export default function Profil() {
         {/* Nom + badge premium */}
         <View style={styles.nameRow}>
           <Text style={styles.name}>{name}</Text>
-          {isVerified && <BadgeVerified />}
+          <VerifiedBadge kind={vkind} size={19} />
         </View>
         <Text style={styles.handleText}>{handle}</Text>
 
@@ -222,7 +224,7 @@ export default function Profil() {
         </View>
 
         {section === 'posts' && <PostsGrid posts={mediaPosts} onManage={setManage} />}
-        {section === 'texte' && <TextPostsList posts={textPosts} name={name} handle={handle} avatar={avatarUri} verified={isVerified} onCompose={() => router.push('/accueil')} onManage={setManage} />}
+        {section === 'texte' && <TextPostsList posts={textPosts} name={name} handle={handle} avatar={avatarUri} vkind={vkind} onCompose={() => router.push('/accueil')} onManage={setManage} />}
         {section === 'boutique' && (isPro || !isOwner ? <BoutiqueList isOwner={isOwner} /> : <ProUpsell onPress={() => router.push('/upgrade-pro')} what="vendre tes produits" />)}
         {section === 'achats' && <PurchasesList />}
         {section === 'reposts' && <RepostsGrid />}
@@ -353,7 +355,7 @@ function BadgeVerified({ size = 19 }: { size?: number }) {
 }
 
 /** Onglet Texte : les publications 100% texte façon X (avec accès propriétaire). */
-function TextPostsList({ posts, name, handle, avatar, verified, onCompose, onManage }: { posts: MyPost[]; name: string; handle: string; avatar: string; verified: boolean; onCompose: () => void; onManage: (p: MyPost) => void }) {
+function TextPostsList({ posts, name, handle, avatar, vkind, onCompose, onManage }: { posts: MyPost[]; name: string; handle: string; avatar: string; vkind: 'blue' | 'gold' | null; onCompose: () => void; onManage: (p: MyPost) => void }) {
   if (posts.length === 0) {
     return (
       <View style={styles.gridEmpty}>
@@ -375,7 +377,7 @@ function TextPostsList({ posts, name, handle, avatar, verified, onCompose, onMan
           <View style={{ flex: 1 }}>
             <View style={styles.tweetHead}>
               <Text style={styles.tweetName} numberOfLines={1}>{name}</Text>
-              {verified && <BadgeVerified size={15} />}
+              <VerifiedBadge kind={vkind} size={15} />
               <Text style={styles.tweetHandle} numberOfLines={1}>{handle} · {timeAgo(p.created_at)}</Text>
               <View style={{ flex: 1 }} />
               <Pressable hitSlop={8} onPress={() => onManage(p)} style={styles.tweetMenu}>

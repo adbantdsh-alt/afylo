@@ -13,6 +13,7 @@ import { RatingStar } from '@/components/rating-star';
 import { ReportSheet } from '@/components/report-sheet';
 import { RepostSheet } from '@/components/repost-sheet';
 import { FeedSkeleton } from '@/components/skeleton';
+import { VerifiedBadge } from '@/components/verified';
 import { Afryko, Font, Radius, Type } from '@/constants/brand';
 import { useAuthGate } from '@/lib/auth-gate';
 import { createTextPost, deletePost, followUser, listFeed, unfollowUser, updatePostCaption } from '@/lib/db';
@@ -245,8 +246,9 @@ function PostCard({ post, isPro, myHandle, onDeletePost, onEditPost }: { post: P
         <Pressable onPress={openProfile} style={styles.cardHeaderTap}>
           <Avatar uri={post.avatar} size={44} />
           <View style={{ flex: 1, marginLeft: 10 }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-              <Text style={styles.name}>{post.name}</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+              <Text style={styles.name} numberOfLines={1}>{post.name}</Text>
+              <VerifiedBadge kind={post.verified} size={15} />
             </View>
             <Text style={styles.time}>{post.time}</Text>
           </View>

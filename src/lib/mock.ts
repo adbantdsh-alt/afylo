@@ -84,6 +84,7 @@ export type Post = {
   name: string;
   handle: string;
   avatar: string;
+  verified?: 'blue' | 'gold' | null; // certification
   badge?: 'créateur' | 'boutique';
   time: string;
   image: string;
@@ -172,6 +173,8 @@ export const posts: Post[] = [
 export type ExploreItem = {
   id: string;
   name: string;
+  handle?: string;
+  verified?: 'blue' | 'gold' | null;
   label: string;
   image: string;
   tall?: boolean;

@@ -3,6 +3,7 @@
  * existante (cartes de l'accueil `Post`, grille d'explore `ExploreItem`).
  * Permet de brancher le vrai réseau sans réécrire les composants.
  */
+import { verifiedKind } from '@/components/verified';
 import type { FeedPost } from '@/lib/db';
 import { avatar, photo, type ExploreItem, type Post } from '@/lib/mock';
 import { formatCfa } from '@/types/db';
@@ -50,6 +51,7 @@ export function mapFeedPost(fp: FeedPost): Post {
     name: a?.display_name || a?.handle || 'Créateur',
     handle: a?.handle ? `@${a.handle}` : '@afryko',
     avatar: a?.avatar_url || avatar(0),
+    verified: verifiedKind(a),
     badge: a?.account_type === 'merchant' ? 'boutique' : 'créateur',
     time: timeAgo(fp.created_at),
     image: isText ? '' : fp.thumbnail_url || fp.media_url || photo(fp.id, 700, 800),
@@ -71,6 +73,8 @@ export function mapExploreItem(fp: FeedPost): ExploreItem {
   return {
     id: fp.id,
     name: a?.display_name || a?.handle || 'Créateur',
+    handle: a?.handle ?? undefined,
+    verified: verifiedKind(a),
     label: a?.bio || fp.caption || 'Afryko',
     image: fp.thumbnail_url || fp.media_url || photo(fp.id, 500, 700),
     tall: hashId(fp.id) % 3 === 0,
