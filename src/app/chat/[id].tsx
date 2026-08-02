@@ -8,7 +8,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Avatar } from '@/components/ui-kit';
 import { Afryko, Font, Radius, Type } from '@/constants/brand';
-import { canMessage, getThread, listMyProducts, markThreadRead, sendMessage, uploadImage, type Message } from '@/lib/db';
+import { canMessage, getProfileByHandle, getThread, listMyProducts, markThreadRead, sendMessage, uploadImage, type Message } from '@/lib/db';
 import { useMe } from '@/lib/me';
 import { face } from '@/lib/mock';
 import type { Product } from '@/types/db';
@@ -21,10 +21,11 @@ export default function Chat() {
   const router = useRouter();
   const me = useMe();
   const params = useLocalSearchParams<{ id: string; name?: string; avatar?: string }>();
-  const otherId = params.id;
+  const rawId = params.id;
   const name = params.name || 'Discussion';
-  const avatar = params.avatar || face(otherId ?? 'afryko');
+  const avatar = params.avatar || face(rawId ?? 'afryko');
 
+  const [rid, setRid] = useState<string | null>(null); // id profil résolu (UUID)
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(true);
   const [blocked, setBlocked] = useState<string | null>(null);
@@ -34,29 +35,37 @@ export default function Chat() {
   const [sending, setSending] = useState(false);
   const scrollRef = useRef<ScrollView>(null);
 
-  const refresh = () => getThread(otherId).then((m) => { setMessages(m); markThreadRead(otherId).catch(() => {}); }).catch(() => {});
+  // Résout l'id : un handle (ex. "khady.seck12") → l'UUID du profil
+  useEffect(() => {
+    if (!rawId) return;
+    if (rawId.includes('-') && rawId.length >= 32) { setRid(rawId); return; }
+    getProfileByHandle(rawId).then((p) => setRid(p?.id ?? null)).catch(() => setRid(null));
+  }, [rawId]);
+
+  const refresh = () => { if (rid) getThread(rid).then((m) => { setMessages(m); markThreadRead(rid).catch(() => {}); }).catch(() => {}); };
 
   // Chargement + vérif confidentialité + polling (temps réel léger)
   useEffect(() => {
-    if (!otherId) return;
+    if (!rid) return;
     setLoading(true);
-    canMessage(otherId).then((r) => setBlocked(r.ok ? null : r.reason ?? 'Messages désactivés.'));
-    refresh().finally(() => setLoading(false));
+    canMessage(rid).then((r) => setBlocked(r.ok ? null : r.reason ?? 'Messages désactivés.'));
+    refresh();
+    setLoading(false);
     listMyProducts().then(setMyProducts).catch(() => {});
     const t = setInterval(refresh, 3500);
     return () => clearInterval(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [otherId]);
+  }, [rid]);
 
   useEffect(() => { setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 60); }, [messages.length]);
 
   const doSend = async (input: { kind?: 'text' | 'image' | 'product'; text?: string; media_url?: string; product?: any }) => {
-    if (sending) return;
+    if (sending || !rid) return;
     setSending(true);
     // optimiste
-    const temp: Message = { id: `tmp${Date.now()}`, sender_id: me.id ?? 'me', recipient_id: otherId, kind: input.kind ?? 'text', text: input.text ?? null, media_url: input.media_url ?? null, product: input.product ?? null, created_at: new Date().toISOString(), read_at: null };
+    const temp: Message = { id: `tmp${Date.now()}`, sender_id: me.id ?? 'me', recipient_id: rid, kind: input.kind ?? 'text', text: input.text ?? null, media_url: input.media_url ?? null, product: input.product ?? null, created_at: new Date().toISOString(), read_at: null };
     setMessages((prev) => [...prev, temp]);
-    const row = await sendMessage(otherId, input);
+    const row = await sendMessage(rid, input);
     if (!row) {
       setMessages((prev) => prev.filter((m) => m.id !== temp.id));
       setBlocked((b) => b ?? "Message non envoyé — ce compte n'accepte pas tes messages.");
@@ -87,7 +96,7 @@ export default function Chat() {
           <Pressable onPress={() => (router.canGoBack() ? router.back() : router.replace('/messages'))} style={styles.back}>
             <Ionicons name="chevron-back" size={26} color={Afryko.text} />
           </Pressable>
-          <Pressable onPress={() => router.push({ pathname: '/creator/[id]', params: { id: otherId, name, avatar } })} style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+          <Pressable onPress={() => router.push({ pathname: '/creator/[id]', params: { id: rid ?? rawId, name, avatar } })} style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
             <Avatar uri={avatar} size={38} />
             <View style={{ flex: 1, marginLeft: 10 }}>
               <Text style={styles.name} numberOfLines={1}>{name}</Text>
