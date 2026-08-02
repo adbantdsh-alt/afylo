@@ -1,12 +1,14 @@
 import { Ionicons } from '@expo/vector-icons';
+import * as Clipboard from 'expo-clipboard';
 import { Image } from 'expo-image';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Linking, Modal, Pressable, ScrollView, Share, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Avatar } from '@/components/ui-kit';
 import { PaymentSheet } from '@/components/payment-sheet';
+import { ReportSheet } from '@/components/report-sheet';
 import { Afryko, Font, Radius, Type } from '@/constants/brand';
 import { followUser, getCreatorData, isFollowing, isProAccount, listProductsByOwner, listRepostsByOwner, unfollowUser, type CreatorData } from '@/lib/db';
 import { fmtCount, timeAgo } from '@/lib/feed-map';
@@ -52,6 +54,10 @@ export default function CreatorProfile() {
   const [products, setProducts] = useState<Product[]>([]);
   const [reposts, setReposts] = useState<Repost[]>([]);
   const [payItems, setPayItems] = useState<{ title: string; price: string }[] | null>(null);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [reportOpen, setReportOpen] = useState(false);
+  const [toast, setToast] = useState<string | null>(null);
+  const showToast = (m: string) => { setToast(m); setTimeout(() => setToast(null), 1700); };
 
   useEffect(() => {
     if (!params.id) return;
@@ -100,6 +106,25 @@ export default function CreatorProfile() {
 
   const buyProduct = (pr: Product) => setPayItems([{ title: pr.title, price: formatCfa(pr.promo_cfa ?? pr.price_cfa) }]);
 
+  // ---- Menu ⋯ du profil ----
+  const profileUrl = `https://afryko.app/${handle}`;
+  const act = (fn: () => void) => { setMenuOpen(false); setTimeout(fn, 120); };
+  const copyUrl = async () => { try { await Clipboard.setStringAsync(profileUrl); } catch {} showToast('Lien du profil copié'); };
+  const shareProfile = () => { Share.share({ message: `Découvre ${name} sur Afryko — ${handle}\n${profileUrl}` }).catch(() => {}); };
+  const block = () => { showToast(`${handle} bloqué`); setTimeout(() => (router.canGoBack() ? router.back() : router.replace('/accueil')), 700); };
+
+  const menuRows: { icon: keyof typeof Ionicons.glyphMap; label: string; danger?: boolean; onPress: () => void }[] = [
+    ...(isSelf ? [] : [
+      { icon: 'remove-circle-outline' as const, label: 'Restreindre', onPress: () => act(() => showToast(`${handle} restreint`)) },
+      { icon: 'ban-outline' as const, label: 'Bloquer', onPress: () => act(block) },
+      { icon: 'flag-outline' as const, label: 'Signaler', danger: true, onPress: () => act(() => setReportOpen(true)) },
+    ]),
+    { icon: 'information-circle-outline', label: 'À propos de ce compte', onPress: () => act(() => showToast(`${handle} · a rejoint Afryko en 2026`)) },
+    ...(isSelf ? [] : [{ icon: 'eye-off-outline' as const, label: 'Masquer votre story', onPress: () => act(() => showToast(`Ta story est masquée pour ${handle}`)) }]),
+    { icon: 'link-outline', label: "Copier l'URL du profil", onPress: () => act(copyUrl) },
+    { icon: 'share-social-outline', label: 'Partager ce profil', onPress: () => act(shareProfile) },
+  ];
+
   const toggleFollow = async () => {
     if (!p?.id || isSelf || busy) return;
     const next = !followed;
@@ -128,7 +153,7 @@ export default function CreatorProfile() {
               <Ionicons name="chevron-back" size={20} color="#fff" />
             </Pressable>
             <View style={{ flex: 1 }} />
-            <Pressable style={styles.roundBtn}>
+            <Pressable style={styles.roundBtn} onPress={() => setMenuOpen(true)}>
               <Ionicons name="ellipsis-horizontal" size={20} color="#fff" />
             </Pressable>
           </SafeAreaView>
@@ -288,6 +313,29 @@ export default function CreatorProfile() {
       </ScrollView>
 
       <PaymentSheet visible={!!payItems} items={payItems ?? []} onClose={() => setPayItems(null)} />
+      <ReportSheet visible={reportOpen} onClose={() => setReportOpen(false)} />
+
+      {/* Menu ⋯ du profil */}
+      <Modal visible={menuOpen} transparent animationType="slide" onRequestClose={() => setMenuOpen(false)}>
+        <Pressable style={styles.menuOverlay} onPress={() => setMenuOpen(false)}>
+          <Pressable style={styles.menuSheet} onPress={(e) => e.stopPropagation?.()}>
+            <View style={styles.menuGrip} />
+            <Text style={styles.menuHandle} numberOfLines={1}>{handle}</Text>
+            {menuRows.map((row) => (
+              <Pressable key={row.label} style={styles.menuRow} onPress={row.onPress}>
+                <Text style={[styles.menuLabel, row.danger && { color: Afryko.live }]}>{row.label}</Text>
+                <Ionicons name={row.icon} size={22} color={row.danger ? Afryko.live : Afryko.text} />
+              </Pressable>
+            ))}
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      {toast && (
+        <View style={styles.toast} pointerEvents="none">
+          <Text style={styles.toastText}>{toast}</Text>
+        </View>
+      )}
     </View>
   );
 }
@@ -362,4 +410,15 @@ const styles = StyleSheet.create({
   repostBuyText: { color: '#fff', fontSize: 10, fontFamily: Font.bold },
   gridEmpty: { alignItems: 'center', paddingVertical: 44 },
   gridEmptyText: { color: Afryko.textDim, fontSize: 14, marginTop: 10 },
+
+  // Menu ⋯
+  menuOverlay: { flex: 1, backgroundColor: '#00000066', justifyContent: 'flex-end' },
+  menuSheet: { backgroundColor: Afryko.bg, borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingHorizontal: 20, paddingTop: 10, paddingBottom: 34 },
+  menuGrip: { width: 38, height: 4, borderRadius: 2, backgroundColor: Afryko.border, alignSelf: 'center', marginBottom: 10 },
+  menuHandle: { color: Afryko.textDim, fontSize: 13, fontFamily: Font.semibold, textAlign: 'center', marginBottom: 6 },
+  menuRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: Afryko.surfaceAlt },
+  menuLabel: { color: Afryko.text, fontSize: 16, fontFamily: Font.semibold },
+
+  toast: { position: 'absolute', bottom: 44, left: 30, right: 30, backgroundColor: '#000000E6', borderRadius: Radius.pill, paddingVertical: 12, paddingHorizontal: 18, alignItems: 'center' },
+  toastText: { color: '#fff', fontSize: 14, fontFamily: Font.semibold, textAlign: 'center' },
 });
