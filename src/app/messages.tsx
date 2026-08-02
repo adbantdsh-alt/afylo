@@ -8,13 +8,16 @@ import { Avatar } from '@/components/ui-kit';
 import { Afryko, Font, Radius, Type } from '@/constants/brand';
 import { listConversations, type Conversation } from '@/lib/db';
 import { timeAgo } from '@/lib/feed-map';
+import { useMe } from '@/lib/me';
 import { face } from '@/lib/mock';
 
 export default function Messages() {
   const router = useRouter();
+  const { isPro } = useMe();
   const [convos, setConvos] = useState<Conversation[]>([]);
   const [loading, setLoading] = useState(true);
   const [q, setQ] = useState('');
+  const [tab, setTab] = useState('Tout');
 
   useFocusEffect(
     useCallback(() => {
@@ -22,7 +25,19 @@ export default function Messages() {
     }, []),
   );
 
-  const filtered = convos.filter((c) => {
+  // Onglets : Store visible uniquement pour les comptes Pro (vendeurs)
+  const tabs = ['Tout', 'Général', ...(isPro ? ['Store'] : []), 'Invitations'];
+  const byTab = (c: Conversation) => {
+    switch (tab) {
+      case 'Général': return c.category === 'general' || (c.category === 'store' && !isPro);
+      case 'Store': return c.category === 'store';
+      case 'Invitations': return c.category === 'invitation';
+      default: return true; // Tout
+    }
+  };
+  const countFor = (t: string) => convos.filter((c) => c.unread > 0 && (t === 'Invitations' ? c.category === 'invitation' : t === 'Store' ? c.category === 'store' : true)).length;
+
+  const filtered = convos.filter(byTab).filter((c) => {
     if (!q) return true;
     const s = q.toLowerCase();
     return (c.other?.display_name ?? '').toLowerCase().includes(s) || (c.other?.handle ?? '').toLowerCase().includes(s);
@@ -45,6 +60,17 @@ export default function Messages() {
           <Ionicons name="search" size={18} color={Afryko.textDim} />
           <TextInput style={styles.searchInput} value={q} onChangeText={setQ} placeholder="Rechercher" placeholderTextColor={Afryko.textFaint} />
         </View>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tabs}>
+          {tabs.map((t) => {
+            const n = t !== 'Tout' && t !== 'Général' ? countFor(t) : 0;
+            return (
+              <Pressable key={t} onPress={() => setTab(t)} style={[styles.tab, tab === t && styles.tabOn]}>
+                <Text style={[styles.tabText, tab === t && styles.tabTextOn]}>{t}</Text>
+                {n > 0 && <View style={styles.tabDot}><Text style={styles.tabDotText}>{n}</Text></View>}
+              </Pressable>
+            );
+          })}
+        </ScrollView>
       </SafeAreaView>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingVertical: 8 }}>
@@ -89,6 +115,13 @@ const styles = StyleSheet.create({
   title: { ...Type.title, color: Afryko.text },
   search: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: Afryko.surface, marginHorizontal: 16, marginTop: 6, marginBottom: 6, paddingHorizontal: 16, height: 44, borderRadius: Radius.pill, borderWidth: 1, borderColor: Afryko.border },
   searchInput: { flex: 1, ...Type.body, fontSize: 15, color: Afryko.text, height: '100%' },
+  tabs: { paddingHorizontal: 16, paddingBottom: 8, gap: 8 },
+  tab: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 16, paddingVertical: 8, borderRadius: Radius.pill, backgroundColor: Afryko.surfaceAlt },
+  tabOn: { backgroundColor: Afryko.violet },
+  tabText: { ...Type.small, fontFamily: Font.semibold, color: Afryko.textDim },
+  tabTextOn: { color: '#fff' },
+  tabDot: { minWidth: 18, height: 18, borderRadius: 9, backgroundColor: Afryko.live, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 5 },
+  tabDotText: { color: '#fff', fontSize: 11, fontFamily: Font.bold },
 
   row: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 10 },
   rowTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },

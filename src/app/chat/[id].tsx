@@ -1,14 +1,16 @@
 import { Ionicons } from '@expo/vector-icons';
+import { AudioModule, RecordingPresets, useAudioPlayer, useAudioRecorder } from 'expo-audio';
+import * as DocumentPicker from 'expo-document-picker';
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, KeyboardAvoidingView, Linking, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Avatar } from '@/components/ui-kit';
 import { Afryko, Font, Radius, Type } from '@/constants/brand';
-import { canMessage, getProfileByHandle, getThread, listMyProducts, markThreadRead, sendMessage, uploadImage, type Message } from '@/lib/db';
+import { canMessage, getProfileByHandle, getThread, listMyProducts, markThreadRead, sendMessage, uploadFile, uploadImage, type Message } from '@/lib/db';
 import { useMe } from '@/lib/me';
 import { face } from '@/lib/mock';
 import type { Product } from '@/types/db';
@@ -33,7 +35,15 @@ export default function Chat() {
   const [pickerOpen, setPickerOpen] = useState(false);
   const [myProducts, setMyProducts] = useState<Product[]>([]);
   const [sending, setSending] = useState(false);
+  const [attachOpen, setAttachOpen] = useState(false);
   const scrollRef = useRef<ScrollView>(null);
+
+  // Enregistrement vocal (expo-audio)
+  const recorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
+  const [recording, setRecording] = useState(false);
+  const [recSecs, setRecSecs] = useState(0);
+  const recTimer = useRef<ReturnType<typeof setInterval> | null>(null);
+  const recStart = useRef(0);
 
   // Résout l'id : un handle (ex. "khady.seck12") → l'UUID du profil
   useEffect(() => {
@@ -59,11 +69,11 @@ export default function Chat() {
 
   useEffect(() => { setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 60); }, [messages.length]);
 
-  const doSend = async (input: { kind?: 'text' | 'image' | 'product'; text?: string; media_url?: string; product?: any }) => {
+  const doSend = async (input: { kind?: Message['kind']; text?: string; media_url?: string; product?: any; file_name?: string; duration?: number }) => {
     if (sending || !rid) return;
     setSending(true);
     // optimiste
-    const temp: Message = { id: `tmp${Date.now()}`, sender_id: me.id ?? 'me', recipient_id: rid, kind: input.kind ?? 'text', text: input.text ?? null, media_url: input.media_url ?? null, product: input.product ?? null, created_at: new Date().toISOString(), read_at: null };
+    const temp: Message = { id: `tmp${Date.now()}`, sender_id: me.id ?? 'me', recipient_id: rid, kind: input.kind ?? 'text', text: input.text ?? null, media_url: input.media_url ?? null, product: input.product ?? null, file_name: input.file_name ?? null, duration: input.duration ?? null, created_at: new Date().toISOString(), read_at: null };
     setMessages((prev) => [...prev, temp]);
     const row = await sendMessage(rid, input);
     if (!row) {
@@ -87,6 +97,50 @@ export default function Chat() {
   const sendProduct = (p: Product) => {
     setPickerOpen(false);
     doSend({ kind: 'product', product: { id: p.id, title: p.title, price: `${p.price_cfa.toLocaleString('fr-FR')} FCFA`, image: p.image_url || face(p.id) } });
+  };
+
+  const attachVideo = async () => {
+    setAttachOpen(false);
+    const res = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['videos'], quality: 0.7 });
+    if (res.canceled) return;
+    try { const url = await uploadFile(res.assets[0].uri, `video-${Date.now()}.mp4`); doSend({ kind: 'video', media_url: url }); } catch {}
+  };
+
+  const attachFile = async () => {
+    setAttachOpen(false);
+    const res = await DocumentPicker.getDocumentAsync({ copyToCacheDirectory: true });
+    if (res.canceled || !res.assets?.[0]) return;
+    const f = res.assets[0];
+    try { const url = await uploadFile(f.uri, f.name); doSend({ kind: 'file', media_url: url, file_name: f.name }); } catch {}
+  };
+
+  // Vocal : appui = démarrer, stop = envoyer, corbeille = annuler
+  const startRec = async () => {
+    try {
+      const perm = await AudioModule.requestRecordingPermissionsAsync();
+      if (!perm.granted) return;
+      await recorder.prepareToRecordAsync();
+      recorder.record();
+      recStart.current = Date.now();
+      setRecSecs(0);
+      setRecording(true);
+      recTimer.current = setInterval(() => setRecSecs(Math.floor((Date.now() - recStart.current) / 1000)), 500);
+    } catch {}
+  };
+  const cancelRec = async () => {
+    if (recTimer.current) clearInterval(recTimer.current);
+    setRecording(false);
+    try { await recorder.stop(); } catch {}
+  };
+  const stopRecAndSend = async () => {
+    if (recTimer.current) clearInterval(recTimer.current);
+    setRecording(false);
+    const dur = Math.max(1, Math.round((Date.now() - recStart.current) / 1000));
+    try {
+      await recorder.stop();
+      const uri = recorder.uri;
+      if (uri) { const url = await uploadFile(uri, `voice-${Date.now()}.m4a`); doSend({ kind: 'voice', media_url: url, duration: dur }); }
+    } catch {}
   };
 
   return (
@@ -142,19 +196,45 @@ export default function Chat() {
         </Pressable>
       )}
 
+      {/* Menu pièces jointes (façon WhatsApp) */}
+      {attachOpen && (
+        <Pressable style={styles.overlay} onPress={() => setAttachOpen(false)}>
+          <View style={styles.sheet}>
+            <View style={styles.sheetHandle} />
+            <View style={styles.attachGrid}>
+              <AttachOption icon="image" color="#8B5CF6" label="Photo" onPress={() => { setAttachOpen(false); attachImage(); }} />
+              <AttachOption icon="videocam" color="#EF4444" label="Vidéo" onPress={attachVideo} />
+              <AttachOption icon="document" color="#3B82F6" label="Fichier" onPress={attachFile} />
+              <AttachOption icon="pricetag" color={Afryko.violet} label="Produit" onPress={() => { setAttachOpen(false); setPickerOpen(true); }} />
+            </View>
+          </View>
+        </Pressable>
+      )}
+
       {/* Barre de saisie / bandeau confidentialité */}
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <SafeAreaView edges={['bottom']} style={{ backgroundColor: Afryko.surface }}>
           {blocked ? (
             <View style={styles.blockedBar}><Ionicons name="lock-closed" size={15} color={Afryko.textDim} /><Text style={styles.blockedText}>{blocked}</Text></View>
+          ) : recording ? (
+            <View style={styles.inputBar}>
+              <Pressable onPress={cancelRec} style={styles.tool}><Ionicons name="trash" size={22} color={Afryko.live} /></Pressable>
+              <View style={styles.recPill}>
+                <View style={styles.recDot} />
+                <Text style={styles.recTime}>{Math.floor(recSecs / 60)}:{String(recSecs % 60).padStart(2, '0')}</Text>
+                <Text style={styles.recLabel}>Enregistrement…</Text>
+              </View>
+              <Pressable onPress={stopRecAndSend} style={styles.send}><Ionicons name="send" size={18} color="#fff" /></Pressable>
+            </View>
           ) : (
             <View style={styles.inputBar}>
-              <Pressable onPress={() => setPickerOpen(true)} style={styles.tool}><Ionicons name="pricetag" size={22} color={Afryko.violet} /></Pressable>
-              <Pressable onPress={attachImage} style={styles.tool}><Ionicons name="image-outline" size={23} color={Afryko.textDim} /></Pressable>
+              <Pressable onPress={() => setAttachOpen(true)} style={styles.tool}><Ionicons name="add-circle" size={28} color={Afryko.violet} /></Pressable>
               <TextInput style={styles.input} value={text} onChangeText={setText} placeholder="Message" placeholderTextColor={Afryko.textFaint} onSubmitEditing={sendText} returnKeyType="send" />
-              <Pressable onPress={sendText} disabled={!text.trim() || sending} style={[styles.send, (!text.trim() || sending) && { opacity: 0.4 }]}>
-                <Ionicons name="send" size={18} color="#fff" />
-              </Pressable>
+              {text.trim() ? (
+                <Pressable onPress={sendText} disabled={sending} style={[styles.send, sending && { opacity: 0.4 }]}><Ionicons name="send" size={18} color="#fff" /></Pressable>
+              ) : (
+                <Pressable onPress={startRec} style={styles.send}><Ionicons name="mic" size={20} color="#fff" /></Pressable>
+              )}
             </View>
           )}
         </SafeAreaView>
@@ -194,6 +274,30 @@ function Bubble({ m, mine }: { m: Message; mine: boolean }) {
     );
   }
 
+  if (m.kind === 'voice' && m.media_url) return <VoiceBubble m={m} mine={mine} />;
+
+  if (m.kind === 'video' && m.media_url) {
+    return (
+      <View style={[styles.bubbleWrap, align]}>
+        <Pressable style={styles.mediaBubble} onPress={() => Linking.openURL(m.media_url!)}>
+          <View style={styles.videoBox}><Ionicons name="play-circle" size={54} color="#fff" /></View>
+        </Pressable>
+      </View>
+    );
+  }
+
+  if (m.kind === 'file' && m.media_url) {
+    return (
+      <View style={[styles.bubbleWrap, align]}>
+        <Pressable style={[styles.bubble, mine ? styles.bubbleMine : styles.bubbleTheirs, styles.fileRow]} onPress={() => Linking.openURL(m.media_url!)}>
+          <Ionicons name="document" size={26} color={mine ? '#fff' : Afryko.violet} />
+          <Text style={[styles.fileName, mine && { color: '#fff' }]} numberOfLines={1}>{m.file_name || 'Fichier'}</Text>
+          <Ionicons name="download-outline" size={18} color={mine ? '#ffffffcc' : Afryko.textDim} />
+        </Pressable>
+      </View>
+    );
+  }
+
   return (
     <View style={[styles.bubbleWrap, align]}>
       <View style={[styles.bubble, mine ? styles.bubbleMine : styles.bubbleTheirs]}>
@@ -201,6 +305,34 @@ function Bubble({ m, mine }: { m: Message; mine: boolean }) {
         <Text style={[styles.bubbleTime, mine && { color: '#ffffffaa' }]}>{fmtTime(m.created_at)}</Text>
       </View>
     </View>
+  );
+}
+
+function VoiceBubble({ m, mine }: { m: Message; mine: boolean }) {
+  const player = useAudioPlayer(m.media_url ?? undefined);
+  const [playing, setPlaying] = useState(false);
+  const dur = m.duration ?? 0;
+  const toggle = () => {
+    if (playing) { try { player.pause(); } catch {} setPlaying(false); }
+    else { try { player.seekTo(0); player.play(); } catch {} setPlaying(true); setTimeout(() => setPlaying(false), Math.max(1000, dur * 1000 + 300)); }
+  };
+  return (
+    <View style={[styles.bubbleWrap, mine ? styles.right : styles.left]}>
+      <View style={[styles.bubble, mine ? styles.bubbleMine : styles.bubbleTheirs, styles.voiceRow]}>
+        <Pressable onPress={toggle}><Ionicons name={playing ? 'pause' : 'play'} size={22} color={mine ? '#fff' : Afryko.violet} /></Pressable>
+        <View style={[styles.waveform, { backgroundColor: mine ? '#ffffff55' : Afryko.border }]} />
+        <Text style={[styles.voiceTime, { color: mine ? '#fff' : Afryko.textDim }]}>{Math.floor(dur / 60)}:{String(Math.round(dur) % 60).padStart(2, '0')}</Text>
+      </View>
+    </View>
+  );
+}
+
+function AttachOption({ icon, color, label, onPress }: { icon: keyof typeof Ionicons.glyphMap; color: string; label: string; onPress: () => void }) {
+  return (
+    <Pressable style={styles.attachOpt} onPress={onPress}>
+      <View style={[styles.attachIcon, { backgroundColor: color }]}><Ionicons name={icon} size={24} color="#fff" /></View>
+      <Text style={styles.attachLabel}>{label}</Text>
+    </Pressable>
   );
 }
 
@@ -223,6 +355,21 @@ const styles = StyleSheet.create({
   bubbleTime: { ...Type.caption, fontSize: 10, color: Afryko.textFaint, alignSelf: 'flex-end', marginTop: 3 },
 
   mediaBubble: { width: 200, height: 240, borderRadius: 20, overflow: 'hidden', backgroundColor: Afryko.surfaceAlt },
+  videoBox: { ...StyleSheet.absoluteFillObject, backgroundColor: '#111', alignItems: 'center', justifyContent: 'center' },
+  voiceRow: { flexDirection: 'row', alignItems: 'center', gap: 10, minWidth: 170 },
+  waveform: { flex: 1, height: 4, borderRadius: 2 },
+  voiceTime: { ...Type.caption, fontSize: 11 },
+  fileRow: { flexDirection: 'row', alignItems: 'center', gap: 10, minWidth: 180, maxWidth: 240 },
+  fileName: { ...Type.body, fontSize: 14, color: Afryko.text, flex: 1 },
+
+  attachGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 18, paddingVertical: 8, justifyContent: 'space-around' },
+  attachOpt: { alignItems: 'center', gap: 8, width: 72 },
+  attachIcon: { width: 56, height: 56, borderRadius: 28, alignItems: 'center', justifyContent: 'center' },
+  attachLabel: { ...Type.small, color: Afryko.text },
+  recPill: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: Afryko.bg, borderRadius: Radius.pill, paddingHorizontal: 16, height: 42, marginHorizontal: 4 },
+  recDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: Afryko.live },
+  recTime: { ...Type.body, fontSize: 15, color: Afryko.text, fontFamily: Font.semibold },
+  recLabel: { ...Type.small, color: Afryko.textDim },
 
   productCard: { width: 240, backgroundColor: Afryko.surface, borderRadius: 18, overflow: 'hidden', borderWidth: 1, borderColor: Afryko.border },
   productImg: { width: '100%', height: 150, backgroundColor: Afryko.surfaceAlt },

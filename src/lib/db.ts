@@ -69,39 +69,56 @@ export async function searchProfiles(q: string): Promise<Profile[]> {
 
 // ---- Messagerie directe ----
 export type ChatPartner = { id: string; display_name: string | null; handle: string | null; avatar_url: string | null };
+export type MsgKind = 'text' | 'image' | 'product' | 'voice' | 'video' | 'file';
 export type Message = {
   id: string;
   sender_id: string;
   recipient_id: string;
-  kind: 'text' | 'image' | 'product';
+  kind: MsgKind;
   text: string | null;
   media_url: string | null;
   product: any | null;
+  file_name: string | null;
+  duration: number | null;
   created_at: string;
   read_at: string | null;
 };
-export type Conversation = { otherId: string; other: ChatPartner | null; last: Message; unread: number };
+export type ConvCategory = 'general' | 'store' | 'invitation';
+export type Conversation = { otherId: string; other: ChatPartner | null; last: Message; unread: number; category: ConvCategory };
 
-/** Mes conversations (dernier message par interlocuteur). */
+/** Mes conversations (dernier message par interlocuteur) + catégorie (général/store/invitation). */
 export async function listConversations(): Promise<Conversation[]> {
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return [];
-  const { data } = await supabase
-    .from('messages')
-    .select('*, sender:profiles!messages_sender_id_fkey(id,display_name,handle,avatar_url), recipient:profiles!messages_recipient_id_fkey(id,display_name,handle,avatar_url)')
-    .or(`sender_id.eq.${user.id},recipient_id.eq.${user.id}`)
-    .order('created_at', { ascending: false })
-    .limit(300);
-  const map = new Map<string, Conversation>();
-  for (const m of (data ?? []) as any[]) {
+  const [msgsRes, folRes] = await Promise.all([
+    supabase
+      .from('messages')
+      .select('*, sender:profiles!messages_sender_id_fkey(id,display_name,handle,avatar_url), recipient:profiles!messages_recipient_id_fkey(id,display_name,handle,avatar_url)')
+      .or(`sender_id.eq.${user.id},recipient_id.eq.${user.id}`)
+      .order('created_at', { ascending: false })
+      .limit(300),
+    supabase.from('follows').select('following_id').eq('follower_id', user.id),
+  ]);
+  const followingSet = new Set(((folRes.data ?? []) as any[]).map((r) => r.following_id));
+  type Acc = Conversation & { _hasProduct: boolean; _iSent: boolean };
+  const map = new Map<string, Acc>();
+  for (const m of (msgsRes.data ?? []) as any[]) {
     const otherId = m.sender_id === user.id ? m.recipient_id : m.sender_id;
     const other = m.sender_id === user.id ? m.recipient : m.sender;
-    if (!map.has(otherId)) map.set(otherId, { otherId, other, last: m, unread: 0 });
-    if (m.recipient_id === user.id && !m.read_at) map.get(otherId)!.unread++;
+    if (!map.has(otherId)) map.set(otherId, { otherId, other, last: m, unread: 0, category: 'general', _hasProduct: false, _iSent: false });
+    const c = map.get(otherId)!;
+    if (m.recipient_id === user.id && !m.read_at) c.unread++;
+    if (m.kind === 'product') c._hasProduct = true;
+    if (m.sender_id === user.id) c._iSent = true;
   }
-  return [...map.values()];
+  return [...map.values()].map((c) => {
+    let category: ConvCategory = 'general';
+    if (c._hasProduct) category = 'store'; // conversation autour d'un article/produit
+    else if (!followingSet.has(c.otherId) && !c._iSent) category = 'invitation'; // demande d'un non-abonné, pas encore répondu
+    return { otherId: c.otherId, other: c.other, last: c.last, unread: c.unread, category };
+  });
 }
 
 /** Fil de discussion avec un interlocuteur (chronologique). */
@@ -120,11 +137,11 @@ export async function getThread(otherId: string): Promise<Message[]> {
 }
 
 /** Envoie un message. Renvoie null si refusé (confidentialité). */
-export async function sendMessage(recipientId: string, input: { kind?: 'text' | 'image' | 'product'; text?: string; media_url?: string; product?: any }): Promise<Message | null> {
+export async function sendMessage(recipientId: string, input: { kind?: MsgKind; text?: string; media_url?: string; product?: any; file_name?: string; duration?: number }): Promise<Message | null> {
   const sender_id = await requireUserId();
   const { data, error } = await supabase
     .from('messages')
-    .insert({ sender_id, recipient_id: recipientId, kind: input.kind ?? 'text', text: input.text ?? null, media_url: input.media_url ?? null, product: input.product ?? null })
+    .insert({ sender_id, recipient_id: recipientId, kind: input.kind ?? 'text', text: input.text ?? null, media_url: input.media_url ?? null, product: input.product ?? null, file_name: input.file_name ?? null, duration: input.duration ?? null })
     .select()
     .single();
   if (error) return null;
