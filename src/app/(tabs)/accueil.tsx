@@ -13,6 +13,8 @@ import { RatingStar } from '@/components/rating-star';
 import { ReportSheet } from '@/components/report-sheet';
 import { RepostSheet } from '@/components/repost-sheet';
 import { FeedSkeleton } from '@/components/skeleton';
+import { BuzzBadge } from '@/components/buzz-badge';
+import { useIsBuzz } from '@/lib/buzz';
 import { VerifiedBadge } from '@/components/verified';
 import { Afryko, Font, Radius, Type } from '@/constants/brand';
 import { useAuthGate } from '@/lib/auth-gate';
@@ -220,6 +222,7 @@ function PostCard({ post, isPro, myHandle, onDeletePost, onEditPost }: { post: P
   const buy = () => { if (gate('acheter')) setPayOpen(true); };
   const repost = () => { if (gate('republier')) setRepostOpen(true); };
   const owns = post.handle === `@${myHandle}` || post.handle === myHandle;
+  const isBuzz = useIsBuzz(post.id);
   const openComments = () => router.push({ pathname: '/comments/[id]', params: { id: post.id, owner: owns ? '1' : '', image: post.image } });
 
   // Double-tap image = j'aime + pop d'animation (dopamine)
@@ -255,6 +258,7 @@ function PostCard({ post, isPro, myHandle, onDeletePost, onEditPost }: { post: P
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
               <Text style={styles.name} numberOfLines={1}>{post.name}</Text>
               <VerifiedBadge kind={post.verified} size={15} />
+              {isBuzz && <BuzzBadge size="sm" />}
             </View>
             <Text style={styles.time}>{post.time}</Text>
           </View>

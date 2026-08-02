@@ -8,6 +8,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useVideoPlayer, VideoView } from 'expo-video';
 
 import { Avatar } from '@/components/ui-kit';
+import { BuzzBadge } from '@/components/buzz-badge';
 import { PaymentSheet } from '@/components/payment-sheet';
 import { RateSheet } from '@/components/rate-sheet';
 import { RatingStar } from '@/components/rating-star';
@@ -57,27 +58,31 @@ const NICHE_MAP = ['Mode', 'Beauté', 'Musique', 'Danse', 'Tech'];
 const REELS: (Post & { niche: string })[] = reels.map((r, i) => ({ ...r, niche: NICHE_MAP[i] ?? NICHES[i % NICHES.length] }));
 const FOLLOWING = ['@fatou.style', '@awa.beauty']; // créateurs suivis (démo)
 
-type TabKey = 'abonnements' | 'trend' | 'niche';
+type TabKey = 'abonnements' | 'trend' | 'buzz';
+
+// Score de buzz d'un contenu (les commentaires pèsent le plus) — "1,2k" -> 1200
+const pc = (s?: string) => { if (!s) return 0; const n = parseFloat(s.replace(',', '.')); return /m/i.test(s) ? n * 1e6 : /k/i.test(s) ? n * 1e3 : n || 0; };
+const buzzScore = (p: Post) => pc(p.comments) * 4 + pc(p.likes) * 2 + pc(p.views) * 0.05;
 
 export default function Trend() {
   const { height, width } = useWindowDimensions();
   const scroll = useHideOnScroll();
   const [tab, setTab] = useState<TabKey>('trend');
   const [active, setActive] = useState(0);
-  const [niche, setNiche] = useState<string | null>(null);
   const [notInterested, setNotInterested] = useState<string[]>([]);
 
   const TABS = [
     { key: 'abonnements' as TabKey, label: 'Abonnements' },
     { key: 'trend' as TabKey, label: 'Trend' },
-    { key: 'niche' as TabKey, label: niche ?? 'Niche' },
+    { key: 'buzz' as TabKey, label: '🔥 Buzz' },
   ];
 
   const shown = useMemo(() => {
     if (tab === 'abonnements') return rankPosts(REELS, { following: FOLLOWING, notInterested }).filter((p) => FOLLOWING.includes(p.handle));
-    if (tab === 'niche') return niche ? REELS.filter((p) => (p as any).niche === niche && !notInterested.includes(p.id)) : [];
+    // Buzz : ce qui buzze réellement — classé par engagement (commentaires/likes/vues)
+    if (tab === 'buzz') return REELS.filter((p) => !notInterested.includes(p.id)).sort((a, b) => buzzScore(b) - buzzScore(a));
     return rankPosts(REELS, { notInterested }); // Trend général (algo viralité)
-  }, [tab, niche, notInterested]);
+  }, [tab, notInterested]);
 
   const notInterestedIn = (id: string) => setNotInterested((prev) => [...prev, id]);
 
@@ -92,38 +97,22 @@ export default function Trend() {
         onMomentumScrollEnd={(e) => setActive(Math.round(e.nativeEvent.contentOffset.y / height))}
         {...scroll}>
         {shown.map((r, i) => (
-          <Reel key={r.id} post={r} index={i} active={i === active} height={height} width={width} onNotInterested={() => notInterestedIn(r.id)} />
+          <Reel key={r.id} post={r} index={i} active={i === active} height={height} width={width} showBuzz={tab === 'buzz' && i === 0} onNotInterested={() => notInterestedIn(r.id)} />
         ))}
         {shown.length === 0 && (
           <View style={{ height, width, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 30 }}>
-            {tab === 'niche' ? (
-              <>
-                <Ionicons name="sparkles" size={34} color="#fff" />
-                <Text style={styles.nicheTitle}>Ton Trend, ta niche</Text>
-                <Text style={styles.nicheSub}>Choisis un thème et ne vois QUE ce contenu. Change quand tu veux.</Text>
-                <View style={styles.nicheGrid}>
-                  {NICHES.map((n) => (
-                    <Pressable key={n} onPress={() => setNiche(n)} style={styles.nicheChip}>
-                      <Text style={styles.nicheChipText}>{n}</Text>
-                    </Pressable>
-                  ))}
-                </View>
-              </>
-            ) : (
-              <Text style={styles.empty}>Rien ici pour l'instant.</Text>
-            )}
+            <Text style={styles.empty}>{tab === 'abonnements' ? 'Suis des créateurs pour voir leurs vidéos ici.' : "Rien ici pour l'instant."}</Text>
           </View>
         )}
       </ScrollView>
 
-      {/* Puce niche active (changer) */}
-      {tab === 'niche' && niche && (
-        <SafeAreaView edges={['top']} style={styles.nicheActiveWrap} pointerEvents="box-none">
-          <Pressable onPress={() => setNiche(null)} style={styles.nicheActive}>
-            <Ionicons name="sparkles" size={14} color="#fff" />
-            <Text style={styles.nicheActiveText}>{niche}</Text>
-            <Ionicons name="chevron-down" size={14} color="#fff" />
-          </Pressable>
+      {/* Bandeau Buzz : le contenu n°1 du moment */}
+      {tab === 'buzz' && shown.length > 0 && (
+        <SafeAreaView edges={['top']} style={styles.buzzBanner} pointerEvents="box-none">
+          <View style={styles.buzzChip}>
+            <Ionicons name="flame" size={13} color="#fff" />
+            <Text style={styles.buzzChipText}>Ça buzze en ce moment</Text>
+          </View>
         </SafeAreaView>
       )}
 
@@ -141,7 +130,7 @@ export default function Trend() {
   );
 }
 
-function Reel({ post, index, active, height, width, onNotInterested }: { post: Post; index: number; active: boolean; height: number; width: number; onNotInterested: () => void }) {
+function Reel({ post, index, active, height, width, showBuzz, onNotInterested }: { post: Post; index: number; active: boolean; height: number; width: number; showBuzz?: boolean; onNotInterested: () => void }) {
   const router = useRouter();
   const gate = useAuthGate();
 
@@ -204,6 +193,7 @@ function Reel({ post, index, active, height, width, onNotInterested }: { post: P
       <SafeAreaView edges={['bottom']} style={styles.bottom} pointerEvents="box-none">
         <View style={styles.infoRow}>
           <Text style={styles.name}>{post.name}</Text>
+          {showBuzz && <BuzzBadge />}
           {post.time === 'en direct' && (
             <View style={styles.liveTag}>
               <View style={styles.dot} />
@@ -313,6 +303,9 @@ const styles = StyleSheet.create({
   nicheActiveWrap: { position: 'absolute', top: 44, left: 0, right: 0, alignItems: 'center' },
   nicheActive: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: Afryko.violet, paddingHorizontal: 14, paddingVertical: 7, borderRadius: Radius.pill },
   nicheActiveText: { color: '#fff', fontFamily: Font.bold, fontSize: 13 },
+  buzzBanner: { position: 'absolute', top: 44, left: 0, right: 0, alignItems: 'center' },
+  buzzChip: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#FF2D55', paddingHorizontal: 14, paddingVertical: 7, borderRadius: Radius.pill },
+  buzzChipText: { color: '#fff', fontFamily: Font.bold, fontSize: 13 },
   speedTag: { position: 'absolute', top: 90, alignSelf: 'center', backgroundColor: '#000000AA', paddingHorizontal: 10, paddingVertical: 3, borderRadius: Radius.pill },
   speedTagText: { color: '#fff', fontFamily: Font.bold, fontSize: 12 },
 

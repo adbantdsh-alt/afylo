@@ -67,6 +67,30 @@ export async function searchProfiles(q: string): Promise<Profile[]> {
   return (data as Profile[]) ?? [];
 }
 
+// ---- Buzz (contenu viral n°1) ----
+/**
+ * Renvoie le post ET le live qui BUZZENT le plus (engagement réel).
+ * Score post = commentaires×4 + j'aime×2 + vues×0.05 (les commentaires pèsent le plus).
+ * La couronne "Buzz" circule automatiquement dès qu'un autre contenu dépasse.
+ */
+export async function getBuzzLeaders(): Promise<{ postId: string | null; postScore: number; liveId: string | null; liveViewers: number }> {
+  const [byViews, byComments, livesRes] = await Promise.all([
+    supabase.from('posts').select('id,like_count,comment_count,view_count').order('view_count', { ascending: false }).limit(40),
+    supabase.from('posts').select('id,like_count,comment_count,view_count').order('comment_count', { ascending: false }).limit(40),
+    supabase.from('lives').select('id,viewer_count').eq('status', 'live').order('viewer_count', { ascending: false }).limit(1),
+  ]);
+  const score = (p: any) => (p.comment_count || 0) * 4 + (p.like_count || 0) * 2 + (p.view_count || 0) * 0.05;
+  const seen = new Set<string>();
+  let top: any = null;
+  for (const p of [...(byViews.data ?? []), ...(byComments.data ?? [])]) {
+    if (seen.has(p.id)) continue;
+    seen.add(p.id);
+    if (!top || score(p) > score(top)) top = p;
+  }
+  const live = (livesRes.data ?? [])[0] as any;
+  return { postId: top?.id ?? null, postScore: top ? score(top) : 0, liveId: live?.id ?? null, liveViewers: live?.viewer_count ?? 0 };
+}
+
 // ---- Notifications ----
 export type NotifActor = { display_name: string | null; handle: string | null; avatar_url: string | null; is_verified: boolean };
 export type Notif = {

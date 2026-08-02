@@ -11,6 +11,8 @@ import { Avatar } from '@/components/ui-kit';
 import { GiftSheet } from '@/components/gift-sheet';
 import { PaymentSheet } from '@/components/payment-sheet';
 import { Afryko, Font, Radius } from '@/constants/brand';
+import { BuzzBadge } from '@/components/buzz-badge';
+import { useIsBuzz } from '@/lib/buzz';
 import { endLive, setLiveViewers } from '@/lib/db';
 import { useMe } from '@/lib/me';
 import { affiliationProducts, avatar, myProducts, video } from '@/lib/mock';
@@ -50,6 +52,7 @@ export default function Live() {
   const params = useLocalSearchParams<{ role?: string; name?: string; avatar?: string; liveId?: string }>();
   const isHost = params.role !== 'viewer';
   const liveId = params.liveId || null;
+  const isBuzz = useIsBuzz(liveId);
   const name = params.name || (isHost ? 'Ton live' : 'Fatou Ndiaye');
   const hostAvatar = params.avatar || avatar(5);
 
@@ -311,6 +314,7 @@ export default function Live() {
           </Pressable>
           <View style={styles.liveBadge}><View style={styles.liveDot} /><Text style={styles.liveText}>EN DIRECT</Text></View>
           <View style={styles.viewersPill}><Ionicons name="eye" size={13} color="#fff" /><Text style={styles.viewersText}>{Math.max(1, viewers)}</Text></View>
+          {isBuzz && <BuzzBadge size="sm" />}
           <View style={{ flex: 1 }} />
           {isHost && (
             <Pressable onPress={() => setFacing((f) => (f === 'front' ? 'back' : 'front'))} style={styles.close}>

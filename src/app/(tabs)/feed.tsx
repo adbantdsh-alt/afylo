@@ -6,9 +6,11 @@ import { useCallback, useState } from 'react';
 import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { BuzzBadge } from '@/components/buzz-badge';
 import { PaymentSheet } from '@/components/payment-sheet';
 import { Avatar } from '@/components/ui-kit';
 import { VerifiedBadge, verifiedKind } from '@/components/verified';
+import { useBuzz } from '@/lib/buzz';
 import { Afryko, Font, Radius, Type } from '@/constants/brand';
 import { useAuthGate } from '@/lib/auth-gate';
 import { followUser, listCreators, listFeedProducts, listLiveNow, myFollowingIds, unfollowUser, type FeedProduct, type LiveRow } from '@/lib/db';
@@ -32,6 +34,7 @@ export default function Feed() {
   const [refreshing, setRefreshing] = useState(false);
   const [mode, setMode] = useState<'tout' | 'live'>('tout');
   const [payItems, setPayItems] = useState<{ title: string; price: string }[] | null>(null);
+  const buzz = useBuzz();
 
   const load = useCallback((soft?: boolean) => {
     if (!soft) setLoading(true);
@@ -99,6 +102,7 @@ export default function Feed() {
                       <View style={styles.viewers}><Ionicons name="eye" size={11} color="#fff" /><Text style={styles.viewersText}>{fmtViewers(l.viewer_count)}</Text></View>
                     </View>
                     {l.kind === 'sell' && <View style={styles.sellTag}><Ionicons name="bag-handle" size={10} color="#fff" /><Text style={styles.tagText}>Vente</Text></View>}
+                    {l.id === buzz.liveId && <View style={styles.buzzTag}><BuzzBadge size="sm" /></View>}
                     <View style={styles.liveHBottom}>
                       <Avatar uri={l.host?.avatar_url || face(l.host?.handle ?? l.id)} size={22} />
                       <Text style={styles.liveHName} numberOfLines={1}>{l.host?.display_name || l.host?.handle || 'Créateur'}</Text>
@@ -169,8 +173,8 @@ export default function Feed() {
             </View>
           ) : (
             <View style={styles.masonryRow}>
-              <View style={styles.masonryCol}>{lives.filter((_, i) => i % 2 === 0).map((l) => <LiveTile key={l.id} l={l} onPress={() => join(l)} />)}</View>
-              <View style={styles.masonryCol}>{lives.filter((_, i) => i % 2 === 1).map((l) => <LiveTile key={l.id} l={l} onPress={() => join(l)} />)}</View>
+              <View style={styles.masonryCol}>{lives.filter((_, i) => i % 2 === 0).map((l) => <LiveTile key={l.id} l={l} isBuzz={l.id === buzz.liveId} onPress={() => join(l)} />)}</View>
+              <View style={styles.masonryCol}>{lives.filter((_, i) => i % 2 === 1).map((l) => <LiveTile key={l.id} l={l} isBuzz={l.id === buzz.liveId} onPress={() => join(l)} />)}</View>
             </View>
           )}
         </ScrollView>
@@ -209,7 +213,7 @@ function FollowButton({ id, initial }: { id: string; initial: boolean }) {
   );
 }
 
-function LiveTile({ l, onPress }: { l: LiveRow; onPress: () => void }) {
+function LiveTile({ l, isBuzz, onPress }: { l: LiveRow; isBuzz?: boolean; onPress: () => void }) {
   const thumb = l.thumbnail_url || l.host?.avatar_url || face(l.host?.handle ?? l.id);
   const sell = l.kind === 'sell';
   const tall = hashId(l.id) % 3 === 0;
@@ -222,6 +226,7 @@ function LiveTile({ l, onPress }: { l: LiveRow; onPress: () => void }) {
         <View style={styles.viewers}><Ionicons name="eye" size={11} color="#fff" /><Text style={styles.viewersText}>{fmtViewers(l.viewer_count)}</Text></View>
       </View>
       {sell && <View style={styles.tileSell}><Ionicons name="bag-handle" size={11} color="#fff" /><Text style={styles.tagText}>Vente</Text></View>}
+      {isBuzz && <View style={styles.buzzTileTag}><BuzzBadge size="sm" /></View>}
       <View style={styles.tileBottom}>
         <Avatar uri={l.host?.avatar_url || face(l.host?.handle ?? l.id)} size={22} />
         <Text style={styles.tileHost} numberOfLines={1}>{l.host?.display_name || l.host?.handle || 'Créateur'}</Text>
@@ -286,6 +291,8 @@ const styles = StyleSheet.create({
   viewersText: { color: '#fff', fontSize: 10, fontFamily: Font.semibold },
   sellTag: { position: 'absolute', top: 34, left: 7, flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: Afryko.green, borderRadius: 5, paddingHorizontal: 6, paddingVertical: 2 },
   tagText: { color: '#fff', fontSize: 9, fontFamily: Font.bold },
+  buzzTag: { position: 'absolute', top: 34, right: 7 },
+  buzzTileTag: { position: 'absolute', top: 38, right: 8 },
 
   // Mur "Live"
   masonry: { paddingHorizontal: 6, paddingTop: 6, paddingBottom: 120 },
