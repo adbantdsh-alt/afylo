@@ -9,18 +9,30 @@ import { Avatar } from '@/components/ui-kit';
 import { PaymentSheet } from '@/components/payment-sheet';
 import { Afryko, Font, Radius, Type } from '@/constants/brand';
 import { followUser, getCreatorData, isFollowing, isProAccount, listProductsByOwner, unfollowUser, type CreatorData } from '@/lib/db';
-import { fmtCount } from '@/lib/feed-map';
+import { fmtCount, timeAgo } from '@/lib/feed-map';
 import { useMe } from '@/lib/me';
 import { face, photo } from '@/lib/mock';
 import { formatCfa, type Product } from '@/types/db';
 
 const DEFAULT_BANNER = require('@/assets/images/default-banner.png');
 
+type Section = 'posts' | 'texte' | 'boutique' | 'achats' | 'reposts';
+
 /** Badge de certification bleu façon X. */
 function BadgeVerified({ size = 18 }: { size?: number }) {
   return (
     <View style={[styles.badge, { width: size, height: size, borderRadius: size / 2 }]}>
       <Ionicons name="checkmark-sharp" size={size * 0.62} color="#fff" />
+    </View>
+  );
+}
+
+/** État vide d'un onglet. */
+function EmptyTab({ icon, text }: { icon: keyof typeof Ionicons.glyphMap; text: string }) {
+  return (
+    <View style={styles.gridEmpty}>
+      <Ionicons name={icon} size={30} color={Afryko.textFaint} />
+      <Text style={styles.gridEmptyText}>{text}</Text>
     </View>
   );
 }
@@ -35,7 +47,7 @@ export default function CreatorProfile() {
   const [followed, setFollowed] = useState(false);
   const [busy, setBusy] = useState(false);
   const [bump, setBump] = useState(0); // ajustement optimiste du nombre d'abonnés
-  const [section, setSection] = useState<'posts' | 'boutique'>('posts');
+  const [section, setSection] = useState<Section>('posts');
   const [products, setProducts] = useState<Product[]>([]);
   const [payItems, setPayItems] = useState<{ title: string; price: string }[] | null>(null);
 
@@ -69,7 +81,18 @@ export default function CreatorProfile() {
   const isSelf = !!p?.id && !!me.id && p.id === me.id;
   const followers = Math.max(0, (data?.followers ?? 0) + bump);
   const posts = data?.posts ?? [];
-  const creatorPro = isProAccount(p?.account_type); // Pro (vendeur) → onglet Boutique visible
+  const mediaPosts = posts.filter((x) => x.kind !== 'text' && (x.media_url || x.thumbnail_url));
+  const textPosts = posts.filter((x) => x.kind === 'text' || (!x.media_url && !x.thumbnail_url));
+  const creatorPro = isProAccount(p?.account_type); // Pro (vendeur) → onglet Boutique en plus
+
+  // Mêmes onglets que ton profil : Simple = 4 (sans Boutique), Pro = 5
+  const tabDefs: { key: Section; icon: keyof typeof Ionicons.glyphMap }[] = [
+    { key: 'posts', icon: 'grid-outline' },
+    { key: 'texte', icon: 'reader-outline' },
+    ...(creatorPro ? [{ key: 'boutique' as Section, icon: 'bag-handle-outline' as const }] : []),
+    { key: 'achats', icon: 'cart-outline' },
+    { key: 'reposts', icon: 'repeat' },
+  ];
 
   const buyProduct = (pr: Product) => setPayItems([{ title: pr.title, price: formatCfa(pr.promo_cfa ?? pr.price_cfa) }]);
 
@@ -161,26 +184,20 @@ export default function CreatorProfile() {
           </View>
         )}
 
-        {/* Onglets — Pro (vendeur) : Posts + Boutique ; Simple : Posts seul */}
-        {creatorPro && (
-          <View style={styles.tabs}>
-            <Pressable style={[styles.tab, section === 'posts' && styles.tabOn]} onPress={() => setSection('posts')}>
-              <Ionicons name="grid-outline" size={20} color={section === 'posts' ? Afryko.text : Afryko.textFaint} />
+        {/* Onglets — même règle que ton profil : Simple = 4 (sans Boutique), Pro = 5 */}
+        <View style={styles.tabs}>
+          {tabDefs.map((t) => (
+            <Pressable key={t.key} style={[styles.tab, section === t.key && styles.tabOn]} onPress={() => setSection(t.key)}>
+              <Ionicons name={t.icon} size={20} color={section === t.key ? Afryko.text : Afryko.textFaint} />
             </Pressable>
-            <Pressable style={[styles.tab, section === 'boutique' && styles.tabOn]} onPress={() => setSection('boutique')}>
-              <Ionicons name="bag-handle-outline" size={20} color={section === 'boutique' ? Afryko.text : Afryko.textFaint} />
-            </Pressable>
-          </View>
-        )}
+          ))}
+        </View>
 
         {loading ? (
           <ActivityIndicator color={Afryko.violet} style={{ marginTop: 34 }} />
         ) : section === 'boutique' ? (
           products.length === 0 ? (
-            <View style={styles.gridEmpty}>
-              <Ionicons name="bag-handle-outline" size={30} color={Afryko.textFaint} />
-              <Text style={styles.gridEmptyText}>Aucun produit en vente</Text>
-            </View>
+            <EmptyTab icon="bag-handle-outline" text="Aucun produit en vente" />
           ) : (
             <View style={styles.prodGrid}>
               {products.map((pr) => (
@@ -205,14 +222,40 @@ export default function CreatorProfile() {
               ))}
             </View>
           )
-        ) : posts.length === 0 ? (
-          <View style={styles.gridEmpty}>
-            <Ionicons name="camera-outline" size={30} color={Afryko.textFaint} />
-            <Text style={styles.gridEmptyText}>Aucune publication</Text>
-          </View>
+        ) : section === 'texte' ? (
+          textPosts.length === 0 ? (
+            <EmptyTab icon="reader-outline" text="Aucun post texte" />
+          ) : (
+            <View>
+              {textPosts.map((x) => (
+                <View key={x.id} style={styles.tweet}>
+                  <Image source={{ uri: avatarUri }} style={styles.tweetAvatar} contentFit="cover" />
+                  <View style={{ flex: 1 }}>
+                    <View style={styles.tweetHead}>
+                      <Text style={styles.tweetName} numberOfLines={1}>{name}</Text>
+                      {verified && <BadgeVerified size={14} />}
+                      <Text style={styles.tweetHandle} numberOfLines={1}>{handle} · {timeAgo(x.created_at)}</Text>
+                    </View>
+                    {!!x.caption && <Text style={styles.tweetText}>{x.caption}</Text>}
+                    <View style={styles.tweetStats}>
+                      <View style={styles.tweetStat}><Ionicons name="chatbubble-outline" size={15} color={Afryko.textFaint} /><Text style={styles.tweetStatN}>{x.comment_count || 0}</Text></View>
+                      <View style={styles.tweetStat}><Ionicons name="heart-outline" size={15} color={Afryko.textFaint} /><Text style={styles.tweetStatN}>{x.like_count || 0}</Text></View>
+                      <View style={styles.tweetStat}><Ionicons name="bar-chart-outline" size={15} color={Afryko.textFaint} /><Text style={styles.tweetStatN}>{x.view_count || 0}</Text></View>
+                    </View>
+                  </View>
+                </View>
+              ))}
+            </View>
+          )
+        ) : section === 'achats' ? (
+          <EmptyTab icon="lock-closed-outline" text="Les achats sont privés" />
+        ) : section === 'reposts' ? (
+          <EmptyTab icon="repeat" text="Aucune republication" />
+        ) : mediaPosts.length === 0 ? (
+          <EmptyTab icon="camera-outline" text="Aucune publication" />
         ) : (
           <View style={styles.grid}>
-            {posts.map((x) => (
+            {mediaPosts.map((x) => (
               <View key={x.id} style={styles.cell}>
                 <Image source={{ uri: x.thumbnail_url || x.media_url || photo(x.id, 300, 380) }} style={StyleSheet.absoluteFill} contentFit="cover" transition={200} />
                 {x.kind === 'video' && (
@@ -280,6 +323,16 @@ const styles = StyleSheet.create({
   prodPriceOld: { color: Afryko.textFaint, fontSize: 12, fontFamily: Font.semibold, textDecorationLine: 'line-through' },
   buyBtn: { backgroundColor: Afryko.violet, borderRadius: Radius.pill, paddingVertical: 9, alignItems: 'center', marginTop: 8 },
   buyBtnText: { color: '#fff', fontFamily: Font.bold, fontSize: 13 },
+
+  tweet: { flexDirection: 'row', gap: 12, paddingHorizontal: 16, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: Afryko.surfaceAlt },
+  tweetAvatar: { width: 44, height: 44, borderRadius: 22, backgroundColor: Afryko.surfaceAlt },
+  tweetHead: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  tweetName: { ...Type.body, fontFamily: Font.bold, color: Afryko.text, flexShrink: 1 },
+  tweetHandle: { color: Afryko.textDim, fontSize: 14, flexShrink: 1 },
+  tweetText: { color: Afryko.text, fontSize: 15, lineHeight: 21, marginTop: 3 },
+  tweetStats: { flexDirection: 'row', gap: 28, marginTop: 10 },
+  tweetStat: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  tweetStatN: { color: Afryko.textFaint, fontSize: 13 },
 
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 2, marginTop: 18 },
   cell: { width: '33%', aspectRatio: 0.8, backgroundColor: Afryko.surfaceAlt, flexGrow: 1 },

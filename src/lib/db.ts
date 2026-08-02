@@ -150,7 +150,7 @@ export async function searchPosts(q: string): Promise<SearchPost[]> {
 
 export type CreatorData = {
   profile: Profile;
-  posts: { id: string; thumbnail_url: string | null; media_url: string | null; kind: string; view_count: number }[];
+  posts: { id: string; thumbnail_url: string | null; media_url: string | null; kind: string; view_count: number; caption: string | null; created_at: string; like_count: number; comment_count: number }[];
   followers: number;
   views: number;
 };
@@ -160,7 +160,7 @@ export async function getCreatorData(handle: string): Promise<CreatorData | null
   const profile = await getProfileByHandle(handle);
   if (!profile) return null;
   const [postsRes, followersRes] = await Promise.all([
-    supabase.from('posts').select('id,thumbnail_url,media_url,kind,view_count').eq('author_id', profile.id).order('created_at', { ascending: false }).limit(60),
+    supabase.from('posts').select('id,thumbnail_url,media_url,kind,view_count,caption,created_at,like_count,comment_count').eq('author_id', profile.id).order('created_at', { ascending: false }).limit(60),
     supabase.from('follows').select('*', { count: 'exact', head: true }).eq('following_id', profile.id),
   ]);
   const posts = postsRes.data ?? [];
