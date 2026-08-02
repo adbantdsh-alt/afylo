@@ -8,9 +8,10 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Avatar } from '@/components/ui-kit';
 import { PaymentSheet } from '@/components/payment-sheet';
 import { Afryko, Font, Radius, Type } from '@/constants/brand';
-import { followUser, getCreatorData, isFollowing, isProAccount, listProductsByOwner, unfollowUser, type CreatorData } from '@/lib/db';
+import { followUser, getCreatorData, isFollowing, isProAccount, listProductsByOwner, listRepostsByOwner, unfollowUser, type CreatorData } from '@/lib/db';
 import { fmtCount, timeAgo } from '@/lib/feed-map';
 import { useMe } from '@/lib/me';
+import { rowToRepost, type Repost } from '@/lib/reposts';
 import { face, photo } from '@/lib/mock';
 import { formatCfa, type Product } from '@/types/db';
 
@@ -49,6 +50,7 @@ export default function CreatorProfile() {
   const [bump, setBump] = useState(0); // ajustement optimiste du nombre d'abonnés
   const [section, setSection] = useState<Section>('posts');
   const [products, setProducts] = useState<Product[]>([]);
+  const [reposts, setReposts] = useState<Repost[]>([]);
   const [payItems, setPayItems] = useState<{ title: string; price: string }[] | null>(null);
 
   useEffect(() => {
@@ -57,11 +59,13 @@ export default function CreatorProfile() {
     setBump(0);
     setSection('posts');
     setProducts([]);
+    setReposts([]);
     getCreatorData(params.id)
       .then((d) => {
         setData(d);
         if (d?.profile?.id) {
           isFollowing(d.profile.id).then(setFollowed).catch(() => {});
+          listRepostsByOwner(d.profile.id).then((rows) => setReposts(rows.map(rowToRepost))).catch(() => {});
           if (isProAccount(d.profile.account_type)) listProductsByOwner(d.profile.id).then(setProducts).catch(() => {});
         }
       })
@@ -250,7 +254,20 @@ export default function CreatorProfile() {
         ) : section === 'achats' ? (
           <EmptyTab icon="lock-closed-outline" text="Les achats sont privés" />
         ) : section === 'reposts' ? (
-          <EmptyTab icon="repeat" text="Aucune republication" />
+          reposts.length === 0 ? (
+            <EmptyTab icon="repeat" text="Aucune republication" />
+          ) : (
+            <View style={styles.grid}>
+              {reposts.map((r) => (
+                <Pressable key={r.id} style={styles.cell} onPress={() => r.post.product && buyProduct({ id: r.post.id, title: r.post.product.title, price_cfa: parseInt(r.post.product.price.replace(/\D/g, ''), 10) || 0, promo_cfa: null } as Product)}>
+                  <Image source={{ uri: r.post.image || photo(r.post.id, 300, 380) }} style={StyleSheet.absoluteFill} contentFit="cover" transition={200} />
+                  <View style={styles.repostTag}><Ionicons name="repeat" size={12} color="#fff" /></View>
+                  {r.text ? <View style={styles.repostQuote}><Text style={styles.repostQuoteText} numberOfLines={2}>{r.text}</Text></View> : null}
+                  {r.post.product ? <View style={styles.repostBuy}><Text style={styles.repostBuyText}>Acheter</Text></View> : null}
+                </Pressable>
+              ))}
+            </View>
+          )
         ) : mediaPosts.length === 0 ? (
           <EmptyTab icon="camera-outline" text="Aucune publication" />
         ) : (
@@ -338,6 +355,11 @@ const styles = StyleSheet.create({
   cell: { width: '33%', aspectRatio: 0.8, backgroundColor: Afryko.surfaceAlt, flexGrow: 1 },
   cellTag: { position: 'absolute', bottom: 6, left: 6, flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: '#00000088', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 8 },
   cellTagText: { color: '#fff', fontFamily: Font.medium, fontSize: 10 },
+  repostTag: { position: 'absolute', top: 6, right: 6, width: 22, height: 22, borderRadius: 11, backgroundColor: '#00000088', alignItems: 'center', justifyContent: 'center' },
+  repostQuote: { position: 'absolute', left: 0, right: 0, top: 0, backgroundColor: '#000000aa', paddingHorizontal: 6, paddingVertical: 5 },
+  repostQuoteText: { color: '#fff', fontSize: 10, lineHeight: 13 },
+  repostBuy: { position: 'absolute', bottom: 6, right: 6, backgroundColor: Afryko.violet, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 },
+  repostBuyText: { color: '#fff', fontSize: 10, fontFamily: Font.bold },
   gridEmpty: { alignItems: 'center', paddingVertical: 44 },
   gridEmptyText: { color: Afryko.textDim, fontSize: 14, marginTop: 10 },
 });

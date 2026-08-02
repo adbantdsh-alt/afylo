@@ -66,6 +66,46 @@ export async function searchProfiles(q: string): Promise<Profile[]> {
   return (data as Profile[]) ?? [];
 }
 
+// ---- Reposts (republications publiques) ----
+export type RepostRow = { id: string; reposter_id: string; post_id: string; payload: any; created_at: string };
+
+/** Crée/remplace un repost (1 par publication). Renvoie la ligne créée. */
+export async function createRepostDB(post_id: string, payload: any): Promise<RepostRow | null> {
+  const me = await requireUserId();
+  const { data, error } = await supabase
+    .from('reposts')
+    .upsert({ reposter_id: me, post_id, payload }, { onConflict: 'reposter_id,post_id' })
+    .select()
+    .single();
+  if (error) return null;
+  return data as RepostRow;
+}
+
+/** Reposts d'un compte (publics). */
+export async function listRepostsByOwner(ownerId: string): Promise<RepostRow[]> {
+  const { data } = await supabase.from('reposts').select('*').eq('reposter_id', ownerId).order('created_at', { ascending: false }).limit(60);
+  return (data as RepostRow[]) ?? [];
+}
+
+/** Mes reposts. */
+export async function listMyReposts(): Promise<RepostRow[]> {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return [];
+  return listRepostsByOwner(user.id);
+}
+
+export async function updateRepostDB(id: string, payload: any): Promise<void> {
+  const { error } = await supabase.from('reposts').update({ payload }).eq('id', id);
+  if (error) throw error;
+}
+
+export async function deleteRepostDB(id: string): Promise<void> {
+  const { error } = await supabase.from('reposts').delete().eq('id', id);
+  if (error) throw error;
+}
+
 // ---- Suivi (follow / unfollow) ----
 /** Est-ce que je suis ce compte ? false si non connecté / soi-même. */
 export async function isFollowing(targetId: string): Promise<boolean> {
