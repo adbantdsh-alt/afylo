@@ -12,7 +12,7 @@ import { useTabBar } from '@/lib/tabbar';
 const TABS: Record<string, { on: keyof typeof Ionicons.glyphMap; off: keyof typeof Ionicons.glyphMap; label: string }> = {
   accueil: { on: 'home', off: 'home-outline', label: 'Accueil' },
   trend: { on: 'flame', off: 'flame-outline', label: 'Trend' },
-  feed: { on: 'grid', off: 'grid-outline', label: 'Feed' },
+  feed: { on: 'play-circle', off: 'play-circle-outline', label: 'Live' },
   profil: { on: 'person', off: 'person-outline', label: 'Profil' },
 };
 

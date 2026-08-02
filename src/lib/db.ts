@@ -297,6 +297,28 @@ export async function unfollowUser(targetId: string): Promise<void> {
   if (error) throw error;
 }
 
+/** Ids des comptes que je suis (léger, pour l'état des boutons Suivre). */
+export async function myFollowingIds(): Promise<string[]> {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return [];
+  const { data } = await supabase.from('follows').select('following_id').eq('follower_id', user.id);
+  return ((data ?? []) as any[]).map((r) => r.following_id);
+}
+
+/** Créateurs/vendeurs à découvrir (vitrine). */
+export async function listCreators(limit = 20): Promise<Profile[]> {
+  const { data } = await supabase
+    .from('profiles')
+    .select('*')
+    .neq('account_type', 'buyer')
+    .order('is_verified', { ascending: false })
+    .order('created_at', { ascending: false })
+    .limit(limit);
+  return (data as Profile[]) ?? [];
+}
+
 /** Les comptes que JE suis (abonnements). PRIVÉ : uniquement pour moi-même. */
 export async function listMyFollowing(): Promise<Profile[]> {
   const {
