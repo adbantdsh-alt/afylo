@@ -32,6 +32,7 @@ export type ProfileInput = {
   banner_position?: number;
   website?: string | null;
   account_type?: 'creator' | 'merchant' | 'buyer';
+  messages_from?: 'everyone' | 'followers' | 'nobody';
 };
 
 export async function updateMyProfile(patch: ProfileInput): Promise<void> {
@@ -64,6 +65,99 @@ export async function searchProfiles(q: string): Promise<Profile[]> {
   const { data, error } = await req;
   if (error) return [];
   return (data as Profile[]) ?? [];
+}
+
+// ---- Messagerie directe ----
+export type ChatPartner = { id: string; display_name: string | null; handle: string | null; avatar_url: string | null };
+export type Message = {
+  id: string;
+  sender_id: string;
+  recipient_id: string;
+  kind: 'text' | 'image' | 'product';
+  text: string | null;
+  media_url: string | null;
+  product: any | null;
+  created_at: string;
+  read_at: string | null;
+};
+export type Conversation = { otherId: string; other: ChatPartner | null; last: Message; unread: number };
+
+/** Mes conversations (dernier message par interlocuteur). */
+export async function listConversations(): Promise<Conversation[]> {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return [];
+  const { data } = await supabase
+    .from('messages')
+    .select('*, sender:profiles!messages_sender_id_fkey(id,display_name,handle,avatar_url), recipient:profiles!messages_recipient_id_fkey(id,display_name,handle,avatar_url)')
+    .or(`sender_id.eq.${user.id},recipient_id.eq.${user.id}`)
+    .order('created_at', { ascending: false })
+    .limit(300);
+  const map = new Map<string, Conversation>();
+  for (const m of (data ?? []) as any[]) {
+    const otherId = m.sender_id === user.id ? m.recipient_id : m.sender_id;
+    const other = m.sender_id === user.id ? m.recipient : m.sender;
+    if (!map.has(otherId)) map.set(otherId, { otherId, other, last: m, unread: 0 });
+    if (m.recipient_id === user.id && !m.read_at) map.get(otherId)!.unread++;
+  }
+  return [...map.values()];
+}
+
+/** Fil de discussion avec un interlocuteur (chronologique). */
+export async function getThread(otherId: string): Promise<Message[]> {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return [];
+  const { data } = await supabase
+    .from('messages')
+    .select('*')
+    .or(`and(sender_id.eq.${user.id},recipient_id.eq.${otherId}),and(sender_id.eq.${otherId},recipient_id.eq.${user.id})`)
+    .order('created_at', { ascending: true })
+    .limit(500);
+  return (data as Message[]) ?? [];
+}
+
+/** Envoie un message. Renvoie null si refusé (confidentialité). */
+export async function sendMessage(recipientId: string, input: { kind?: 'text' | 'image' | 'product'; text?: string; media_url?: string; product?: any }): Promise<Message | null> {
+  const sender_id = await requireUserId();
+  const { data, error } = await supabase
+    .from('messages')
+    .insert({ sender_id, recipient_id: recipientId, kind: input.kind ?? 'text', text: input.text ?? null, media_url: input.media_url ?? null, product: input.product ?? null })
+    .select()
+    .single();
+  if (error) return null;
+  return data as Message;
+}
+
+/** Marque comme lus les messages reçus de cet interlocuteur. */
+export async function markThreadRead(otherId: string): Promise<void> {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return;
+  await supabase.from('messages').update({ read_at: new Date().toISOString() }).eq('recipient_id', user.id).eq('sender_id', otherId).is('read_at', null);
+}
+
+/** Puis-je écrire à ce compte ? (pré-vérif confidentialité côté client) */
+export async function canMessage(recipientId: string): Promise<{ ok: boolean; reason?: string }> {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, reason: 'Connecte-toi pour envoyer un message.' };
+  if (user.id === recipientId) return { ok: true };
+  const { data: prof } = await supabase.from('profiles').select('messages_from').eq('id', recipientId).maybeSingle();
+  const pref = (prof?.messages_from as string) || 'everyone';
+  if (pref === 'everyone') return { ok: true };
+  // déjà en conversation ?
+  const { count: existing } = await supabase.from('messages').select('*', { count: 'exact', head: true }).eq('sender_id', recipientId).eq('recipient_id', user.id);
+  if ((existing ?? 0) > 0) return { ok: true };
+  if (pref === 'followers') {
+    const { count } = await supabase.from('follows').select('*', { count: 'exact', head: true }).eq('follower_id', user.id).eq('following_id', recipientId);
+    return (count ?? 0) > 0 ? { ok: true } : { ok: false, reason: "Ce compte n'accepte les messages que de ses abonnés." };
+  }
+  return { ok: false, reason: "Ce compte n'accepte pas les nouveaux messages." };
 }
 
 // ---- Reposts (republications publiques) ----

@@ -11,7 +11,7 @@ import { Afryko, applyThemePref, Font, getThemePref, Radius, Type, type ThemePre
 const THEME_LABELS: Record<ThemePref, string> = { light: 'Clair', dark: 'Sombre', system: 'Système' };
 const THEME_FROM_LABEL: Record<string, ThemePref> = { Clair: 'light', Sombre: 'dark', Système: 'system' };
 import { useAuth } from '@/lib/auth';
-import { changeEmail, changePassword, deactivateAccount, deleteAccount, getAccountInfo } from '@/lib/db';
+import { changeEmail, changePassword, deactivateAccount, deleteAccount, getAccountInfo, getMyProfile, updateMyProfile } from '@/lib/db';
 import { maskCard, useCheckoutProfile, type PayMethod } from '@/lib/checkout-profile';
 import { face } from '@/lib/mock';
 
@@ -31,6 +31,10 @@ type Row = {
 };
 
 const AUDIENCE = ['Tout le monde', 'Mes abonnés', 'Personne'];
+// Libellé FR ↔ valeur DB pour « qui peut m'écrire »
+type MsgPref = 'everyone' | 'followers' | 'nobody';
+const MSG_LABEL: Record<MsgPref, string> = { everyone: 'Tout le monde', followers: 'Mes abonnés', nobody: 'Personne' };
+const MSG_FROM_LABEL: Record<string, MsgPref> = { 'Tout le monde': 'everyone', 'Mes abonnés': 'followers', Personne: 'nobody' };
 
 export default function Settings() {
   const router = useRouter();
@@ -56,6 +60,15 @@ export default function Settings() {
   const [storyVis, setStoryVis] = useState('Tout le monde');
   const [msgFrom, setMsgFrom] = useState('Tout le monde');
   const [mentionFrom, setMentionFrom] = useState('Tout le monde');
+
+  // Charge le réglage réel « qui peut m'écrire »
+  useEffect(() => {
+    getMyProfile().then((p) => { if (p?.messages_from) setMsgFrom(MSG_LABEL[p.messages_from as MsgPref] ?? 'Tout le monde'); }).catch(() => {});
+  }, []);
+  const changeMsgFrom = (label: string) => {
+    setMsgFrom(label);
+    updateMyProfile({ messages_from: MSG_FROM_LABEL[label] ?? 'everyone' }).catch(() => {});
+  };
   const [linked, setLinked] = useState<Record<string, boolean>>({ Instagram: true, TikTok: false, YouTube: false, X: false });
   const [blocked, setBlocked] = useState(
     [
@@ -227,7 +240,7 @@ export default function Settings() {
         which={detail}
         onClose={() => setDetail(null)}
         hasSession={!!session}
-        state={{ lang, setLang, theme, setTheme: changeTheme, storyVis, setStoryVis, msgFrom, setMsgFrom, mentionFrom, setMentionFrom, linked, setLinked, blocked, setBlocked, devices }}
+        state={{ lang, setLang, theme, setTheme: changeTheme, storyVis, setStoryVis, msgFrom, setMsgFrom: changeMsgFrom, mentionFrom, setMentionFrom, linked, setLinked, blocked, setBlocked, devices }}
       />
 
       {/* Confirmation désactivation / suppression */}

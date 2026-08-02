@@ -171,7 +171,7 @@ export default function CreatorProfile() {
             </Pressable>
           ) : (
             <View style={styles.actionRow}>
-              <Pressable style={styles.msgBtn} onPress={() => router.push('/messages')}>
+              <Pressable style={styles.msgBtn} onPress={() => p?.id && router.push({ pathname: '/chat/[id]', params: { id: p.id, name, avatar: avatarUri } })}>
                 <Ionicons name="chatbubble-outline" size={18} color={Afryko.text} />
               </Pressable>
               <Pressable style={[styles.followBtn, followed && styles.followBtnOn]} onPress={toggleFollow} disabled={busy}>

@@ -1,22 +1,36 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
-import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { useFocusEffect, useRouter } from 'expo-router';
+import { useCallback, useState } from 'react';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Avatar } from '@/components/ui-kit';
 import { Afryko, Font, Radius, Type } from '@/constants/brand';
-import { avatar } from '@/lib/mock';
-
-const convos = [
-  { id: 'c1', name: 'Awa Cosmetics', avatar: avatar(9), last: 'Le coffret est dispo ?', time: '2 min', unread: 2, online: true },
-  { id: 'c2', name: 'Modou Beats', avatar: avatar(15), last: 'Merci pour la commande 🙏', time: '1 h', unread: 0, online: true },
-  { id: 'c3', name: 'Sokhna Créations', avatar: avatar(20), last: 'Livraison demain à Dakar', time: '3 h', unread: 0, online: false },
-  { id: 'c4', name: 'Cheikh Tech', avatar: avatar(33), last: 'Tu as vu mon live hier ?', time: '1 j', unread: 1, online: false },
-  { id: 'c5', name: 'Mariama Cuisine', avatar: avatar(45), last: 'Je te réserve le lot 👌', time: '2 j', unread: 0, online: false },
-];
+import { listConversations, type Conversation } from '@/lib/db';
+import { timeAgo } from '@/lib/feed-map';
+import { face } from '@/lib/mock';
 
 export default function Messages() {
   const router = useRouter();
+  const [convos, setConvos] = useState<Conversation[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [q, setQ] = useState('');
+
+  useFocusEffect(
+    useCallback(() => {
+      listConversations().then((c) => setConvos(c)).catch(() => {}).finally(() => setLoading(false));
+    }, []),
+  );
+
+  const filtered = convos.filter((c) => {
+    if (!q) return true;
+    const s = q.toLowerCase();
+    return (c.other?.display_name ?? '').toLowerCase().includes(s) || (c.other?.handle ?? '').toLowerCase().includes(s);
+  });
+
+  const open = (c: Conversation) =>
+    router.push({ pathname: '/chat/[id]', params: { id: c.otherId, name: c.other?.display_name ?? c.other?.handle ?? 'Discussion', avatar: c.other?.avatar_url ?? '' } });
+
   return (
     <View style={styles.root}>
       <SafeAreaView edges={['top']} style={{ backgroundColor: Afryko.bg }}>
@@ -25,41 +39,44 @@ export default function Messages() {
             <Ionicons name="chevron-back" size={26} color={Afryko.text} onPress={() => (router.canGoBack() ? router.back() : router.replace('/accueil'))} />
             <Text style={styles.title}>Messages</Text>
           </View>
-          <Ionicons name="create-outline" size={24} color={Afryko.text} />
+          <Ionicons name="create-outline" size={24} color={Afryko.text} onPress={() => router.push('/search')} />
         </View>
         <View style={styles.search}>
           <Ionicons name="search" size={18} color={Afryko.textDim} />
-          <TextInput style={styles.searchInput} placeholder="Rechercher" placeholderTextColor={Afryko.textFaint} />
+          <TextInput style={styles.searchInput} value={q} onChangeText={setQ} placeholder="Rechercher" placeholderTextColor={Afryko.textFaint} />
         </View>
       </SafeAreaView>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingVertical: 8 }}>
-        {convos.map((c) => (
-          <Pressable
-            key={c.id}
-            onPress={() => router.push({ pathname: '/chat/[id]', params: { id: c.id, name: c.name, avatar: c.avatar } })}
-            style={styles.row}>
-            <View>
-              <Avatar uri={c.avatar} size={56} ring={c.unread > 0} />
-              {c.online && <View style={styles.online} />}
-            </View>
-            <View style={{ flex: 1, marginLeft: 12 }}>
-              <View style={styles.rowTop}>
-                <Text style={styles.name}>{c.name}</Text>
-                <Text style={styles.time}>{c.time}</Text>
+        {loading ? (
+          <ActivityIndicator color={Afryko.violet} style={{ marginTop: 34 }} />
+        ) : filtered.length === 0 ? (
+          <View style={styles.empty}>
+            <Ionicons name="chatbubbles-outline" size={40} color={Afryko.textFaint} />
+            <Text style={styles.emptyTitle}>Aucun message</Text>
+            <Text style={styles.emptySub}>Écris à un créateur depuis son profil pour démarrer une conversation.</Text>
+          </View>
+        ) : (
+          filtered.map((c) => (
+            <Pressable key={c.otherId} onPress={() => open(c)} style={styles.row}>
+              <Avatar uri={c.other?.avatar_url || face(c.other?.handle ?? c.otherId)} size={56} ring={c.unread > 0} />
+              <View style={{ flex: 1, marginLeft: 12 }}>
+                <View style={styles.rowTop}>
+                  <Text style={styles.name} numberOfLines={1}>{c.other?.display_name || c.other?.handle || 'Créateur'}</Text>
+                  <Text style={styles.time}>{timeAgo(c.last.created_at)}</Text>
+                </View>
+                <View style={styles.rowBottom}>
+                  <Text style={[styles.last, c.unread > 0 && styles.lastUnread]} numberOfLines={1}>
+                    {c.last.kind === 'image' ? '📷 Photo' : c.last.kind === 'product' ? '🛍️ Produit' : c.last.text}
+                  </Text>
+                  {c.unread > 0 && (
+                    <View style={styles.badge}><Text style={styles.badgeText}>{c.unread}</Text></View>
+                  )}
+                </View>
               </View>
-              <View style={styles.rowBottom}>
-                <Text style={[styles.last, c.unread > 0 && styles.lastUnread]} numberOfLines={1}>{c.last}</Text>
-                {c.unread > 0 && (
-                  <View style={styles.badge}>
-                    <Text style={styles.badgeText}>{c.unread}</Text>
-                  </View>
-                )}
-              </View>
-            </View>
-          </Pressable>
-        ))}
-        <Text style={styles.note}>La messagerie complète arrive bientôt.</Text>
+            </Pressable>
+          ))
+        )}
       </ScrollView>
     </View>
   );
@@ -74,14 +91,16 @@ const styles = StyleSheet.create({
   searchInput: { flex: 1, ...Type.body, fontSize: 15, color: Afryko.text, height: '100%' },
 
   row: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 10 },
-  online: { position: 'absolute', bottom: 2, right: 2, width: 14, height: 14, borderRadius: 7, backgroundColor: Afryko.green, borderWidth: 2, borderColor: Afryko.bg },
   rowTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  name: { ...Type.body, fontFamily: Font.semibold, color: Afryko.text },
+  name: { ...Type.body, fontFamily: Font.semibold, color: Afryko.text, flex: 1, marginRight: 8 },
   time: { ...Type.caption, color: Afryko.textFaint },
   rowBottom: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 3 },
   last: { ...Type.small, color: Afryko.textDim, flex: 1, marginRight: 10 },
   lastUnread: { color: Afryko.text, fontFamily: Font.semibold },
   badge: { minWidth: 20, height: 20, borderRadius: 10, backgroundColor: Afryko.violet, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 6 },
   badgeText: { color: '#fff', fontFamily: Font.bold, fontSize: 12 },
-  note: { ...Type.caption, color: Afryko.textFaint, textAlign: 'center', marginTop: 20 },
+
+  empty: { alignItems: 'center', paddingHorizontal: 40, paddingVertical: 50 },
+  emptyTitle: { color: Afryko.text, fontSize: 16, fontFamily: Font.bold, marginTop: 12 },
+  emptySub: { color: Afryko.textDim, fontSize: 14, textAlign: 'center', marginTop: 6, lineHeight: 20 },
 });

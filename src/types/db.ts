@@ -25,6 +25,7 @@ export interface Profile {
   bio: string | null;
   website: string | null;
   account_type: AccountType;
+  messages_from: 'everyone' | 'followers' | 'nobody';
   is_verified: boolean;
   is_active: boolean;
   created_at: string;
