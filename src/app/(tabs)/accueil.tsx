@@ -223,7 +223,7 @@ function PostCard({ post, isPro, myHandle, onDeletePost, onEditPost }: { post: P
   const repost = () => { if (gate('republier')) setRepostOpen(true); };
   const owns = post.handle === `@${myHandle}` || post.handle === myHandle;
   const isBuzz = useIsBuzz(post.id);
-  const openComments = () => router.push({ pathname: '/comments/[id]', params: { id: post.id, owner: owns ? '1' : '', image: post.image } });
+  const openComments = () => router.push({ pathname: '/comments/[id]', params: { id: post.id, owner: owns ? '1' : '', image: post.image, name: post.name } });
 
   // Double-tap image = j'aime + pop d'animation (dopamine)
   const heartPop = () => {

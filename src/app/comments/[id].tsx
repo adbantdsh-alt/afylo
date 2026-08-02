@@ -1,11 +1,13 @@
 import { Ionicons } from '@expo/vector-icons';
+import { AudioModule, RecordingPresets, useAudioPlayer, useAudioRecorder } from 'expo-audio';
 import { Image } from 'expo-image';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Avatar } from '@/components/ui-kit';
+import { GiftSheet } from '@/components/gift-sheet';
 import { REACTIONS } from '@/components/rate-sheet';
 import { Afryko, Font, Radius, Type } from '@/constants/brand';
 import { useAuthGate } from '@/lib/auth-gate';
@@ -23,6 +25,8 @@ type Comment = {
   likes: number;
   liked: boolean;
   mine?: boolean; // commentaire de l'utilisateur connecté
+  gift?: number; // cadeau offert (FCFA) — l'argent va au créateur (5% Afryko)
+  voiceDur?: string; // durée affichée du vocal (voice = uri du fichier audio)
   replies: Comment[];
 };
 
@@ -39,8 +43,10 @@ const seed: Comment[] = [
 
 export default function Comments() {
   const router = useRouter();
-  const params = useLocalSearchParams<{ id: string; owner?: string; image?: string }>();
+  const params = useLocalSearchParams<{ id: string; owner?: string; image?: string; name?: string }>();
   const gate = useAuthGate();
+  const authorName = params.name || 'le créateur';
+  const [giftOpen, setGiftOpen] = useState(false);
   const meP = useMe();
   const isOwner = params.owner === '1'; // le propriétaire du post peut supprimer n'importe quel commentaire
 
@@ -55,12 +61,31 @@ export default function Comments() {
     setComments(rec);
   };
 
-  const addVoice = () => {
+  // Vrai vocal : maintiens le micro pour enregistrer, relâche pour envoyer.
+  const recorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
+  const recStart = useRef(0);
+  const startRec = async () => {
     if (!gate('commenter')) return;
+    try {
+      const perm = await AudioModule.requestRecordingPermissionsAsync();
+      if (!perm.granted) return;
+      await recorder.prepareToRecordAsync();
+      recorder.record();
+      recStart.current = Date.now();
+      setRecording(true);
+    } catch {}
+  };
+  const stopRecAndSend = async () => {
+    if (!recording) return;
     setRecording(false);
-    const dur = `0:0${3 + (comments.length % 6)}`;
-    const me: Comment = { id: nid(), name: meP.name, handle: `@${meP.handle}`, avatar: meP.avatar, text: '', voice: dur, time: 'à l\'instant', likes: 0, liked: false, mine: true, replies: [] };
-    setComments((prev) => [me, ...prev]);
+    const secs = Math.max(1, Math.round((Date.now() - recStart.current) / 1000));
+    try {
+      await recorder.stop();
+      const uri = recorder.uri;
+      if (!uri) return;
+      const me: Comment = { id: nid(), name: meP.name, handle: `@${meP.handle}`, avatar: meP.avatar, text: '', voice: uri, voiceDur: `0:${String(secs).padStart(2, '0')}`, time: 'à l\'instant', likes: 0, liked: false, mine: true, replies: [] };
+      setComments((prev) => [me, ...prev]);
+    } catch {}
   };
 
   const toggleLike = (id: string) => {
@@ -73,6 +98,13 @@ export default function Comments() {
         replies: rec(c.replies),
       }));
     setComments(rec);
+  };
+
+  // Cadeau : l'argent va au créateur (5% Afryko). Apparaît dans le fil.
+  const sendGift = (amount: number) => {
+    setGiftOpen(false);
+    const g: Comment = { id: nid(), name: meP.name, handle: `@${meP.handle}`, avatar: meP.avatar, text: `a offert ${amount.toLocaleString('fr-FR')} FCFA à ${authorName}`, gift: amount, time: 'à l\'instant', likes: 0, liked: false, mine: true, replies: [] };
+    setComments((prev) => [g, ...prev]);
   };
 
   const send = () => {
@@ -135,20 +167,42 @@ export default function Comments() {
                 placeholderTextColor={Afryko.textFaint}
                 onSubmitEditing={send}
               />
+              <Pressable onPress={() => { if (gate('offrir un cadeau')) setGiftOpen(true); }} style={styles.giftBtn}>
+                <Ionicons name="gift" size={22} color={Afryko.gold} />
+              </Pressable>
               {text.trim() ? (
                 <Pressable onPress={send} style={styles.send}>
                   <Ionicons name="send" size={18} color="#fff" />
                 </Pressable>
               ) : (
-                <Pressable onPress={addVoice} onLongPress={() => setRecording(true)} onPressOut={() => recording && addVoice()} style={[styles.send, recording && { backgroundColor: Afryko.live }]}>
-                  <Ionicons name={recording ? 'stop' : 'mic'} size={20} color="#fff" />
+                <Pressable onLongPress={startRec} delayLongPress={200} onPressOut={stopRecAndSend} style={[styles.send, recording && { backgroundColor: Afryko.live }]}>
+                  <Ionicons name={recording ? 'radio-button-on' : 'mic'} size={20} color="#fff" />
                 </Pressable>
               )}
             </View>
           </SafeAreaView>
         </KeyboardAvoidingView>
       </View>
+
+      <GiftSheet visible={giftOpen} host={authorName} onClose={() => setGiftOpen(false)} onSent={sendGift} />
     </View>
+  );
+}
+
+/** Note vocale jouable (vrai enregistrement). */
+function VoiceNote({ uri, dur }: { uri: string; dur: string }) {
+  const player = useAudioPlayer(uri);
+  const [playing, setPlaying] = useState(false);
+  const toggle = () => {
+    if (playing) { player.pause(); setPlaying(false); }
+    else { try { player.seekTo(0); } catch {} player.play(); setPlaying(true); }
+  };
+  return (
+    <Pressable style={styles.voiceNote} onPress={toggle}>
+      <Ionicons name={playing ? 'pause' : 'play'} size={15} color="#fff" />
+      <View style={styles.voiceWave} />
+      <Text style={styles.voiceDur}>{dur}</Text>
+    </Pressable>
   );
 }
 
@@ -164,10 +218,11 @@ function CommentRow({ c, isOwner, onLike, onReply, onDelete, depth = 0 }: { c: C
         <View style={{ flex: 1, marginLeft: 10 }}>
           <Text style={styles.cName}>{c.name} <Text style={styles.cTime}>· {c.time}</Text></Text>
           {c.voice ? (
-            <View style={styles.voiceNote}>
-              <Ionicons name="play" size={15} color="#fff" />
-              <View style={styles.voiceWave} />
-              <Text style={styles.voiceDur}>{c.voice}</Text>
+            <VoiceNote uri={c.voice} dur={c.voiceDur ?? ''} />
+          ) : c.gift ? (
+            <View style={styles.giftNote}>
+              <Ionicons name="gift" size={15} color={Afryko.gold} />
+              <Text style={styles.giftNoteText}>{c.text}</Text>
             </View>
           ) : (
             <Text style={styles.cText}>{c.text}</Text>
@@ -197,7 +252,7 @@ function CommentRow({ c, isOwner, onLike, onReply, onDelete, depth = 0 }: { c: C
           )}
         </View>
         <Pressable onPress={() => onLike(c.id)} style={styles.cLike}>
-          <Ionicons name={c.liked ? 'heart' : 'heart-outline'} size={17} color={c.liked ? Afryko.live : Afryko.textDim} />
+          <Ionicons name={c.liked ? 'star' : 'star-outline'} size={17} color={c.liked ? Afryko.gold : Afryko.textDim} />
           {c.likes > 0 && <Text style={styles.cLikeCount}>{c.likes}</Text>}
         </Pressable>
       </View>
@@ -211,6 +266,9 @@ function CommentRow({ c, isOwner, onLike, onReply, onDelete, depth = 0 }: { c: C
 }
 
 const styles = StyleSheet.create({
+  giftBtn: { width: 34, height: 34, alignItems: 'center', justifyContent: 'center' },
+  giftNote: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: Afryko.gold + '1A', borderWidth: 1, borderColor: Afryko.gold + '55', borderRadius: Radius.md, paddingHorizontal: 10, paddingVertical: 7, marginTop: 4, alignSelf: 'flex-start' },
+  giftNoteText: { color: Afryko.gold, fontFamily: Font.bold, fontSize: 13 },
   overlay: { flex: 1, backgroundColor: '#0B0B0F', justifyContent: 'flex-end' },
   scrim: { backgroundColor: '#00000040' },
   sheet: { height: '66%', backgroundColor: Afryko.bg, borderTopLeftRadius: 24, borderTopRightRadius: 24, overflow: 'hidden' },
