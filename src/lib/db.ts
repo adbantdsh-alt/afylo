@@ -99,10 +99,12 @@ export async function endLive(id: string): Promise<void> {
 
 /** Lives EN DIRECT (avec l'hôte), pour le Feed. */
 export async function listLiveNow(): Promise<LiveRow[]> {
+  const since = new Date(Date.now() - 4 * 3600_000).toISOString(); // masque les lives orphelins (>4h)
   const { data, error } = await supabase
     .from('lives')
     .select('id,host_id,title,status,kind,thumbnail_url,viewer_count,started_at, host:profiles!lives_host_id_fkey(id,display_name,handle,avatar_url,is_verified,account_type)')
     .eq('status', 'live')
+    .gte('started_at', since)
     .order('viewer_count', { ascending: false })
     .order('started_at', { ascending: false })
     .limit(50);

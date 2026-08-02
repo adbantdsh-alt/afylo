@@ -95,8 +95,7 @@ export default function Live() {
     if (!isHost || !liveId) return;
     setLiveViewers(liveId, viewers).catch(() => {});
     const t = setInterval(() => setLiveViewers(liveId, viewers).catch(() => {}), 10000);
-    // sécurité : ferme le live si l'écran est démonté
-    return () => { clearInterval(t); endLive(liveId).catch(() => {}); };
+    return () => clearInterval(t); // NE PAS terminer le live ici (démontage dev/nav) — seulement via leave()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isHost, liveId, viewers]);
 
