@@ -122,11 +122,15 @@ export default function Comments() {
 
   return (
     <View style={styles.overlay}>
-      {/* Média du post en fond — visible au-dessus du panneau (façon TikTok/Insta) */}
-      {params.image ? (
-        <Image source={{ uri: params.image }} style={StyleSheet.absoluteFill} contentFit="cover" transition={150} />
+      {/* Façon TikTok : sur mobile l'écran du dessous (la vidéo) reste visible ET
+          en lecture derrière le panneau transparent. Sur le web (pas de
+          compositing inter-écrans), on affiche l'image du post en repli. */}
+      {Platform.OS === 'web' && params.image ? (
+        <>
+          <Image source={{ uri: params.image }} style={StyleSheet.absoluteFill} contentFit="cover" transition={150} />
+          <View style={[StyleSheet.absoluteFill, styles.scrim]} />
+        </>
       ) : null}
-      <View style={[StyleSheet.absoluteFill, styles.scrim]} />
       {/* Tap sur la zone haute = fermer */}
       <Pressable style={StyleSheet.absoluteFill} onPress={close} />
 
@@ -269,7 +273,7 @@ const styles = StyleSheet.create({
   giftBtn: { width: 34, height: 34, alignItems: 'center', justifyContent: 'center' },
   giftNote: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: Afryko.gold + '1A', borderWidth: 1, borderColor: Afryko.gold + '55', borderRadius: Radius.md, paddingHorizontal: 10, paddingVertical: 7, marginTop: 4, alignSelf: 'flex-start' },
   giftNoteText: { color: Afryko.gold, fontFamily: Font.bold, fontSize: 13 },
-  overlay: { flex: 1, backgroundColor: '#0B0B0F', justifyContent: 'flex-end' },
+  overlay: { flex: 1, backgroundColor: 'transparent', justifyContent: 'flex-end' },
   scrim: { backgroundColor: '#00000040' },
   sheet: { height: '66%', backgroundColor: Afryko.bg, borderTopLeftRadius: 24, borderTopRightRadius: 24, overflow: 'hidden' },
   grip: { width: 40, height: 4, borderRadius: 2, backgroundColor: Afryko.border, alignSelf: 'center', marginTop: 10 },
