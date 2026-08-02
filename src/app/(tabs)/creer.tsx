@@ -1,11 +1,12 @@
 import { Ionicons } from '@expo/vector-icons';
 import { CameraView, useCameraPermissions, useMicrophonePermissions } from 'expo-camera';
 import { Image } from 'expo-image';
+import { FlipType, manipulateAsync } from 'expo-image-manipulator';
 import * as ImagePicker from 'expo-image-picker';
 import { useVideoPlayer, VideoView } from 'expo-video';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Modal, PanResponder, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Modal, PanResponder, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { withTiming } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -79,19 +80,44 @@ export default function Creer() {
   };
 
   const pick = async (kind: 'image' | 'video') => {
-    const res = await ImagePicker.launchImageLibraryAsync({ mediaTypes: kind === 'video' ? ['videos'] : ['images'], quality: 1 });
-    if (!res.canceled) setMedia({ uri: res.assets[0].uri, type: kind });
+    const res = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: kind === 'video' ? ['videos'] : ['images'],
+      allowsMultipleSelection: kind === 'image', // plusieurs photos = carrousel
+      selectionLimit: 10,
+      quality: 1,
+    });
+    if (res.canceled) return;
+    if (kind === 'image' && res.assets.length > 1) {
+      // Plusieurs photos → on saute directement à la composition (carrousel)
+      const uris = res.assets.map((a) => a.uri).join('|');
+      router.push({ pathname: '/post-new', params: { kind: 'image', uris } });
+      return;
+    }
+    setMedia({ uri: res.assets[0].uri, type: kind });
+  };
+
+  // La caméra frontale rend un aperçu « miroir » (naturel comme un miroir), mais la photo
+  // enregistrée doit rester à l'endroit. On dé-miroite donc la capture frontale sur le web
+  // (où le rendu getUserMedia est capturé en miroir). Le natif enregistre déjà à l'endroit.
+  const unmirrorIfNeeded = async (uri: string) => {
+    if (facing !== 'front' || Platform.OS !== 'web') return uri;
+    try {
+      const r = await manipulateAsync(uri, [{ flip: FlipType.Horizontal }], { compress: 0.9 });
+      return r.uri;
+    } catch { return uri; }
   };
 
   const takePhoto = async () => {
     if (!camRef.current) return;
     try {
       const p = await camRef.current.takePictureAsync({ quality: 0.9 });
-      if (p?.uri) setMedia({ uri: p.uri, type: 'image' });
+      if (p?.uri) setMedia({ uri: await unmirrorIfNeeded(p.uri), type: 'image' });
     } catch {}
   };
 
   const beginRecord = async () => {
+    // Le navigateur ne sait pas filmer via la caméra expo — l'appui long ouvre alors la galerie vidéo.
+    if (Platform.OS === 'web') { pick('video'); return; }
     if (!camRef.current || recordingRef.current) return;
     // Le micro est requis pour recordAsync — on le demande si besoin
     if (!micPerm?.granted) { const r = await requestMic(); if (!r?.granted) { /* on enregistre sans son si refusé */ } }
@@ -161,7 +187,7 @@ export default function Creer() {
         <PreviewMedia media={media} />
       ) : permission?.granted ? (
         <>
-          <CameraView key={facing} ref={camRef} style={StyleSheet.absoluteFill} facing={facing} mode="video" mirror={false} />
+          <CameraView key={facing} ref={camRef} style={StyleSheet.absoluteFill} facing={facing} mode="video" mirror={facing === 'front'} />
           {/* Double-tap n'importe où = retourner la caméra */}
           <Pressable style={StyleSheet.absoluteFill} onPress={onCameraTap} />
         </>

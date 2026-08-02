@@ -58,6 +58,7 @@ export interface Post {
   author_id: string;
   kind: PostKind;
   media_url: string | null;
+  media_urls: string[] | null; // carrousel (0013)
   thumbnail_url: string | null;
   caption: string | null;
   duration_seconds: number | null;

@@ -728,19 +728,22 @@ export type CreatePostInput = {
   kind: 'image' | 'video' | 'story';
   caption?: string;
   media_url?: string | null;
+  media_urls?: string[]; // carrousel : toute la galerie (media_url = 1er)
   thumbnail_url?: string | null;
   productIds?: string[];
 };
 
 export async function createPost(input: CreatePostInput): Promise<Post> {
   const author_id = await requireUserId();
+  const gallery = (input.media_urls ?? []).filter(Boolean);
   const { data, error } = await supabase
     .from('posts')
     .insert({
       author_id,
       kind: input.kind,
       caption: input.caption,
-      media_url: input.media_url,
+      media_url: input.media_url ?? gallery[0] ?? null,
+      media_urls: gallery,
       thumbnail_url: input.thumbnail_url,
     })
     .select()

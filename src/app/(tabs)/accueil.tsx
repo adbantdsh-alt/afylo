@@ -2,7 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Animated, Modal, Pressable, ScrollView, Share, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Animated, Dimensions, Modal, Pressable, ScrollView, Share, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Avatar, IconButton } from '@/components/ui-kit';
@@ -274,7 +274,11 @@ function PostCard({ post, isPro, myHandle, onDeletePost, onEditPost }: { post: P
       {/* Média — plein cadre, sans arrondi. Double-tap = j'aime (masqué pour les posts texte) */}
       {!post.textOnly && (
         <Pressable style={styles.media} onPress={onMediaTap}>
-          <Image source={{ uri: post.image }} style={styles.mediaImg} contentFit="cover" transition={250} blurRadius={post.sensitive && !revealed ? 30 : 0} />
+          {post.images && post.images.length > 1 ? (
+            <PostCarousel images={post.images} blur={post.sensitive && !revealed ? 30 : 0} />
+          ) : (
+            <Image source={{ uri: post.image }} style={styles.mediaImg} contentFit="cover" transition={250} blurRadius={post.sensitive && !revealed ? 30 : 0} />
+          )}
           <View style={styles.playBadge}>
             <Ionicons name="play" size={13} color="#fff" />
             <Text style={styles.playText}>0:24</Text>
@@ -396,6 +400,31 @@ function PostCard({ post, isPro, myHandle, onDeletePost, onEditPost }: { post: P
 }
 
 /** +1 visuel quand on like (les compteurs façon "7.2k" restent tels quels). */
+const SCREEN_W = Dimensions.get('window').width;
+
+/** Carrousel plein cadre (plusieurs médias) avec points de pagination. */
+function PostCarousel({ images, blur }: { images: string[]; blur: number }) {
+  const [idx, setIdx] = useState(0);
+  return (
+    <View style={StyleSheet.absoluteFill}>
+      <ScrollView
+        horizontal
+        pagingEnabled
+        showsHorizontalScrollIndicator={false}
+        onMomentumScrollEnd={(e) => setIdx(Math.round(e.nativeEvent.contentOffset.x / SCREEN_W))}>
+        {images.map((uri, i) => (
+          <Image key={`${uri}-${i}`} source={{ uri }} style={{ width: SCREEN_W, height: '100%' }} contentFit="cover" transition={200} blurRadius={blur} />
+        ))}
+      </ScrollView>
+      <View style={styles.dots} pointerEvents="none">
+        {images.map((_, i) => (
+          <View key={i} style={[styles.dot, i === idx && styles.dotOn]} />
+        ))}
+      </View>
+    </View>
+  );
+}
+
 function bumpLike(base: string, liked: boolean): string {
   if (!liked) return base;
   if (/[a-zA-Z]/.test(base)) return base; // "7.2 K" etc. : on ne recalcule pas
@@ -497,6 +526,9 @@ const styles = StyleSheet.create({
   textPost: { color: Afryko.text, fontSize: 20, lineHeight: 28, marginBottom: 12 },
   media: { aspectRatio: 1, backgroundColor: Afryko.surfaceAlt, alignItems: 'center', justifyContent: 'center' },
   mediaImg: { ...StyleSheet.absoluteFillObject },
+  dots: { position: 'absolute', bottom: 10, left: 0, right: 0, flexDirection: 'row', justifyContent: 'center', gap: 5 },
+  dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#ffffff88' },
+  dotOn: { backgroundColor: '#fff', width: 7, height: 7, borderRadius: 3.5 },
   heartPop: { position: 'absolute' },
   heartPopShadow: { textShadowColor: '#00000066', textShadowRadius: 12, textShadowOffset: { width: 0, height: 2 } },
   playBadge: {

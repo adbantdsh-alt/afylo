@@ -1,6 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
+import { useAudioPlayer, useAudioPlayerStatus } from 'expo-audio';
 import { Image } from 'expo-image';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -9,14 +10,32 @@ import { searchSounds, type Sound } from '@/lib/sounds';
 
 export function SoundPicker({ visible, onSelect, onClose }: { visible: boolean; onSelect: (s: Sound) => void; onClose: () => void }) {
   const [q, setQ] = useState('');
+  const [previewId, setPreviewId] = useState<string | null>(null);
   const list = searchSounds(q);
 
+  // Un seul lecteur partagé : on change sa source selon le son écouté.
+  const preview = list.find((s) => s.id === previewId) ?? null;
+  const player = useAudioPlayer(preview?.audio ? { uri: preview.audio } : null);
+  const status = useAudioPlayerStatus(player);
+
+  useEffect(() => {
+    if (preview?.audio) { player.seekTo(0); player.play(); }
+    return () => { try { player.pause(); } catch {} };
+  }, [previewId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Coupe le son quand la feuille se ferme.
+  useEffect(() => { if (!visible) { setPreviewId(null); try { player.pause(); } catch {} } }, [visible]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const togglePreview = (s: Sound) => setPreviewId((id) => (id === s.id ? null : s.id));
+
+  const close = () => { setPreviewId(null); onClose(); };
+
   return (
-    <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
+    <Modal visible={visible} animationType="slide" onRequestClose={close}>
       <View style={styles.root}>
         <SafeAreaView edges={['top']} style={{ backgroundColor: Afryko.bg }}>
           <View style={styles.header}>
-            <Ionicons name="close" size={26} color={Afryko.text} onPress={onClose} />
+            <Ionicons name="close" size={26} color={Afryko.text} onPress={close} />
             <Text style={styles.title}>Ajouter un son</Text>
             <View style={{ width: 26 }} />
           </View>
@@ -27,17 +46,27 @@ export function SoundPicker({ visible, onSelect, onClose }: { visible: boolean; 
         </SafeAreaView>
 
         <ScrollView contentContainerStyle={{ padding: 12 }} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
-          {!q && <Text style={styles.section}>Sons populaires</Text>}
-          {list.map((s) => (
-            <Pressable key={s.id} onPress={() => onSelect(s)} style={styles.row}>
-              <Image source={{ uri: s.cover }} style={styles.cover} contentFit="cover" />
-              <View style={{ flex: 1 }}>
-                <Text style={styles.name} numberOfLines={1}>{s.title}</Text>
-                <Text style={styles.meta} numberOfLines={1}>{s.artist} · {s.duration} · {s.uses}</Text>
+          {!q && <Text style={styles.section}>Sons populaires · appuie sur ▶ pour écouter</Text>}
+          {list.map((s) => {
+            const playing = previewId === s.id;
+            return (
+              <View key={s.id} style={styles.row}>
+                {/* Pochette = bouton écoute */}
+                <Pressable onPress={() => togglePreview(s)} style={styles.coverWrap}>
+                  <Image source={{ uri: s.cover }} style={styles.cover} contentFit="cover" />
+                  <View style={styles.playOverlay}>
+                    <Ionicons name={playing && status.playing ? 'pause' : 'play'} size={20} color="#fff" />
+                  </View>
+                </Pressable>
+                <Pressable style={{ flex: 1 }} onPress={() => togglePreview(s)}>
+                  <Text style={styles.name} numberOfLines={1}>{s.title}</Text>
+                  <Text style={styles.meta} numberOfLines={1}>{s.artist} · {s.duration} · {s.uses}</Text>
+                  {playing && <View style={styles.bar}><View style={[styles.barFill, { width: `${Math.min(100, ((status.currentTime || 0) / (status.duration || 1)) * 100)}%` }]} /></View>}
+                </Pressable>
+                <Pressable onPress={() => onSelect(s)} style={styles.useBtn}><Text style={styles.useText}>Utiliser</Text></Pressable>
               </View>
-              <View style={styles.useBtn}><Text style={styles.useText}>Utiliser</Text></View>
-            </Pressable>
-          ))}
+            );
+          })}
         </ScrollView>
       </View>
     </Modal>
@@ -52,9 +81,13 @@ const styles = StyleSheet.create({
   searchInput: { flex: 1, ...Type.body, fontSize: 15, color: Afryko.text, height: '100%' },
   section: { ...Type.small, fontFamily: Font.semibold, color: Afryko.textDim, marginBottom: 8, marginLeft: 4 },
   row: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 8 },
-  cover: { width: 52, height: 52, borderRadius: 10, backgroundColor: Afryko.surfaceAlt },
+  coverWrap: { width: 52, height: 52, borderRadius: 10, overflow: 'hidden' },
+  cover: { width: 52, height: 52, backgroundColor: Afryko.surfaceAlt },
+  playOverlay: { ...StyleSheet.absoluteFillObject, alignItems: 'center', justifyContent: 'center', backgroundColor: '#00000055' },
   name: { ...Type.body, fontFamily: Font.semibold, color: Afryko.text },
   meta: { ...Type.caption, color: Afryko.textDim, marginTop: 2 },
+  bar: { height: 3, borderRadius: 2, backgroundColor: Afryko.surfaceAlt, marginTop: 6, overflow: 'hidden' },
+  barFill: { height: 3, borderRadius: 2, backgroundColor: Afryko.violet },
   useBtn: { backgroundColor: Afryko.violet, paddingHorizontal: 14, paddingVertical: 8, borderRadius: Radius.pill },
   useText: { color: '#fff', fontFamily: Font.semibold, fontSize: 13 },
 });

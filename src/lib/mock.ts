@@ -88,6 +88,7 @@ export type Post = {
   badge?: 'créateur' | 'boutique';
   time: string;
   image: string;
+  images?: string[]; // carrousel (plusieurs médias)
   likes: string;
   comments: string;
   views: string;
