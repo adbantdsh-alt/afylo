@@ -1,39 +1,79 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
-import { useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useFocusEffect, useRouter } from 'expo-router';
+import { useCallback, useState } from 'react';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Avatar } from '@/components/ui-kit';
+import { VerifiedBadge, verifiedKind } from '@/components/verified';
 import { Afryko, Font, Radius, Type } from '@/constants/brand';
-import { CONVERSATIONS, NOTIFS, type NotifKind } from '@/lib/notifs';
+import { listConversations, listNotifications, markNotifsRead, type Conversation, type Notif } from '@/lib/db';
+import { timeAgo } from '@/lib/feed-map';
+import { face } from '@/lib/mock';
 
-const ICON: Record<NotifKind, { name: keyof typeof Ionicons.glyphMap; color: string }> = {
-  mention: { name: 'at', color: Afryko.violet },
-  comment: { name: 'chatbubble', color: Afryko.violet2 },
-  like: { name: 'heart', color: Afryko.live },
-  rating: { name: 'star', color: Afryko.gold },
+const ICON: Record<Notif['kind'], { name: keyof typeof Ionicons.glyphMap; color: string }> = {
   follow: { name: 'person-add', color: Afryko.violet },
+  live: { name: 'radio', color: Afryko.live },
   sale: { name: 'bag-check', color: Afryko.green },
+  commission: { name: 'cash', color: Afryko.gold },
+  like: { name: 'heart', color: Afryko.live },
+  comment: { name: 'chatbubble', color: Afryko.violet2 },
+  mention: { name: 'at', color: Afryko.violet },
+  repost: { name: 'repeat', color: Afryko.green },
 };
 
-// Onglets de filtrage (Messages est un cas à part)
-const TABS: { key: string; label: string; kinds?: NotifKind[] }[] = [
+function notifText(n: Notif): string {
+  const who = n.actor?.display_name || n.actor?.handle || 'Quelqu’un';
+  switch (n.kind) {
+    case 'follow': return `${who} s'est abonné(e) à toi.`;
+    case 'live': return `${who} est en direct — rejoins le live !`;
+    case 'sale': return `Nouvelle vente ! ${who} a acheté un de tes produits.`;
+    case 'commission': return `Commission gagnée grâce à un achat de ${who} 🎉`;
+    case 'like': return `${who} a aimé ta publication.`;
+    case 'comment': return `${who} a commenté ta publication.`;
+    case 'mention': return `${who} t'a mentionné(e).`;
+    case 'repost': return `${who} a repartagé ta publication.`;
+  }
+}
+
+const TABS: { key: string; label: string; kinds?: Notif['kind'][] }[] = [
   { key: 'all', label: 'Tout' },
-  { key: 'mentions', label: 'Mentions', kinds: ['mention'] },
-  { key: 'comments', label: 'Commentaires', kinds: ['comment'] },
-  { key: 'likes', label: "J'aime", kinds: ['like', 'rating'] },
   { key: 'follows', label: 'Abonnés', kinds: ['follow'] },
-  { key: 'sales', label: 'Ventes', kinds: ['sale'] },
+  { key: 'sales', label: 'Ventes', kinds: ['sale', 'commission'] },
+  { key: 'live', label: 'Lives', kinds: ['live'] },
+  { key: 'likes', label: "J'aime", kinds: ['like'] },
   { key: 'messages', label: 'Messages' },
 ];
 
 export default function Notifications() {
   const router = useRouter();
   const [tab, setTab] = useState('all');
+  const [notifs, setNotifs] = useState<Notif[]>([]);
+  const [convos, setConvos] = useState<Conversation[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useFocusEffect(
+    useCallback(() => {
+      Promise.all([listNotifications(), listConversations()])
+        .then(([n, c]) => { setNotifs(n); setConvos(c); })
+        .catch(() => {})
+        .finally(() => setLoading(false));
+      markNotifsRead().catch(() => {}); // ouvrir la page = tout lu
+    }, []),
+  );
 
   const active = TABS.find((t) => t.key === tab)!;
-  const list = active.kinds ? NOTIFS.filter((n) => active.kinds!.includes(n.kind)) : NOTIFS;
+  const list = active.kinds ? notifs.filter((n) => active.kinds!.includes(n.kind)) : notifs;
+
+  const openNotif = (n: Notif) => {
+    if (n.kind === 'live' && n.target_id) {
+      router.push({ pathname: '/live', params: { role: 'viewer', liveId: n.target_id, name: n.actor?.display_name ?? '', avatar: n.actor?.avatar_url ?? '' } });
+    } else if (n.kind === 'sale' || n.kind === 'commission') {
+      router.push('/studio');
+    } else if (n.actor?.handle) {
+      router.push({ pathname: '/creator/[id]', params: { id: n.actor.handle, name: n.actor.display_name ?? '', avatar: n.actor.avatar_url ?? '' } });
+    }
+  };
 
   return (
     <View style={styles.root}>
@@ -48,15 +88,14 @@ export default function Notifications() {
           </Pressable>
         </View>
 
-        {/* Filtres par catégorie */}
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tabs}>
           {TABS.map((t) => {
             const on = tab === t.key;
-            const count = t.key === 'messages' ? CONVERSATIONS.reduce((s, c) => s + c.unread, 0) : t.kinds ? NOTIFS.filter((n) => t.kinds!.includes(n.kind) && n.unread).length : NOTIFS.filter((n) => n.unread).length;
+            const count = t.key === 'messages' ? convos.reduce((s, c) => s + c.unread, 0) : 0;
             return (
               <Pressable key={t.key} onPress={() => setTab(t.key)} style={[styles.chip, on && styles.chipOn]}>
                 <Text style={[styles.chipText, on && styles.chipTextOn]}>{t.label}</Text>
-                {count > 0 && <View style={[styles.chipDot, on && { backgroundColor: '#fff' }]} />}
+                {count > 0 && <View style={styles.chipDot} />}
               </Pressable>
             );
           })}
@@ -64,37 +103,45 @@ export default function Notifications() {
       </SafeAreaView>
 
       <ScrollView contentContainerStyle={{ paddingVertical: 6, paddingBottom: 40 }} showsVerticalScrollIndicator={false}>
-        {tab === 'messages' ? (
-          CONVERSATIONS.map((c) => (
-            <Pressable key={c.id} style={[styles.row, c.unread > 0 && styles.rowUnread]} onPress={() => router.push({ pathname: '/chat/[id]', params: { id: c.id, name: c.name, avatar: c.avatar } })}>
-              <View>
-                <Avatar uri={c.avatar} size={48} />
-                {c.online && <View style={styles.online} />}
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.mName}>{c.name}</Text>
-                <Text style={styles.mLast} numberOfLines={1}>{c.last}</Text>
-              </View>
-              <View style={{ alignItems: 'flex-end', gap: 6 }}>
-                <Text style={styles.time}>{c.time}</Text>
-                {c.unread > 0 && <View style={styles.unreadPill}><Text style={styles.unreadPillText}>{c.unread}</Text></View>}
-              </View>
-            </Pressable>
-          ))
+        {loading ? (
+          <ActivityIndicator color={Afryko.violet} style={{ marginTop: 34 }} />
+        ) : tab === 'messages' ? (
+          convos.length === 0 ? (
+            <View style={styles.empty}><Ionicons name="chatbubbles-outline" size={40} color={Afryko.textFaint} /><Text style={styles.emptyText}>Aucun message.</Text></View>
+          ) : (
+            convos.map((c) => (
+              <Pressable key={c.otherId} style={[styles.row, c.unread > 0 && styles.rowUnread]} onPress={() => router.push({ pathname: '/chat/[id]', params: { id: c.otherId, name: c.other?.display_name ?? '', avatar: c.other?.avatar_url ?? '' } })}>
+                <Avatar uri={c.other?.avatar_url || face(c.other?.handle ?? c.otherId)} size={48} />
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.mName} numberOfLines={1}>{c.other?.display_name || c.other?.handle || 'Créateur'}</Text>
+                  <Text style={styles.mLast} numberOfLines={1}>{c.last.kind === 'text' ? c.last.text : '📎 Pièce jointe'}</Text>
+                </View>
+                <View style={{ alignItems: 'flex-end', gap: 6 }}>
+                  <Text style={styles.time}>{timeAgo(c.last.created_at)}</Text>
+                  {c.unread > 0 && <View style={styles.unreadPill}><Text style={styles.unreadPillText}>{c.unread}</Text></View>}
+                </View>
+              </Pressable>
+            ))
+          )
         ) : list.length === 0 ? (
-          <View style={styles.empty}><Ionicons name="notifications-off-outline" size={40} color={Afryko.textFaint} /><Text style={styles.emptyText}>Rien dans cette catégorie.</Text></View>
+          <View style={styles.empty}><Ionicons name="notifications-off-outline" size={40} color={Afryko.textFaint} /><Text style={styles.emptyText}>{tab === 'all' ? 'Aucune notification pour l’instant.' : 'Rien dans cette catégorie.'}</Text></View>
         ) : (
           list.map((n) => (
-            <View key={n.id} style={[styles.row, n.unread && styles.rowUnread]}>
+            <Pressable key={n.id} style={[styles.row, !n.read_at && styles.rowUnread]} onPress={() => openNotif(n)}>
               <View>
-                <Avatar uri={n.avatar} size={48} />
+                <Avatar uri={n.actor?.avatar_url || face(n.actor?.handle ?? n.id)} size={48} />
                 <View style={[styles.badge, { backgroundColor: ICON[n.kind].color }]}>
                   <Ionicons name={ICON[n.kind].name} size={12} color="#fff" />
                 </View>
               </View>
-              <Text style={styles.text}>{n.text}</Text>
-              <Text style={styles.time}>{n.time}</Text>
-            </View>
+              <View style={styles.textWrap}>
+                <View style={styles.nameLine}>
+                  <Text style={styles.text} numberOfLines={2}>{notifText(n)}</Text>
+                  {verifiedKind(n.actor) && <VerifiedBadge kind={verifiedKind(n.actor)} size={13} />}
+                </View>
+                <Text style={styles.time}>{timeAgo(n.created_at)}</Text>
+              </View>
+            </Pressable>
           ))
         )}
       </ScrollView>
@@ -116,12 +163,13 @@ const styles = StyleSheet.create({
   chipDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: Afryko.live },
 
   row: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, paddingVertical: 12 },
-  rowUnread: { backgroundColor: '#3E5BFF0A' },
+  rowUnread: { backgroundColor: Afryko.violet + '0F' },
   badge: { position: 'absolute', bottom: -2, right: -2, width: 20, height: 20, borderRadius: 10, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: Afryko.bg },
-  text: { ...Type.small, color: Afryko.text, flex: 1, lineHeight: 19 },
-  time: { ...Type.caption, color: Afryko.textFaint },
+  textWrap: { flex: 1 },
+  nameLine: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  text: { ...Type.small, color: Afryko.text, flexShrink: 1, lineHeight: 19 },
+  time: { ...Type.caption, color: Afryko.textFaint, marginTop: 2 },
 
-  online: { position: 'absolute', bottom: 1, right: 1, width: 13, height: 13, borderRadius: 7, backgroundColor: Afryko.green, borderWidth: 2, borderColor: Afryko.bg },
   mName: { ...Type.body, fontFamily: Font.semibold, color: Afryko.text },
   mLast: { ...Type.small, color: Afryko.textDim, marginTop: 2 },
   unreadPill: { minWidth: 20, height: 20, paddingHorizontal: 6, borderRadius: 10, backgroundColor: Afryko.violet, alignItems: 'center', justifyContent: 'center' },

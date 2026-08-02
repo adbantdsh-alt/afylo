@@ -16,13 +16,13 @@ import { FeedSkeleton } from '@/components/skeleton';
 import { VerifiedBadge } from '@/components/verified';
 import { Afryko, Font, Radius, Type } from '@/constants/brand';
 import { useAuthGate } from '@/lib/auth-gate';
-import { createTextPost, deletePost, followUser, listFeed, unfollowUser, updatePostCaption } from '@/lib/db';
+import { createTextPost, deletePost, followUser, listConversations, listFeed, unfollowUser, unreadNotifCount, updatePostCaption } from '@/lib/db';
 import { mapFeed } from '@/lib/feed-map';
 import { useMe } from '@/lib/me';
 import { useReposts } from '@/lib/reposts';
 import { useAlwaysShowTabBar } from '@/lib/tabbar';
 import { type Post } from '@/lib/mock';
-import { badgeText, totalUnread } from '@/lib/notifs';
+import { badgeText } from '@/lib/notifs';
 import { useStories } from '@/lib/stories';
 
 const REPOSTED_COLOR = '#16A34A'; // vert vif, bien visible une fois republié
@@ -38,6 +38,7 @@ export default function Feed() {
   const [composeOpen, setComposeOpen] = useState(false);
   const [composeText, setComposeText] = useState('');
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [unread, setUnread] = useState(0); // notifications + messages non lus (badge cloche)
 
   const publishText = () => {
     const t = composeText.trim();
@@ -64,8 +65,13 @@ export default function Feed() {
   };
   const editPost = (p: Post) => { setComposeText(p.caption); setEditingId(p.id); setComposeOpen(true); };
 
-  // Nav bar persistante sur l'accueil (pas de masquage au scroll)
-  useFocusEffect(useCallback(() => { showTabBar(); }, [showTabBar]));
+  // Nav bar persistante sur l'accueil + compteur cloche (notifs + messages non lus)
+  useFocusEffect(useCallback(() => {
+    showTabBar();
+    Promise.all([unreadNotifCount(), listConversations()])
+      .then(([n, convos]) => setUnread(n + convos.reduce((s, c) => s + c.unread, 0)))
+      .catch(() => {});
+  }, [showTabBar]));
   useEffect(() => {
     // Vrai réseau : uniquement les posts de Supabase (aucune donnée fictive)
     listFeed().then((rows) => setFeed(mapFeed(rows ?? []))).catch(() => {}).finally(() => setLoading(false));
@@ -83,9 +89,9 @@ export default function Feed() {
             <IconButton name="search" onPress={() => router.push('/search')} />
             <View>
               <IconButton name="notifications-outline" onPress={() => router.push('/notifications')} />
-              {totalUnread > 0 && (
+              {unread > 0 && (
                 <View style={styles.bellBadge} pointerEvents="none">
-                  <Text style={styles.bellBadgeText}>{badgeText(totalUnread)}</Text>
+                  <Text style={styles.bellBadgeText}>{badgeText(unread)}</Text>
                 </View>
               )}
             </View>

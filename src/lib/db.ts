@@ -67,6 +67,54 @@ export async function searchProfiles(q: string): Promise<Profile[]> {
   return (data as Profile[]) ?? [];
 }
 
+// ---- Notifications ----
+export type NotifActor = { display_name: string | null; handle: string | null; avatar_url: string | null; is_verified: boolean };
+export type Notif = {
+  id: string;
+  user_id: string;
+  actor_id: string | null;
+  kind: 'follow' | 'sale' | 'commission' | 'live' | 'like' | 'comment' | 'mention' | 'repost';
+  target_id: string | null;
+  text: string | null;
+  read_at: string | null;
+  created_at: string;
+  actor?: NotifActor | null;
+};
+
+/** Mes notifications (avec l'acteur). */
+export async function listNotifications(): Promise<Notif[]> {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return [];
+  const { data } = await supabase
+    .from('notifications')
+    .select('*, actor:profiles!notifications_actor_id_fkey(display_name,handle,avatar_url,is_verified)')
+    .eq('user_id', user.id)
+    .order('created_at', { ascending: false })
+    .limit(100);
+  return (data as Notif[]) ?? [];
+}
+
+/** Nombre de notifications non lues. */
+export async function unreadNotifCount(): Promise<number> {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return 0;
+  const { count } = await supabase.from('notifications').select('*', { count: 'exact', head: true }).eq('user_id', user.id).is('read_at', null);
+  return count ?? 0;
+}
+
+/** Marque toutes mes notifications comme lues. */
+export async function markNotifsRead(): Promise<void> {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return;
+  await supabase.from('notifications').update({ read_at: new Date().toISOString() }).eq('user_id', user.id).is('read_at', null);
+}
+
 // ---- Lives (feed en direct) ----
 export type LiveRow = {
   id: string;
