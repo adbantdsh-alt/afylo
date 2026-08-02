@@ -2,7 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Avatar } from '@/components/ui-kit';
@@ -10,6 +10,7 @@ import { VerifiedBadge, verifiedKind } from '@/components/verified';
 import { Afryko, Font, Radius, Type } from '@/constants/brand';
 import { useAuthGate } from '@/lib/auth-gate';
 import { listLiveNow, type LiveRow } from '@/lib/db';
+import { hashId } from '@/lib/feed-map';
 import { face } from '@/lib/mock';
 import { useHideOnScroll } from '@/lib/tabbar';
 
@@ -23,7 +24,6 @@ export default function Feed() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [mode, setMode] = useState<'tout' | 'live'>('tout');
-  const [areaH, setAreaH] = useState(0);
 
   const load = useCallback((soft?: boolean) => {
     if (!soft) setLoading(true);
@@ -79,17 +79,22 @@ export default function Feed() {
           {loading ? <Text style={styles.dim}>Recherche des lives…</Text> : lives.length === 0 ? Empty : lives.map((l) => <LiveCard key={l.id} l={l} onPress={() => join(l)} />)}
         </ScrollView>
       ) : (
-        <View style={{ flex: 1, backgroundColor: '#000' }} onLayout={(e) => setAreaH(e.nativeEvent.layout.height)}>
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.masonry}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(true); }} tintColor={Afryko.violet} />}
+          {...scroll}>
           {loading ? (
-            <View style={styles.centerDark}><Text style={styles.dimLight}>Recherche des lives…</Text></View>
+            <Text style={styles.dim}>Recherche des lives…</Text>
           ) : lives.length === 0 ? (
-            <View style={styles.centerDark}>{Empty}</View>
-          ) : areaH > 0 ? (
-            <ScrollView pagingEnabled showsVerticalScrollIndicator={false} snapToInterval={areaH} decelerationRate="fast">
-              {lives.map((l) => <LiveFullCard key={l.id} l={l} height={areaH} onJoin={() => join(l)} />)}
-            </ScrollView>
-          ) : null}
-        </View>
+            Empty
+          ) : (
+            <View style={styles.masonryRow}>
+              <View style={styles.masonryCol}>{lives.filter((_, i) => i % 2 === 0).map((l) => <LiveTile key={l.id} l={l} onPress={() => join(l)} />)}</View>
+              <View style={styles.masonryCol}>{lives.filter((_, i) => i % 2 === 1).map((l) => <LiveTile key={l.id} l={l} onPress={() => join(l)} />)}</View>
+            </View>
+          )}
+        </ScrollView>
       )}
     </View>
   );
@@ -123,41 +128,24 @@ function LiveCard({ l, onPress }: { l: LiveRow; onPress: () => void }) {
   );
 }
 
-/** Plein écran (mode "Live" — feed vidéo immersif, scroll vertical). */
-function LiveFullCard({ l, height, onJoin }: { l: LiveRow; height: number; onJoin: () => void }) {
-  const { width } = useWindowDimensions();
+/** Vignette du mur "Live" (façon Explore, 2 colonnes, hauteurs variées). */
+function LiveTile({ l, onPress }: { l: LiveRow; onPress: () => void }) {
   const thumb = l.thumbnail_url || l.host?.avatar_url || face(l.host?.handle ?? l.id);
   const sell = l.kind === 'sell';
+  const tall = hashId(l.id) % 3 === 0;
   return (
-    <Pressable style={{ width, height }} onPress={onJoin}>
+    <Pressable style={[styles.tile, { aspectRatio: tall ? 0.62 : 0.85 }]} onPress={onPress}>
       <Image source={{ uri: thumb }} style={StyleSheet.absoluteFill} contentFit="cover" transition={200} />
-      <View style={styles.fullScrim} />
-
-      <SafeAreaView edges={['top']} style={styles.fullTop}>
+      <View style={styles.cardScrim} />
+      <View style={styles.tileTop}>
         <View style={styles.liveBadge}><View style={styles.liveDot} /><Text style={styles.liveBadgeText}>LIVE</Text></View>
-        <View style={styles.viewers}><Ionicons name="eye" size={13} color="#fff" /><Text style={styles.viewersText}>{fmtViewers(l.viewer_count)}</Text></View>
-      </SafeAreaView>
-
-      <View style={styles.fullBottom}>
-        <View style={styles.hostRow}>
-          <Avatar uri={l.host?.avatar_url || face(l.host?.handle ?? l.id)} size={40} ring />
-          <View style={{ flex: 1 }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
-              <Text style={styles.fullHost} numberOfLines={1}>{l.host?.display_name || l.host?.handle || 'Créateur'}</Text>
-              <VerifiedBadge kind={verifiedKind(l.host)} size={15} />
-            </View>
-            <View style={[styles.kindInline, sell ? styles.kindSell : styles.kindSimple]}>
-              <Ionicons name={sell ? 'bag-handle' : 'chatbubbles'} size={11} color="#fff" />
-              <Text style={styles.kindText}>{sell ? 'Live vente' : 'Live'}</Text>
-            </View>
-          </View>
-        </View>
-        {!!l.title && <Text style={styles.fullTitle} numberOfLines={2}>{l.title}</Text>}
-        <Pressable style={styles.watchBtn} onPress={onJoin}>
-          <Ionicons name="play" size={17} color="#fff" />
-          <Text style={styles.watchText}>Regarder le live</Text>
-        </Pressable>
-        <Text style={styles.swipeHint}>Glisse ↑ pour le live suivant</Text>
+        <View style={styles.viewers}><Ionicons name="eye" size={11} color="#fff" /><Text style={styles.viewersText}>{fmtViewers(l.viewer_count)}</Text></View>
+      </View>
+      {sell && <View style={styles.tileSell}><Ionicons name="bag-handle" size={11} color="#fff" /><Text style={styles.kindText}>Vente</Text></View>}
+      <View style={styles.tileBottom}>
+        <Avatar uri={l.host?.avatar_url || face(l.host?.handle ?? l.id)} size={22} />
+        <Text style={styles.tileHost} numberOfLines={1}>{l.host?.display_name || l.host?.handle || 'Créateur'}</Text>
+        <VerifiedBadge kind={verifiedKind(l.host)} size={12} />
       </View>
     </Pressable>
   );
@@ -203,14 +191,13 @@ const styles = StyleSheet.create({
   hostName: { color: '#fff', fontSize: 13, fontFamily: Font.bold, flexShrink: 1 },
   cardTitle: { color: '#fff', fontSize: 13, lineHeight: 17, opacity: 0.95 },
 
-  // Feed immersif
-  fullScrim: { ...StyleSheet.absoluteFillObject, backgroundColor: '#00000040' },
-  fullTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 14, paddingTop: 8 },
-  fullBottom: { position: 'absolute', left: 0, right: 0, bottom: 0, padding: 18, paddingBottom: 120, gap: 12 },
-  fullHost: { color: '#fff', fontSize: 17, fontFamily: Font.bold, flexShrink: 1 },
-  kindInline: { flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start', gap: 4, borderRadius: 6, paddingHorizontal: 7, paddingVertical: 3, marginTop: 4 },
-  fullTitle: { color: '#fff', fontSize: 16, lineHeight: 22 },
-  watchBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: Afryko.live, borderRadius: Radius.pill, height: 50, alignSelf: 'stretch' },
-  watchText: { color: '#fff', fontFamily: Font.bold, fontSize: 16 },
-  swipeHint: { color: '#ffffffaa', fontSize: 12, textAlign: 'center' },
+  // Mur "Live" (façon Explore, 2 colonnes, hauteurs variées)
+  masonry: { paddingHorizontal: 6, paddingTop: 6, paddingBottom: 120 },
+  masonryRow: { flexDirection: 'row', gap: 6 },
+  masonryCol: { flex: 1, gap: 6 },
+  tile: { borderRadius: 14, overflow: 'hidden', backgroundColor: Afryko.surfaceAlt, justifyContent: 'space-between' },
+  tileTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 8 },
+  tileSell: { position: 'absolute', top: 38, left: 8, flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: Afryko.green, borderRadius: 6, paddingHorizontal: 7, paddingVertical: 3 },
+  tileBottom: { flexDirection: 'row', alignItems: 'center', gap: 6, padding: 8 },
+  tileHost: { color: '#fff', fontSize: 12, fontFamily: Font.bold, flexShrink: 1 },
 });
