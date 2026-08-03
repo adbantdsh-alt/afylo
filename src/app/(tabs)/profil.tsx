@@ -66,7 +66,7 @@ export default function Profil() {
   // --- Gestion des posts (propriétaire) : afficher / modifier / supprimer / partager ---
   const viewPost = (p: MyPost) => {
     setManage(null);
-    router.push({ pathname: '/post/[id]', params: { id: p.id } });
+    router.push({ pathname: '/post/[id]', params: { id: p.id, author: session?.user?.id ?? '' } });
   };
   const startEdit = (p: MyPost) => { setEditText(p.caption || ''); setEditing(p); setManage(null); };
   const saveEdit = () => {

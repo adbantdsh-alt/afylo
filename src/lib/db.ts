@@ -735,6 +735,18 @@ export async function getPost(id: string): Promise<FeedPost | null> {
   return data as FeedPost;
 }
 
+/** Toutes les publications d'un compte (lecteur façon Instagram : flux scrollable). */
+export async function listPostsByAuthor(authorId: string): Promise<FeedPost[]> {
+  const { data, error } = await supabase
+    .from('posts')
+    .select('*, author:profiles!posts_author_id_fkey(*), post_products(product:products(*))')
+    .eq('author_id', authorId)
+    .order('created_at', { ascending: false })
+    .limit(60);
+  if (error) return [];
+  return (data as FeedPost[]) ?? [];
+}
+
 export type PostOverlay = { id: string; kind: 'text' | 'link'; text: string; x: number; y: number; color: string; url?: string };
 
 export type CreatePostInput = {

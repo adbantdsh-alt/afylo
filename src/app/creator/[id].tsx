@@ -96,7 +96,7 @@ export default function CreatorProfile() {
   const mediaPosts = posts.filter((x) => x.kind !== 'text' && (x.media_url || x.thumbnail_url));
   const textPosts = posts.filter((x) => x.kind === 'text' || (!x.media_url && !x.thumbnail_url));
   // Taper une publication l'ouvre (compte visité → lecture seule, pas d'options).
-  const openPost = (x: { id: string }) => router.push({ pathname: '/post/[id]', params: { id: x.id } });
+  const openPost = (x: { id: string }) => router.push({ pathname: '/post/[id]', params: { id: x.id, author: p?.id ?? '' } });
   const creatorPro = isProAccount(p?.account_type); // Pro (vendeur) → onglet Boutique en plus
 
   // Mêmes onglets que ton profil : Simple = 4 (sans Boutique), Pro = 5

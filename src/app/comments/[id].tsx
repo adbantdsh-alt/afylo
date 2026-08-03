@@ -12,7 +12,6 @@ import { REACTIONS } from '@/components/rate-sheet';
 import { Afryko, Font, Radius, Type } from '@/constants/brand';
 import { useAuthGate } from '@/lib/auth-gate';
 import { useMe } from '@/lib/me';
-import { avatar } from '@/lib/mock';
 
 type Comment = {
   id: string;
@@ -33,14 +32,6 @@ type Comment = {
 let cid = 0;
 const nid = () => `c${++cid}`;
 
-const seed: Comment[] = [
-  { id: nid(), name: 'Awa Sow', handle: '@awa.sow', avatar: avatar(9), text: 'Trop belle cette tenue 😍 elle coûte combien ?', time: '12 min', likes: 24, liked: false, replies: [
-    { id: nid(), name: 'Fatou Ndiaye', handle: '@fatou.style', avatar: avatar(5), text: '@awa.sow 18 500 FCFA, dispo en live ce soir !', time: '8 min', likes: 6, liked: false, replies: [] },
-  ] },
-  { id: nid(), name: 'Modou K.', handle: '@modouk', avatar: avatar(15), text: 'Livraison sur Thiès ?', time: '20 min', likes: 3, liked: false, replies: [] },
-  { id: nid(), name: 'Mariama', handle: '@mariama.c', avatar: avatar(45), text: 'Je recommande cette créatrice 🔥', time: '35 min', likes: 12, liked: false, replies: [] },
-];
-
 export default function Comments() {
   const router = useRouter();
   const params = useLocalSearchParams<{ id: string; owner?: string; image?: string; name?: string }>();
@@ -50,7 +41,7 @@ export default function Comments() {
   const meP = useMe();
   const isOwner = params.owner === '1'; // le propriétaire du post peut supprimer n'importe quel commentaire
 
-  const [comments, setComments] = useState<Comment[]>(seed);
+  const [comments, setComments] = useState<Comment[]>([]);
   const [text, setText] = useState('');
   const [replyTo, setReplyTo] = useState<{ id: string; handle: string } | null>(null);
   const [recording, setRecording] = useState(false);
