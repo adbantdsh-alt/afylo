@@ -64,16 +64,31 @@ export function captureWebFrameDataUrl(): string | null {
   }
 }
 
+let mirrorObserver: MutationObserver | null = null;
+
 /**
- * Force l'aperçu caméra web à NE PAS être en miroir (le frontal est souvent
- * affiché en miroir par défaut). Ainsi l'aperçu = la capture = l'arrière.
+ * Maintient l'aperçu caméra web SANS miroir, en continu.
+ * expo-camera ré-applique un `transform: scaleX(-1)` sur le frontal ~1s après
+ * le montage : un simple set une fois est écrasé. On observe donc l'attribut
+ * `style` du <video> et on remet `transform:none !important` à chaque tentative.
  */
-export function unmirrorCameraVideo() {
+export function keepCameraUnmirrored() {
+  if (typeof MutationObserver === 'undefined') return;
   const v = getCameraVideoEl();
   if (!v) return;
-  v.style.transform = 'none';
-  // @ts-ignore préfixe webkit pour anciens navigateurs
-  v.style.webkitTransform = 'none';
+  const fix = () => {
+    const t = v.style.transform;
+    if (t && t !== 'none') v.style.setProperty('transform', 'none', 'important');
+  };
+  fix();
+  mirrorObserver?.disconnect();
+  mirrorObserver = new MutationObserver(fix);
+  mirrorObserver.observe(v, { attributes: true, attributeFilter: ['style'] });
+}
+
+export function stopKeepUnmirrored() {
+  mirrorObserver?.disconnect();
+  mirrorObserver = null;
 }
 
 export function canWebRecord(): boolean {

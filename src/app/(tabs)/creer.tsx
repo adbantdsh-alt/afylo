@@ -15,7 +15,7 @@ import { listMyProducts, startLive } from '@/lib/db';
 import { useMe } from '@/lib/me';
 import { useStories } from '@/lib/stories';
 import { useTabBar } from '@/lib/tabbar';
-import { captureWebFrameDataUrl, captureWebPhoto, startWebRecording, stopWebRecording, unmirrorCameraVideo } from '@/lib/web-recorder';
+import { captureWebFrameDataUrl, captureWebPhoto, keepCameraUnmirrored, startWebRecording, stopKeepUnmirrored, stopWebRecording } from '@/lib/web-recorder';
 import type { Product } from '@/types/db';
 
 type Mode = 'Publication' | 'Story' | 'Reel' | 'Live';
@@ -65,6 +65,7 @@ export default function Creer() {
       setMedia(null);
       return () => {
         hidden.value = withTiming(0, { duration: 150 });
+        stopKeepUnmirrored();
       };
     }, [hidden]),
   );
@@ -262,7 +263,7 @@ export default function Creer() {
             mirror={false}
             autofocus="on"
             onCameraReady={() => {
-              if (Platform.OS === 'web') { unmirrorCameraVideo(); setTimeout(unmirrorCameraVideo, 120); } // aperçu non-miroir (front = arrière)
+              if (Platform.OS === 'web') keepCameraUnmirrored(); // aperçu non-miroir maintenu (front = arrière), même si expo re-miroite ~1s après
               if (freezeTimer.current) clearTimeout(freezeTimer.current);
               setFlipFreeze(null);
             }}
