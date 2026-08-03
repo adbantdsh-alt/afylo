@@ -7,6 +7,14 @@
 
 let mediaRecorder: MediaRecorder | null = null;
 let chunks: Blob[] = [];
+let drawRaf: number | null = null;
+let recCanvas: HTMLCanvasElement | null = null;
+
+function stopDrawLoop() {
+  if (drawRaf != null && typeof cancelAnimationFrame !== 'undefined') cancelAnimationFrame(drawRaf);
+  drawRaf = null;
+  recCanvas = null;
+}
 
 /** Le <video> d'expo-camera (celui qui porte le MediaStream de la caméra). */
 function getCameraVideoEl(): HTMLVideoElement | null {
@@ -95,18 +103,52 @@ export function canWebRecord(): boolean {
   return typeof MediaRecorder !== 'undefined' && !!getCameraStream();
 }
 
-/** Démarre l'enregistrement. Renvoie false si aucun flux caméra (→ repli galerie). */
-export function startWebRecording(): boolean {
-  const stream = getCameraStream();
-  if (!stream || typeof MediaRecorder === 'undefined') return false;
-  chunks = [];
-  const prefer = ['video/webm;codecs=vp9', 'video/webm;codecs=vp8', 'video/webm', 'video/mp4'];
-  const mimeType = prefer.find((m) => {
-    try { return MediaRecorder.isTypeSupported(m); } catch { return false; }
-  });
+/**
+ * Démarre l'enregistrement. On filme un CANVAS (pas le flux brut) : on y dessine
+ * la vidéo redressée (frontal dé-miroité) pour que la vidéo enregistrée = l'aperçu,
+ * puis on capture le canvas + on y rattache l'audio du micro. Renvoie false si pas de flux.
+ */
+export function startWebRecording(mirror = false): boolean {
+  const video = getCameraVideoEl();
+  const stream = (video?.srcObject as MediaStream | null) ?? null;
+  if (!video || !stream || typeof MediaRecorder === 'undefined') return false;
+
+  const w = video.videoWidth || 720;
+  const h = video.videoHeight || 1280;
+  const canvas = document.createElement('canvas');
+  canvas.width = w;
+  canvas.height = h;
+  const ctx = canvas.getContext('2d');
+  if (!ctx || typeof canvas.captureStream !== 'function') return false;
+  recCanvas = canvas;
+
+  const draw = () => {
+    if (!recCanvas) return;
+    ctx.save();
+    if (mirror) { ctx.translate(w, 0); ctx.scale(-1, 1); } // dé-miroite le frontal
+    ctx.drawImage(video, 0, 0, w, h);
+    ctx.restore();
+    drawRaf = requestAnimationFrame(draw);
+  };
+  draw();
+
+  let capture: MediaStream;
   try {
-    mediaRecorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
+    capture = canvas.captureStream(30);
   } catch {
+    stopDrawLoop();
+    return false;
+  }
+  // rattache l'audio (si le micro est dans le flux caméra)
+  (stream.getAudioTracks?.() ?? []).forEach((t) => { try { capture.addTrack(t); } catch {} });
+
+  chunks = [];
+  const prefer = ['video/webm;codecs=vp9,opus', 'video/webm;codecs=vp8,opus', 'video/webm', 'video/mp4'];
+  const mimeType = prefer.find((m) => { try { return MediaRecorder.isTypeSupported(m); } catch { return false; } });
+  try {
+    mediaRecorder = new MediaRecorder(capture, mimeType ? { mimeType } : undefined);
+  } catch {
+    stopDrawLoop();
     return false;
   }
   mediaRecorder.ondataavailable = (e) => { if (e.data && e.data.size > 0) chunks.push(e.data); };
@@ -122,14 +164,15 @@ export function isWebRecording(): boolean {
 export function stopWebRecording(): Promise<string | null> {
   return new Promise((resolve) => {
     const mr = mediaRecorder;
-    if (!mr || mr.state === 'inactive') { mediaRecorder = null; return resolve(null); }
+    if (!mr || mr.state === 'inactive') { stopDrawLoop(); mediaRecorder = null; return resolve(null); }
     mr.onstop = () => {
+      stopDrawLoop();
       const type = chunks[0]?.type || 'video/webm';
       const blob = new Blob(chunks, { type });
       chunks = [];
       mediaRecorder = null;
       resolve(blob.size > 0 ? URL.createObjectURL(blob) : null);
     };
-    try { mr.stop(); } catch { mediaRecorder = null; resolve(null); }
+    try { mr.stop(); } catch { stopDrawLoop(); mediaRecorder = null; resolve(null); }
   });
 }

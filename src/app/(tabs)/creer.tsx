@@ -131,7 +131,7 @@ export default function Creer() {
     if (recordingRef.current) return;
     // WEB : on filme réellement le flux caméra via MediaRecorder (recordAsync n'existe pas sur navigateur).
     if (Platform.OS === 'web') {
-      const started = startWebRecording();
+      const started = startWebRecording(facing === 'front'); // dé-miroite le frontal (vidéo = aperçu)
       if (!started) { pick('video'); return; } // pas de flux (caméra refusée) → repli galerie
       recordingRef.current = true;
       setRecording(true);
