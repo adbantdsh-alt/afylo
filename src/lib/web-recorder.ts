@@ -44,6 +44,26 @@ export function captureWebPhoto(): Promise<string | null> {
   });
 }
 
+/**
+ * Fige la frame courante en data URL (SYNCHRONE) — sert à masquer l'écran noir
+ * pendant la bascule avant/arrière (la caméra se ré-initialise).
+ */
+export function captureWebFrameDataUrl(): string | null {
+  const v = getCameraVideoEl();
+  if (!v || !v.videoWidth || typeof document === 'undefined') return null;
+  try {
+    const canvas = document.createElement('canvas');
+    canvas.width = v.videoWidth;
+    canvas.height = v.videoHeight;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return null;
+    ctx.drawImage(v, 0, 0, canvas.width, canvas.height);
+    return canvas.toDataURL('image/jpeg', 0.8);
+  } catch {
+    return null;
+  }
+}
+
 export function canWebRecord(): boolean {
   return typeof MediaRecorder !== 'undefined' && !!getCameraStream();
 }

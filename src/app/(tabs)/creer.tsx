@@ -1,5 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { CameraView, useCameraPermissions, useMicrophonePermissions } from 'expo-camera';
+import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -14,7 +15,7 @@ import { listMyProducts, startLive } from '@/lib/db';
 import { useMe } from '@/lib/me';
 import { useStories } from '@/lib/stories';
 import { useTabBar } from '@/lib/tabbar';
-import { captureWebPhoto, startWebRecording, stopWebRecording } from '@/lib/web-recorder';
+import { captureWebFrameDataUrl, captureWebPhoto, startWebRecording, stopWebRecording } from '@/lib/web-recorder';
 import type { Product } from '@/types/db';
 
 type Mode = 'Publication' | 'Story' | 'Reel' | 'Live';
@@ -36,6 +37,8 @@ export default function Creer() {
 
   const [mode, setMode] = useState<Mode>('Story');
   const [facing, setFacing] = useState<'front' | 'back'>('back');
+  const [flipFreeze, setFlipFreeze] = useState<string | null>(null); // frame figée pendant la bascule (web)
+  const freezeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [media, setMedia] = useState<{ uri: string; type: 'image' | 'video' } | null>(null);
   const [recording, setRecording] = useState(false);
   const [locked, setLocked] = useState(false);
@@ -73,7 +76,19 @@ export default function Creer() {
     return () => clearInterval(t);
   }, [recording]);
 
-  const flip = () => setFacing((f) => (f === 'back' ? 'front' : 'back'));
+  // Bascule avant/arrière : sur web la caméra se remonte (écran noir) → on fige la dernière
+  // frame par-dessus le temps de ré-init, retirée dès que la nouvelle caméra est prête.
+  const flip = () => {
+    if (Platform.OS === 'web') {
+      const frame = captureWebFrameDataUrl();
+      if (frame) {
+        setFlipFreeze(frame);
+        if (freezeTimer.current) clearTimeout(freezeTimer.current);
+        freezeTimer.current = setTimeout(() => setFlipFreeze(null), 1500); // filet de sécurité
+      }
+    }
+    setFacing((f) => (f === 'back' ? 'front' : 'back'));
+  };
   const lastTap = useRef(0);
   const onCameraTap = () => {
     const now = Date.now();
@@ -227,9 +242,19 @@ export default function Creer() {
       {/* Caméra en PLEIN ÉCRAN */}
       {permission?.granted ? (
         <>
-          {/* Pas de key={facing} : changer la key démonte/remonte la caméra (écran noir ~1s).
-              On laisse expo-camera changer 'facing' à chaud → bascule instantanée. */}
-          <CameraView ref={camRef} style={StyleSheet.absoluteFill} facing={facing} mode="video" mirror={false} />
+          {/* key={facing} nécessaire pour que le web réacquière bien le flux ; la frame figée
+              ci-dessous masque l'écran noir de ré-init le temps que la caméra soit prête. */}
+          <CameraView
+            key={facing}
+            ref={camRef}
+            style={StyleSheet.absoluteFill}
+            facing={facing}
+            mode="video"
+            mirror={false}
+            onCameraReady={() => { if (freezeTimer.current) clearTimeout(freezeTimer.current); setFlipFreeze(null); }}
+          />
+          {/* Frame figée pendant la bascule (pas d'écran noir) */}
+          {flipFreeze && <Image source={{ uri: flipFreeze }} style={StyleSheet.absoluteFill} contentFit="cover" />}
           {/* Double-tap n'importe où = retourner la caméra */}
           <Pressable style={StyleSheet.absoluteFill} onPress={onCameraTap} />
         </>
