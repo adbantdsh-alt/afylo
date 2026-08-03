@@ -1,16 +1,18 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { useFocusEffect, useRouter } from 'expo-router';
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Linking, Modal, Pressable, ScrollView, Share, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { AccountSwitcher } from '@/components/account-switcher';
 import { Avatar, PillButton } from '@/components/ui-kit';
 import { RepostSheet, MediaPreview } from '@/components/repost-sheet';
 import { GridSkeleton } from '@/components/skeleton';
 import { VerifiedBadge, verifiedKind } from '@/components/verified';
 import { Afryko, Font, Radius, Type } from '@/constants/brand';
 import { useAuth } from '@/lib/auth';
+import { setProfileInfo } from '@/lib/accounts';
 import { deletePost, deleteProduct, getMyPosts, getMyProfile, isProAccount, listMyProducts, updatePostCaption, type MyPost } from '@/lib/db';
 import { timeAgo } from '@/lib/feed-map';
 import { useMe } from '@/lib/me';
@@ -38,17 +40,25 @@ type Section = 'posts' | 'texte' | 'boutique' | 'achats' | 'reposts';
 
 export default function Profil() {
   const router = useRouter();
-  const { signOut, session } = useAuth();
+  const { session } = useAuth();
   const me = useMe(); // identité STABLE (chargée une fois au niveau app) → plus de flash mock
   const [section, setSection] = useState<Section>('posts');
   const isOwner = true; // l'onglet Profil est toujours TON profil ; le profil visiteur est /creator/[id]
   const [menuOpen, setMenuOpen] = useState(false);
+  const [accountsOpen, setAccountsOpen] = useState(false);
   const [dbProfile, setDbProfile] = useState<Profile | null>(null);
   const [stats, setStats] = useState<WalletSummary>(EMPTY_WALLET);
   const [myRealPosts, setMyRealPosts] = useState<MyPost[]>([]);
   const [manage, setManage] = useState<MyPost | null>(null); // post dont le menu de gestion est ouvert
   const [editing, setEditing] = useState<MyPost | null>(null); // post en cours d'édition (légende)
   const [editText, setEditText] = useState('');
+
+  // Enrichit le compte enregistré (nom/@handle/avatar) pour l'affichage dans « Changer de compte ».
+  useEffect(() => {
+    const id = session?.user?.id;
+    if (!id) return;
+    void setProfileInfo(id, { handle: dbProfile?.handle ?? undefined, name: dbProfile?.display_name ?? me.name, avatar: dbProfile?.avatar_url ?? me.avatar });
+  }, [session?.user?.id, dbProfile, me.name, me.avatar]);
   const showTabBar = useAlwaysShowTabBar();
   const { myStory } = useStories();
   const openStory = () => (myStory ? router.push({ pathname: '/story/[uid]', params: { uid: myStory.id } }) : router.push('/creer'));
@@ -238,15 +248,16 @@ export default function Profil() {
             {isOwner && !isPro && <MenuItem icon="briefcase-outline" label="Passer en compte professionnel" onPress={() => { setMenuOpen(false); router.push('/upgrade-pro'); }} />}
             {isPro && <MenuItem icon="repeat" label="Affiliation — produits à revendre" onPress={() => { setMenuOpen(false); router.push('/affiliation'); }} />}
             {isOwner && isPro && <MenuItem icon="wallet-outline" label="Portefeuille" onPress={() => { setMenuOpen(false); router.push('/studio'); }} />}
-            {isOwner && isPro && <MenuItem icon="bag-add-outline" label="Gérer ma boutique" onPress={() => { setMenuOpen(false); setSection('boutique'); }} />}
             <MenuItem icon="share-social-outline" label="Partager le profil" onPress={() => { setMenuOpen(false); share(); }} />
             <MenuItem icon="bookmark-outline" label="Enregistrements" onPress={() => setMenuOpen(false)} />
+            {isOwner && <MenuItem icon="people-outline" label="Changer de compte" onPress={() => { setMenuOpen(false); setAccountsOpen(true); }} />}
             <MenuItem icon="settings-outline" label="Paramètres" onPress={() => { setMenuOpen(false); router.push('/settings'); }} />
-            <MenuItem icon="help-circle-outline" label="Aide" onPress={() => { setMenuOpen(false); Linking.openURL('mailto:support@afryko.app'); }} />
-            {isOwner && <MenuItem icon="log-out-outline" label="Déconnexion" danger onPress={async () => { setMenuOpen(false); await signOut(); }} />}
           </SafeAreaView>
         </Pressable>
       )}
+
+      {/* Changer de compte (multi-comptes, sans déconnexion) */}
+      <AccountSwitcher visible={accountsOpen} onClose={() => setAccountsOpen(false)} />
 
       {/* Gestion d'un post (propriétaire) : afficher / modifier / partager / supprimer */}
       {manage && (

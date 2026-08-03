@@ -2,6 +2,7 @@ import type { Session } from '@supabase/supabase-js';
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 import { Platform } from 'react-native';
 
+import { upsertTokens } from './accounts';
 import { supabase } from './supabase';
 
 /** URL de retour des emails (confirmation, reset) : domaine courant sur le web. */
@@ -28,9 +29,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
       setSession(data.session);
+      void upsertTokens(data.session);
       setLoading(false);
     });
-    const { data: sub } = supabase.auth.onAuthStateChange((_event, s) => setSession(s));
+    const { data: sub } = supabase.auth.onAuthStateChange((_event, s) => {
+      setSession(s);
+      void upsertTokens(s); // garde les jetons du compte actif à jour (multi-comptes)
+    });
     return () => sub.subscription.unsubscribe();
   }, []);
 
