@@ -13,7 +13,7 @@ import { VerifiedBadge, verifiedKind } from '@/components/verified';
 import { Afylo, Font, Radius, Type } from '@/constants/brand';
 import { useAuth } from '@/lib/auth';
 import { setProfileInfo } from '@/lib/accounts';
-import { deletePost, deleteProduct, getMyPosts, getMyProfile, isProAccount, listMyProducts, updatePostCaption, type MyPost } from '@/lib/db';
+import { deletePost, deleteProduct, getMyPosts, getMyProfile, isProAccount, listMyAffiliatedProducts, listMyProducts, updatePostCaption, type MyPost } from '@/lib/db';
 import { timeAgo } from '@/lib/feed-map';
 import { useMe } from '@/lib/me';
 import { EMPTY_WALLET, getWalletSummary, type WalletSummary } from '@/lib/wallet';
@@ -597,6 +597,9 @@ function BoutiqueList({ isOwner }: { isOwner: boolean }) {
   const router = useRouter();
   const { session } = useAuth();
   const [products, setProducts] = useState<DisplayProduct[] | null>(null);
+  const [affiliated, setAffiliated] = useState<DisplayProduct[]>([]);
+  const [tab, setTab] = useState<'own' | 'affil'>('own'); // 2 sections : produits créés / produits affiliés
+  const [query, setQuery] = useState('');
   const [loading, setLoading] = useState(false);
 
   const load = useCallback(async () => {
@@ -606,7 +609,7 @@ function BoutiqueList({ isOwner }: { isOwner: boolean }) {
     }
     setLoading(true);
     try {
-      const rows = await listMyProducts();
+      const [rows, aff] = await Promise.all([listMyProducts(), listMyAffiliatedProducts()]);
       setProducts(
         rows.map((r) => ({
           id: r.id,
@@ -618,6 +621,19 @@ function BoutiqueList({ isOwner }: { isOwner: boolean }) {
           image: r.image_url || photo(`prod-${r.id}`, 400, 400),
           active: r.is_active,
           real: true,
+        })),
+      );
+      setAffiliated(
+        aff.map((r) => ({
+          id: r.id,
+          title: r.title,
+          price: (r.promo_cfa ?? r.price_cfa).toLocaleString('fr-FR'),
+          promo: r.promo_cfa ? r.price_cfa.toLocaleString('fr-FR') : null,
+          stock: r.stock,
+          sold: r.sold_count,
+          image: r.image_url || photo(`prod-${r.id}`, 400, 400),
+          active: r.is_active,
+          real: false, // produit d'un autre vendeur → non modifiable/supprimable par le revendeur
         })),
       );
     } finally {
@@ -641,21 +657,46 @@ function BoutiqueList({ isOwner }: { isOwner: boolean }) {
 
   // Réels si connecté, sinon démo (mode invité / visiteur)
   const demo: DisplayProduct[] = myProducts.map((p) => ({ ...p, real: false }));
-  const list = session && products ? products : demo;
+  const own = session && products ? products : demo;
+  const current = tab === 'own' ? own : affiliated;
+  const list = query.trim() ? current.filter((p) => p.title.toLowerCase().includes(query.trim().toLowerCase())) : current;
 
   return (
     <View style={{ paddingHorizontal: 12, paddingTop: 12 }}>
-      {isOwner && (
+      {/* 2 sections : produits créés / produits affiliés */}
+      <View style={styles.shopTabs}>
+        <Pressable onPress={() => setTab('own')} style={[styles.shopTab, tab === 'own' && styles.shopTabOn]}>
+          <Text style={[styles.shopTabText, tab === 'own' && styles.shopTabTextOn]}>Mes produits ({own.length})</Text>
+        </Pressable>
+        <Pressable onPress={() => setTab('affil')} style={[styles.shopTab, tab === 'affil' && styles.shopTabOn]}>
+          <Text style={[styles.shopTabText, tab === 'affil' && styles.shopTabTextOn]}>Affiliés ({affiliated.length})</Text>
+        </Pressable>
+      </View>
+
+      {/* Recherche */}
+      <View style={styles.shopSearch}>
+        <Ionicons name="search" size={17} color={Afylo.textDim} />
+        <TextInput style={styles.shopSearchInput} value={query} onChangeText={setQuery} placeholder="Rechercher un produit" placeholderTextColor={Afylo.textFaint} autoCapitalize="none" />
+        {query.length > 0 && <Ionicons name="close-circle" size={18} color={Afylo.textFaint} onPress={() => setQuery('')} />}
+      </View>
+
+      {isOwner && tab === 'own' && (
         <Pressable style={styles.createBtn} onPress={() => router.push('/product-new')}>
           <Ionicons name="add-circle" size={22} color={Afylo.violet} />
           <Text style={styles.createText}>Créer un produit</Text>
         </Pressable>
       )}
+      {isOwner && tab === 'affil' && (
+        <Pressable style={styles.createBtn} onPress={() => router.push('/affiliation')}>
+          <Ionicons name="repeat" size={20} color={Afylo.violet} />
+          <Text style={styles.createText}>Trouver des produits à revendre</Text>
+        </Pressable>
+      )}
 
       {loading && <GridSkeleton count={4} />}
 
-      {isOwner && session && list.length === 0 && !loading && (
-        <Text style={styles.emptyText}>Aucun produit pour l'instant. Crée ton premier article ci-dessus.</Text>
+      {session && list.length === 0 && !loading && (
+        <Text style={styles.emptyText}>{tab === 'own' ? "Aucun produit pour l'instant. Crée ton premier article ci-dessus." : 'Aucun produit affilié. Ajoute-en depuis la page Affiliation.'}</Text>
       )}
 
       {!session && isOwner && (
@@ -971,6 +1012,13 @@ const styles = StyleSheet.create({
   purchaseNote: { ...Type.caption, color: Afylo.textFaint, textAlign: 'center', marginTop: 8, lineHeight: 17, paddingHorizontal: 10 },
   createBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: Afylo.surface, borderRadius: Radius.md, paddingVertical: 13, marginBottom: 12, borderWidth: 1, borderColor: Afylo.surfaceAlt },
   createText: { color: Afylo.violet, fontWeight: '700', fontSize: 14 },
+  shopTabs: { flexDirection: 'row', gap: 8, marginBottom: 10 },
+  shopTab: { flex: 1, alignItems: 'center', paddingVertical: 9, borderRadius: Radius.pill, backgroundColor: Afylo.surface, borderWidth: 1, borderColor: Afylo.border },
+  shopTabOn: { backgroundColor: Afylo.violet, borderColor: Afylo.violet },
+  shopTabText: { color: Afylo.textDim, fontFamily: Font.semibold, fontSize: 13 },
+  shopTabTextOn: { color: '#fff' },
+  shopSearch: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: Afylo.surface, borderRadius: Radius.pill, paddingHorizontal: 14, height: 44, marginBottom: 12, borderWidth: 1, borderColor: Afylo.border },
+  shopSearchInput: { flex: 1, color: Afylo.text, fontSize: 15, height: '100%' },
   emptyText: { color: Afylo.textDim, fontSize: 14, textAlign: 'center', paddingVertical: 24, paddingHorizontal: 20, lineHeight: 20 },
   demoNote: { color: Afylo.textFaint, fontSize: 12, textAlign: 'center', marginBottom: 12 },
   prodGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },

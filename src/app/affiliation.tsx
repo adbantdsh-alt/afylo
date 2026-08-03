@@ -2,39 +2,60 @@ import { Ionicons } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Afylo, Font, Radius, Type } from '@/constants/brand';
-import { startLive } from '@/lib/db';
+import { addAffiliation, listAffiliatableProducts, listMyAffiliatedProductIds, removeAffiliation, startLive, type FeedProduct } from '@/lib/db';
 import { useMe } from '@/lib/me';
-import { affiliationProducts, CITIES, NICHES, type AffiliationProduct } from '@/lib/mock';
+import { photo } from '@/lib/mock';
+
+/** Produit affiliable affiché (issu d'un vrai produit d'un autre vendeur). */
+type AffItem = { id: string; title: string; price: number; promo: number | null; commission: number; image: string; seller: string };
+const toAff = (p: FeedProduct): AffItem => ({
+  id: p.id,
+  title: p.title,
+  price: p.price_cfa,
+  promo: p.promo_cfa,
+  commission: p.commission_pct,
+  image: p.image_url || photo(`p-${p.id}`, 400, 400),
+  seller: p.owner?.display_name || p.owner?.handle || 'Vendeur',
+});
 
 export default function Affiliation() {
   const router = useRouter();
   const me = useMe();
 
   // « Vendre en live » : lance un live avec le produit d'affiliation déjà sélectionné à la vente.
-  const sellLive = async (p: AffiliationProduct) => {
+  const sellLive = async (p: AffItem) => {
     const live = await startLive({ title: `Live · ${me.name}`, kind: 'sell', thumbnail_url: me.avatar }).catch(() => null);
     const product = JSON.stringify({ id: `aff-${p.id}`, title: p.title, price: `${(p.promo ?? p.price).toLocaleString('fr-FR')} FCFA`, image: p.image, tag: `Affiliation ${p.commission}%` });
     router.push({ pathname: '/live', params: { role: 'host', liveId: live?.id ?? '', name: me.name, avatar: me.avatar, product } });
   };
-  const [niche, setNiche] = useState('Tout');
-  const [city, setCity] = useState('Toutes');
   const [query, setQuery] = useState('');
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [items, setItems] = useState<AffItem[]>([]);
+  const [affiliatedIds, setAffiliatedIds] = useState<Set<string>>(new Set());
 
-  const list = useMemo(() => {
-    return affiliationProducts
-      .filter((p) => (niche === 'Tout' ? true : p.niche === niche))
-      .filter((p) => (city === 'Toutes' ? true : p.city === city))
-      .filter((p) => (query ? p.title.toLowerCase().includes(query.toLowerCase()) : true))
-      .sort((a, b) => b.commission - a.commission);
-  }, [niche, city, query]);
+  useEffect(() => {
+    listAffiliatableProducts().then((rows) => setItems(rows.map(toAff))).catch(() => {});
+    listMyAffiliatedProductIds().then(setAffiliatedIds).catch(() => {});
+  }, []);
 
-  const copyLink = async (p: AffiliationProduct) => {
+  // « Revendre » : ajoute (ou retire) le produit à MA boutique en affiliation — persistant.
+  const toggleResell = (p: AffItem) => {
+    const on = affiliatedIds.has(p.id);
+    setAffiliatedIds((prev) => { const n = new Set(prev); if (on) n.delete(p.id); else n.add(p.id); return n; });
+    (on ? removeAffiliation(p.id) : addAffiliation(p.id)).catch(() => {});
+  };
+
+  const list = useMemo(
+    () => items.filter((p) => (query ? (p.title + ' ' + p.seller).toLowerCase().includes(query.toLowerCase()) : true)),
+    [items, query],
+  );
+
+  const copyLink = async (p: AffItem) => {
     const link = `https://afylo.app/p/${p.id}?ref=me`;
     try {
       await Clipboard.setStringAsync(link);
@@ -68,27 +89,14 @@ export default function Affiliation() {
           />
         </View>
 
-        {/* Filtres niche */}
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chips}>
-          {NICHES.map((n) => (
-            <Chip key={n} label={n} active={niche === n} onPress={() => setNiche(n)} />
-          ))}
-        </ScrollView>
-        {/* Filtres ville */}
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipsCity}>
-          <Ionicons name="location-outline" size={16} color={Afylo.textDim} style={{ marginRight: 4, alignSelf: 'center' }} />
-          {CITIES.map((c) => (
-            <Chip key={c} label={c} active={city === c} onPress={() => setCity(c)} subtle />
-          ))}
-        </ScrollView>
       </SafeAreaView>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 16, paddingBottom: 40 }}>
         <Text style={styles.count}>{list.length} produit{list.length > 1 ? 's' : ''} à revendre</Text>
         {list.map((p) => (
-          <ProductRow key={p.id} p={p} copied={copiedId === p.id} onCopy={() => copyLink(p)} onSellLive={() => sellLive(p)} />
+          <ProductRow key={p.id} p={p} copied={copiedId === p.id} resold={affiliatedIds.has(p.id)} onCopy={() => copyLink(p)} onSellLive={() => sellLive(p)} onResell={() => toggleResell(p)} />
         ))}
-        {list.length === 0 && <Text style={styles.empty}>Aucun produit pour ces filtres.</Text>}
+        {list.length === 0 && <Text style={styles.empty}>Aucun produit à revendre pour l'instant.</Text>}
       </ScrollView>
     </View>
   );
@@ -102,9 +110,8 @@ function Chip({ label, active, onPress, subtle }: { label: string; active: boole
   );
 }
 
-function ProductRow({ p, copied, onCopy, onSellLive }: { p: AffiliationProduct; copied: boolean; onCopy: () => void; onSellLive: () => void }) {
+function ProductRow({ p, copied, resold, onCopy, onSellLive, onResell }: { p: AffItem; copied: boolean; resold: boolean; onCopy: () => void; onSellLive: () => void; onResell: () => void }) {
   const earn = Math.round(((p.promo ?? p.price) * p.commission) / 100);
-  const [resold, setResold] = useState(false);
   return (
     <View style={styles.card}>
       <Image source={{ uri: p.image }} style={styles.cardImg} contentFit="cover" transition={200} />
@@ -114,7 +121,7 @@ function ProductRow({ p, copied, onCopy, onSellLive }: { p: AffiliationProduct; 
 
       <View style={styles.cardBody}>
         <Text style={styles.cardTitle} numberOfLines={1}>{p.title}</Text>
-        <Text style={styles.cardMeta} numberOfLines={1}>{p.seller} · {p.city}</Text>
+        <Text style={styles.cardMeta} numberOfLines={1}>{p.seller}</Text>
 
         <View style={styles.priceRow}>
           {p.promo ? (
@@ -134,7 +141,7 @@ function ProductRow({ p, copied, onCopy, onSellLive }: { p: AffiliationProduct; 
             <Ionicons name={copied ? 'checkmark' : 'link'} size={16} color={copied ? '#fff' : Afylo.violet} />
             <Text style={[styles.copyText, copied && { color: '#fff' }]}>{copied ? 'Lien copié' : 'Copier le lien'}</Text>
           </Pressable>
-          <Pressable onPress={() => setResold(true)} style={[styles.resellBtn, resold && { backgroundColor: Afylo.green }]}>
+          <Pressable onPress={onResell} style={[styles.resellBtn, resold && { backgroundColor: Afylo.green }]}>
             <Ionicons name={resold ? 'checkmark' : 'repeat'} size={16} color="#fff" />
             <Text style={styles.resellText}>{resold ? 'Dans ta boutique' : 'Revendre'}</Text>
           </Pressable>
