@@ -15,7 +15,7 @@ import { listMyProducts, startLive } from '@/lib/db';
 import { useMe } from '@/lib/me';
 import { useStories } from '@/lib/stories';
 import { useTabBar } from '@/lib/tabbar';
-import { captureWebFrameDataUrl, captureWebPhoto, keepCameraUnmirrored, startWebRecording, stopKeepUnmirrored, stopWebRecording } from '@/lib/web-recorder';
+import { captureWebFrameDataUrl, captureWebPhoto, clearCameraMirror, setCameraMirror, startWebRecording, stopWebRecording } from '@/lib/web-recorder';
 import type { Product } from '@/types/db';
 
 type Mode = 'Publication' | 'Story' | 'Reel' | 'Live';
@@ -63,10 +63,9 @@ export default function Creer() {
     useCallback(() => {
       hidden.value = withTiming(1, { duration: 150 });
       setMedia(null);
-      if (Platform.OS === 'web') keepCameraUnmirrored(); // impose l'aperçu non-miroir dès l'entrée
       return () => {
         hidden.value = withTiming(0, { duration: 150 });
-        stopKeepUnmirrored();
+        clearCameraMirror();
       };
     }, [hidden]),
   );
@@ -80,9 +79,14 @@ export default function Creer() {
 
   // Bascule avant/arrière : sur web la caméra se remonte (écran noir) → on fige la dernière
   // frame par-dessus le temps de ré-init, retirée dès que la nouvelle caméra est prête.
+  // Impose le bon miroir selon la caméra : frontal retourné (à l'endroit comme l'arrière), arrière brut.
+  useEffect(() => {
+    if (Platform.OS === 'web') setCameraMirror(facing === 'front');
+  }, [facing]);
+
   const flip = () => {
     if (Platform.OS === 'web') {
-      const frame = captureWebFrameDataUrl();
+      const frame = captureWebFrameDataUrl(facing === 'front'); // même orientation que l'aperçu affiché
       if (frame) {
         setFlipFreeze(frame);
         if (freezeTimer.current) clearTimeout(freezeTimer.current);
@@ -99,10 +103,13 @@ export default function Creer() {
     focusAnim.setValue(1);
     Animated.timing(focusAnim, { toValue: 0, duration: 700, delay: 300, useNativeDriver: true }).start();
   };
-  const onCameraTap = (e: { nativeEvent: { locationX: number; locationY: number } }) => {
+  const onCameraTap = (e: { nativeEvent: any }) => {
     const now = Date.now();
-    const { locationX, locationY } = e.nativeEvent;
-    showFocus(locationX, locationY); // tap = mise au point (autofocus déclenché + repère visuel)
+    const ne = e.nativeEvent || {};
+    // web : offsetX/offsetY (relatifs à la zone caméra) ; natif : locationX/locationY
+    const x = ne.offsetX ?? ne.locationX ?? 0;
+    const y = ne.offsetY ?? ne.locationY ?? 0;
+    showFocus(x, y); // tap = repère de mise au point (autofocus géré par la caméra)
     if (now - lastTap.current < 300) flip(); // double-tap = retourner la caméra
     lastTap.current = now;
   };
@@ -128,7 +135,7 @@ export default function Creer() {
     // WEB : on capture la frame BRUTE du flux (image telle quelle, jamais en miroir),
     // exactement comme la caméra arrière. Repli sur expo si le flux n'est pas dispo.
     if (Platform.OS === 'web') {
-      const shot = await captureWebPhoto();
+      const shot = await captureWebPhoto(facing === 'front'); // photo à l'endroit (comme l'aperçu)
       if (shot) { setMedia({ uri: shot, type: 'image' }); return; }
     }
     if (!camRef.current) return;
@@ -264,7 +271,7 @@ export default function Creer() {
             mirror={false}
             autofocus="on"
             onCameraReady={() => {
-              if (Platform.OS === 'web') keepCameraUnmirrored(); // aperçu non-miroir maintenu (front = arrière), même si expo re-miroite ~1s après
+              if (Platform.OS === 'web') setCameraMirror(facing === 'front'); // ré-impose l'orientation sur la nouvelle caméra
               if (freezeTimer.current) clearTimeout(freezeTimer.current);
               setFlipFreeze(null);
             }}

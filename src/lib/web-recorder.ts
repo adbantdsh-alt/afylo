@@ -25,66 +25,70 @@ function getCameraStream(): MediaStream | null {
 }
 
 /**
- * Capture la PHOTO brute du flux (image telle quelle, JAMAIS en miroir).
- * On dessine la frame vidéo réelle dans un canvas : les transforms CSS d'aperçu
- * (miroir selfie) sont ignorées, donc le frontal sort à l'endroit comme l'arrière.
- * Renvoie null si pas de flux → l'appelant se rabat sur takePictureAsync.
- */
-export function captureWebPhoto(): Promise<string | null> {
-  const v = getCameraVideoEl();
-  if (!v || !v.videoWidth || typeof document === 'undefined') return Promise.resolve(null);
+/** Dessine la frame vidéo dans un canvas, éventuellement retournée horizontalement. */
+function drawFrame(v: HTMLVideoElement, mirror: boolean): HTMLCanvasElement | null {
   const canvas = document.createElement('canvas');
   canvas.width = v.videoWidth;
   canvas.height = v.videoHeight;
   const ctx = canvas.getContext('2d');
-  if (!ctx) return Promise.resolve(null);
-  ctx.drawImage(v, 0, 0, canvas.width, canvas.height); // frame brute, aucun flip
+  if (!ctx) return null;
+  if (mirror) { ctx.translate(canvas.width, 0); ctx.scale(-1, 1); } // retourne pour correspondre à l'aperçu
+  ctx.drawImage(v, 0, 0, canvas.width, canvas.height);
+  return canvas;
+}
+
+/**
+ * Capture la PHOTO du flux. `mirror` (= caméra frontale) retourne l'image pour
+ * qu'elle soit à l'endroit comme l'arrière (le flux frontal brut est en miroir).
+ * Renvoie null si pas de flux → l'appelant se rabat sur takePictureAsync.
+ */
+export function captureWebPhoto(mirror = false): Promise<string | null> {
+  const v = getCameraVideoEl();
+  if (!v || !v.videoWidth || typeof document === 'undefined') return Promise.resolve(null);
+  const canvas = drawFrame(v, mirror);
+  if (!canvas) return Promise.resolve(null);
   return new Promise((resolve) => {
     canvas.toBlob((b) => resolve(b ? URL.createObjectURL(b) : null), 'image/jpeg', 0.92);
   });
 }
 
 /**
- * Fige la frame courante en data URL (SYNCHRONE) — sert à masquer l'écran noir
- * pendant la bascule avant/arrière (la caméra se ré-initialise).
+ * Fige la frame courante en data URL (SYNCHRONE) — masque l'écran noir pendant
+ * la bascule. `mirror` (frontal) pour correspondre exactement à l'aperçu affiché.
  */
-export function captureWebFrameDataUrl(): string | null {
+export function captureWebFrameDataUrl(mirror = false): string | null {
   const v = getCameraVideoEl();
   if (!v || !v.videoWidth || typeof document === 'undefined') return null;
   try {
-    const canvas = document.createElement('canvas');
-    canvas.width = v.videoWidth;
-    canvas.height = v.videoHeight;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return null;
-    ctx.drawImage(v, 0, 0, canvas.width, canvas.height);
-    return canvas.toDataURL('image/jpeg', 0.8);
+    const canvas = drawFrame(v, mirror);
+    return canvas ? canvas.toDataURL('image/jpeg', 0.8) : null;
   } catch {
     return null;
   }
 }
 
-const UNMIRROR_STYLE_ID = 'afryko-unmirror-cam';
+const MIRROR_STYLE_ID = 'afryko-cam-mirror';
 
 /**
- * Force l'aperçu caméra web SANS miroir, de façon DÉFINITIVE.
- * expo-camera met un `transform: scaleX(-1)` inline (frontal) et le ré-applique
- * ~1s après le montage. Une feuille de style `!important` bat toujours l'inline,
- * sans course : `transform:none !important` sur le <video> reste imposé en continu.
- * (N'affecte que l'écran caméra : la règle est retirée en quittant.)
+ * Impose l'orientation de l'aperçu caméra web via une feuille de style `!important`
+ * (bat l'inline d'expo, sans course). Frontal = retourné (scaleX(-1)) pour être à
+ * l'endroit comme l'arrière ; arrière = aucune transformation.
  */
-export function keepCameraUnmirrored() {
+export function setCameraMirror(mirror: boolean) {
   if (typeof document === 'undefined') return;
-  if (document.getElementById(UNMIRROR_STYLE_ID)) return;
-  const el = document.createElement('style');
-  el.id = UNMIRROR_STYLE_ID;
-  el.textContent = 'video{transform:none !important;-webkit-transform:none !important;}';
-  document.head.appendChild(el);
+  let el = document.getElementById(MIRROR_STYLE_ID) as HTMLStyleElement | null;
+  if (!el) {
+    el = document.createElement('style');
+    el.id = MIRROR_STYLE_ID;
+    document.head.appendChild(el);
+  }
+  const t = mirror ? 'scaleX(-1)' : 'none';
+  el.textContent = `video{transform:${t} !important;-webkit-transform:${t} !important;}`;
 }
 
-export function stopKeepUnmirrored() {
+export function clearCameraMirror() {
   if (typeof document === 'undefined') return;
-  document.getElementById(UNMIRROR_STYLE_ID)?.remove();
+  document.getElementById(MIRROR_STYLE_ID)?.remove();
 }
 
 export function canWebRecord(): boolean {
