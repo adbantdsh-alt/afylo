@@ -58,6 +58,8 @@ export default function Affiliation() {
   };
 
   const SORTS = { top: (a: AffItem, b: AffItem) => b.sold - a.sold, commission: (a: AffItem, b: AffItem) => b.commission - a.commission, price: (a: AffItem, b: AffItem) => (a.promo ?? a.price) - (b.promo ?? b.price), recent: (a: AffItem, b: AffItem) => b.created.localeCompare(a.created) };
+  // Top ventes (carrousel en tête) — meilleures ventes réelles (sold_count).
+  const topSellers = useMemo(() => [...items].sort((a, b) => b.sold - a.sold).slice(0, 8), [items]);
   const list = useMemo(
     () =>
       items
@@ -147,6 +149,27 @@ export default function Affiliation() {
       </SafeAreaView>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 16, paddingBottom: 40 }}>
+        {/* Top ventes — carrousel (masqué quand un filtre/recherche est actif) */}
+        {!query && !cat && topSellers.length > 0 && (
+          <>
+            <Text style={styles.sectionH}>🔥 Top ventes</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12, paddingBottom: 16 }}>
+              {topSellers.map((p) => (
+                <Pressable key={p.id} onPress={() => sellLive(p)} style={styles.topCard}>
+                  <Image source={{ uri: p.image }} style={styles.topImg} contentFit="cover" transition={200} />
+                  <View style={styles.topCommission}><Text style={styles.topCommissionText}>{p.commission}%</Text></View>
+                  <View style={{ padding: 10 }}>
+                    <Text style={styles.topTitle} numberOfLines={1}>{p.title}</Text>
+                    <Text style={styles.topPrice}>{(p.promo ?? p.price).toLocaleString('fr-FR')} F</Text>
+                    <Text style={styles.topSold} numberOfLines={1}>{p.sold > 0 ? `${p.sold} vendu${p.sold > 1 ? 's' : ''}` : 'Nouveau'}</Text>
+                    <View style={styles.topLiveBtn}><Ionicons name="radio" size={13} color="#fff" /><Text style={styles.topLiveText}>Vendre en live</Text></View>
+                  </View>
+                </Pressable>
+              ))}
+            </ScrollView>
+            <Text style={styles.sectionH}>Tous les produits</Text>
+          </>
+        )}
         <Text style={styles.count}>{list.length} produit{list.length > 1 ? 's' : ''} à revendre</Text>
         {list.map((p) => (
           <ProductRow key={p.id} p={p} copied={copiedId === p.id} resold={affiliatedIds.has(p.id)} onCopy={() => copyLink(p)} onSellLive={() => sellLive(p)} onResell={() => toggleResell(p)} />
@@ -233,6 +256,17 @@ const styles = StyleSheet.create({
   chipText: { ...Type.small, color: Afylo.textDim },
 
   count: { ...Type.small, color: Afylo.textDim, marginBottom: 12 },
+
+  sectionH: { color: Afylo.text, fontFamily: Font.bold, fontSize: 17, marginBottom: 10, marginTop: 2 },
+  topCard: { width: 160, backgroundColor: Afylo.surface, borderRadius: Radius.lg, overflow: 'hidden', borderWidth: 1, borderColor: Afylo.border },
+  topImg: { width: 160, height: 110, backgroundColor: Afylo.surfaceAlt },
+  topCommission: { position: 'absolute', top: 8, left: 8, backgroundColor: Afylo.green, borderRadius: Radius.pill, paddingHorizontal: 8, paddingVertical: 2 },
+  topCommissionText: { color: '#fff', fontFamily: Font.bold, fontSize: 11 },
+  topTitle: { color: Afylo.text, fontFamily: Font.semibold, fontSize: 14 },
+  topPrice: { color: Afylo.text, fontFamily: Font.bold, fontSize: 15, marginTop: 2 },
+  topSold: { color: Afylo.textDim, fontSize: 11, marginTop: 1 },
+  topLiveBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5, marginTop: 8, height: 34, borderRadius: Radius.pill, backgroundColor: Afylo.live },
+  topLiveText: { color: '#fff', fontFamily: Font.bold, fontSize: 12 },
 
   catRow: { gap: 8, paddingHorizontal: 16, paddingTop: 12 },
   catChip: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 14, height: 38, borderRadius: Radius.pill, backgroundColor: Afylo.surface, borderWidth: 1, borderColor: Afylo.border },
