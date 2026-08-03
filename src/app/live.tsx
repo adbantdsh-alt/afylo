@@ -58,6 +58,12 @@ export default function Live() {
   const [sell, setSell] = useState<SellProduct[]>([]);
   const [available, setAvailable] = useState<SellProduct[]>([]); // VRAIS produits du vendeur
   const [productPicker, setProductPicker] = useState(false);
+  const [prodFilter, setProdFilter] = useState<'all' | 'own' | 'affil'>('all'); // filtre créés / affiliés
+  const [prodQuery, setProdQuery] = useState('');
+  const isAffil = (p: SellProduct) => p.tag.startsWith('Affiliation');
+  const filteredAvailable = available
+    .filter((p) => (prodFilter === 'all' ? true : prodFilter === 'affil' ? isAffil(p) : !isAffil(p)))
+    .filter((p) => (prodQuery.trim() ? p.title.toLowerCase().includes(prodQuery.trim().toLowerCase()) : true));
 
   // Produits vendables en live : SES produits + les produits en AFFILIATION (ceux des autres
   // avec une commission) → on peut promouvoir/vendre l'article d'autrui et toucher sa commission.
@@ -318,8 +324,9 @@ export default function Live() {
               <Text style={styles.optTag}>Optionnel</Text>
             </View>
             <Text style={styles.panelSub}>Tu peux lancer ton live sans produit. {sell.length > 0 ? `${sell.length} sélectionné(s).` : 'Ajoute-en quand tu veux pendant le live.'}</Text>
-            <ScrollView style={{ maxHeight: 240 }} showsVerticalScrollIndicator={false}>
-              {available.map((p) => {
+            <ProductFilterBar filter={prodFilter} setFilter={setProdFilter} query={prodQuery} setQuery={setProdQuery} />
+            <ScrollView style={{ maxHeight: 220 }} showsVerticalScrollIndicator={false}>
+              {filteredAvailable.map((p) => {
                 const on = !!sell.find((x) => x.id === p.id);
                 return (
                   <Pressable key={p.id} onPress={() => toggleSell(p)} style={[styles.pRow, on && styles.pRowOn]}>
@@ -593,8 +600,9 @@ export default function Live() {
           <View style={styles.mSheet}>
             <View style={styles.mHandle} />
             <Text style={styles.mTitle}>Produits en vente</Text>
-            <ScrollView style={{ maxHeight: 360 }}>
-              {available.map((p) => {
+            <ProductFilterBar filter={prodFilter} setFilter={setProdFilter} query={prodQuery} setQuery={setProdQuery} />
+            <ScrollView style={{ maxHeight: 340 }}>
+              {filteredAvailable.map((p) => {
                 const on = !!sell.find((x) => x.id === p.id);
                 return (
                   <Pressable key={p.id} onPress={() => toggleSell(p)} style={styles.pRow}>
@@ -726,6 +734,27 @@ export default function Live() {
 }
 
 /* ---------------- Intervenant : pip audio / vidéo ---------------- */
+/** Filtre (Tout / Créés / Affiliés) + recherche pour les sélecteurs de produits en live. */
+function ProductFilterBar({ filter, setFilter, query, setQuery }: { filter: 'all' | 'own' | 'affil'; setFilter: (f: 'all' | 'own' | 'affil') => void; query: string; setQuery: (q: string) => void }) {
+  const tabs: [('all' | 'own' | 'affil'), string][] = [['all', 'Tout'], ['own', 'Créés'], ['affil', 'Affiliés']];
+  return (
+    <View style={{ marginBottom: 10 }}>
+      <View style={styles.filterRow}>
+        {tabs.map(([k, label]) => (
+          <Pressable key={k} onPress={() => setFilter(k)} style={[styles.filterChip, filter === k && styles.filterChipOn]}>
+            <Text style={[styles.filterChipText, filter === k && styles.filterChipTextOn]}>{label}</Text>
+          </Pressable>
+        ))}
+      </View>
+      <View style={styles.searchRow}>
+        <Ionicons name="search" size={16} color="#ffffff88" />
+        <TextInput value={query} onChangeText={setQuery} placeholder="Rechercher un produit" placeholderTextColor="#ffffff66" style={styles.searchInput} autoCapitalize="none" />
+        {query.length > 0 && <Ionicons name="close-circle" size={18} color="#ffffff88" onPress={() => setQuery('')} />}
+      </View>
+    </View>
+  );
+}
+
 function GuestPip({ g, facing, onFlip, onToggleCam, onLeave }: { g: Guest; facing: 'front' | 'back'; onFlip?: () => void; onToggleCam?: () => void; onLeave?: () => void }) {
   return (
     <View style={styles.guestPip}>
@@ -868,6 +897,13 @@ const styles = StyleSheet.create({
   guestPip: { width: 86, height: 116, borderRadius: 16, overflow: 'hidden', backgroundColor: '#111', borderWidth: 2, borderColor: Afylo.violet },
   guestAudio: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#1a1a22' },
   audioRing: { position: 'absolute', width: 54, height: 54, borderRadius: 27, backgroundColor: Afylo.violet2 },
+  filterRow: { flexDirection: 'row', gap: 8, marginBottom: 8 },
+  filterChip: { paddingHorizontal: 14, paddingVertical: 7, borderRadius: 999, backgroundColor: '#ffffff14' },
+  filterChipOn: { backgroundColor: Afylo.violet },
+  filterChipText: { color: '#ffffffaa', fontFamily: Font.semibold, fontSize: 12.5 },
+  filterChipTextOn: { color: '#fff' },
+  searchRow: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#ffffff12', borderRadius: 999, paddingHorizontal: 14, height: 42 },
+  searchInput: { flex: 1, color: '#fff', fontSize: 14, height: '100%' },
   reqBanner: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: Afylo.violet, marginHorizontal: 14, marginTop: 8, paddingHorizontal: 14, height: 42, borderRadius: Radius.pill },
   reqBannerText: { flex: 1, color: '#fff', fontFamily: Font.semibold, fontSize: 13 },
   pipControls: { position: 'absolute', top: 5, left: 0, right: 0, flexDirection: 'row', justifyContent: 'center', gap: 5 },
