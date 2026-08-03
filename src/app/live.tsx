@@ -113,6 +113,12 @@ export default function Live() {
   const showToast = (m: string) => { setToast(m); setTimeout(() => setToast((cur) => (cur === m ? null : cur)), 1700); };
   const nid = (p: string) => `${p}${seq.current++}`; // id calculé UNE fois, hors updater
   const addComment = (c: Omit<Comment, 'id'>) => { const id = nid('c'); setComments((prev) => [...prev.slice(-50), { id, ...c }]); };
+
+  // Auto-scroll TikTok : on colle toujours au dernier message (deux frames pour laisser le layout se poser).
+  useEffect(() => {
+    const id = requestAnimationFrame(() => requestAnimationFrame(() => commentsRef.current?.scrollToEnd({ animated: true })));
+    return () => cancelAnimationFrame(id);
+  }, [comments]);
   const pushEvent = (nm: string, av: string, system: NonNullable<Comment['system']>, txt: string) => {
     const id = nid('e');
     setComments((prev) => [...prev.slice(-50), { id, name: nm, avatar: av, text: txt, system }]);
@@ -219,6 +225,16 @@ export default function Live() {
   };
   const leaveStage = () => { setGuests((prev) => prev.filter((g) => !g.local)); setRequested('idle'); };
   const localMode = guests.find((g) => g.local)?.mode;
+
+  // Contrôles de MON intervention (co-host) : retourner ma caméra, couper la caméra (→ audio) ou la rallumer.
+  const [guestFacing, setGuestFacing] = useState<'front' | 'back'>('front');
+  const flipGuestCam = () => setGuestFacing((f) => (f === 'front' ? 'back' : 'front'));
+  const toggleGuestCam = async () => {
+    const cur = guests.find((g) => g.local);
+    if (!cur) return;
+    if (cur.mode === 'audio' && !permission?.granted) { const r = await requestPermission(); if (!r?.granted) { showToast('Caméra refusée'); return; } }
+    setGuests((prev) => prev.map((g) => (g.local ? { ...g, mode: g.mode === 'video' ? 'audio' : 'video' } : g)));
+  };
 
   // Événement d'arrivée
   useEffect(() => {
@@ -367,7 +383,16 @@ export default function Live() {
         {/* Intervenants en direct (audio = avatar, vidéo = flux) */}
         {guests.length > 0 && (
           <View style={styles.guestStrip}>
-            {guests.map((g) => <GuestPip key={g.id} g={g} facing={facing} />)}
+            {guests.map((g) => (
+              <GuestPip
+                key={g.id}
+                g={g}
+                facing={g.local ? guestFacing : facing}
+                onFlip={g.local ? flipGuestCam : undefined}
+                onToggleCam={g.local ? toggleGuestCam : undefined}
+                onLeave={g.local ? leaveStage : undefined}
+              />
+            ))}
           </View>
         )}
 
@@ -673,16 +698,51 @@ export default function Live() {
 }
 
 /* ---------------- Intervenant : pip audio / vidéo ---------------- */
-function GuestPip({ g, facing }: { g: Guest; facing: 'front' | 'back' }) {
+function GuestPip({ g, facing, onFlip, onToggleCam, onLeave }: { g: Guest; facing: 'front' | 'back'; onFlip?: () => void; onToggleCam?: () => void; onLeave?: () => void }) {
   return (
     <View style={styles.guestPip}>
       {g.mode === 'video'
-        ? (g.local ? <CameraView style={StyleSheet.absoluteFill} facing={facing} /> : <RemoteVideoPip />)
-        : <View style={styles.guestAudio}><Avatar uri={g.avatar} size={54} ring /></View>}
+        ? (g.local ? <CameraView key={facing} style={StyleSheet.absoluteFill} facing={facing} mirror={facing === 'front'} /> : <RemoteVideoPip />)
+        : <AudioPip avatar={g.avatar} />}
+
+      {/* Contrôles de MON intervention (co-host) — façon TikTok */}
+      {g.local && (
+        <View style={styles.pipControls}>
+          <Pressable onPress={onToggleCam} style={styles.pipBtn}>
+            <Ionicons name={g.mode === 'video' ? 'videocam' : 'videocam-off'} size={13} color="#fff" />
+          </Pressable>
+          {g.mode === 'video' && (
+            <Pressable onPress={onFlip} style={styles.pipBtn}><Ionicons name="camera-reverse" size={13} color="#fff" /></Pressable>
+          )}
+          <Pressable onPress={onLeave} style={[styles.pipBtn, { backgroundColor: '#E11D48' }]}><Ionicons name="exit" size={13} color="#fff" /></Pressable>
+        </View>
+      )}
+
       <View style={styles.guestNameBar}>
         <Ionicons name={g.mode === 'video' ? 'videocam' : 'mic'} size={9} color="#fff" />
-        <Text style={styles.guestName} numberOfLines={1}>{g.name}</Text>
+        <Text style={styles.guestName} numberOfLines={1}>{g.name}{g.local ? ' (toi)' : ''}</Text>
       </View>
+    </View>
+  );
+}
+
+/** Tuile audio : avatar + anneau qui pulse (indique la prise de parole). */
+function AudioPip({ avatar }: { avatar: string }) {
+  const pulse = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulse, { toValue: 1, duration: 700, easing: Easing.out(Easing.ease), useNativeDriver: true }),
+        Animated.timing(pulse, { toValue: 0, duration: 700, easing: Easing.in(Easing.ease), useNativeDriver: true }),
+      ]),
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [pulse]);
+  return (
+    <View style={styles.guestAudio}>
+      <Animated.View style={[styles.audioRing, { opacity: pulse.interpolate({ inputRange: [0, 1], outputRange: [0.15, 0.5] }), transform: [{ scale: pulse.interpolate({ inputRange: [0, 1], outputRange: [1, 1.35] }) }] }]} />
+      <Avatar uri={avatar} size={54} ring />
     </View>
   );
 }
@@ -777,8 +837,11 @@ const styles = StyleSheet.create({
   pinnedText: { color: '#fff', fontSize: 13, flex: 1 },
 
   guestStrip: { flexDirection: 'row', gap: 10, paddingHorizontal: 14, marginTop: 12 },
-  guestPip: { width: 78, height: 104, borderRadius: 14, overflow: 'hidden', backgroundColor: '#111', borderWidth: 2, borderColor: Afylo.violet },
+  guestPip: { width: 86, height: 116, borderRadius: 16, overflow: 'hidden', backgroundColor: '#111', borderWidth: 2, borderColor: Afylo.violet },
   guestAudio: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#1a1a22' },
+  audioRing: { position: 'absolute', width: 54, height: 54, borderRadius: 27, backgroundColor: Afylo.violet2 },
+  pipControls: { position: 'absolute', top: 5, left: 0, right: 0, flexDirection: 'row', justifyContent: 'center', gap: 5 },
+  pipBtn: { width: 24, height: 24, borderRadius: 12, backgroundColor: '#00000088', alignItems: 'center', justifyContent: 'center' },
   guestNameBar: { position: 'absolute', left: 0, right: 0, bottom: 0, flexDirection: 'row', alignItems: 'center', gap: 3, paddingHorizontal: 5, paddingVertical: 3, backgroundColor: '#00000088' },
   guestName: { color: '#fff', fontFamily: Font.semibold, fontSize: 10, flex: 1 },
 
