@@ -1,22 +1,21 @@
 import { Ionicons } from '@expo/vector-icons';
 import { CameraView, useCameraPermissions, useMicrophonePermissions } from 'expo-camera';
-import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Modal, PanResponder, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { PanResponder, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { withTiming } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { MediaEditor, type EditResult } from '@/components/media-editor';
 import { Afryko, Font, Radius } from '@/constants/brand';
 import { useAuthGate } from '@/lib/auth-gate';
-import { startLive } from '@/lib/db';
+import { listMyProducts, startLive } from '@/lib/db';
 import { useMe } from '@/lib/me';
-import { myProducts } from '@/lib/mock';
-import { useStories, type StoryProduct } from '@/lib/stories';
+import { useStories } from '@/lib/stories';
 import { useTabBar } from '@/lib/tabbar';
-import { MediaEditor, type EditResult } from '@/components/media-editor';
 import { captureWebPhoto, startWebRecording, stopWebRecording } from '@/lib/web-recorder';
+import type { Product } from '@/types/db';
 
 type Mode = 'Publication' | 'Story' | 'Reel' | 'Live';
 const MODES: Mode[] = ['Publication', 'Story', 'Reel', 'Live'];
@@ -41,8 +40,12 @@ export default function Creer() {
   const [recording, setRecording] = useState(false);
   const [locked, setLocked] = useState(false);
   const [recSecs, setRecSecs] = useState(0);
-  const [product, setProduct] = useState<StoryProduct | null>(null);
-  const [productPicker, setProductPicker] = useState(false);
+  const [myProds, setMyProds] = useState<Product[]>([]);
+
+  // Charge les VRAIS produits de l'utilisateur (pour l'attache manuelle dans l'éditeur).
+  useEffect(() => {
+    listMyProducts().then(setMyProds).catch(() => setMyProds([]));
+  }, []);
 
   // Refs pour les closures du geste (évite les valeurs périmées)
   const recordingRef = useRef(false);
@@ -183,7 +186,8 @@ export default function Creer() {
   const handleContinue = (res: EditResult) => {
     if (!gate(mode === 'Story' ? 'publier une story' : 'publier')) return;
     if (mode === 'Story') {
-      addStory({ type: res.type, uri: res.uri }, product ?? undefined);
+      const storyProduct = res.product ? { title: res.product.title, price: `${res.product.price_cfa.toLocaleString('fr-FR')} FCFA` } : undefined;
+      addStory({ type: res.type, uri: res.uri }, storyProduct);
       router.replace('/accueil');
     } else {
       router.push({
@@ -206,7 +210,14 @@ export default function Creer() {
   if (media) {
     return (
       <View style={styles.root}>
-        <MediaEditor media={media} onClose={() => setMedia(null)} onContinue={handleContinue} ctaLabel={mode === 'Story' ? 'Publier la story' : 'Continuer'} />
+        <MediaEditor
+          media={media}
+          onClose={() => setMedia(null)}
+          onContinue={handleContinue}
+          ctaLabel={mode === 'Story' ? 'Publier la story' : 'Continuer'}
+          products={myProds}
+          enableProduct={mode === 'Story'}
+        />
       </View>
     );
   }
@@ -247,20 +258,7 @@ export default function Creer() {
 
         <View style={{ flex: 1 }} pointerEvents="box-none" />
 
-        {/* Produit attaché */}
-        <Pressable onPress={() => setProductPicker(true)} style={styles.attachProduct}>
-          <Ionicons name="pricetag" size={18} color={product ? Afryko.violet2 : '#ffffffcc'} />
-          <Text style={[styles.attachText, product && { color: '#fff' }]} numberOfLines={1}>
-            {product ? `${product.title} · ${product.price}` : 'Attacher un produit (achat direct)'}
-          </Text>
-          {product ? (
-            <Ionicons name="close-circle" size={20} color="#ffffff88" onPress={() => setProduct(null)} />
-          ) : (
-            <Ionicons name="chevron-forward" size={18} color="#ffffff88" />
-          )}
-        </Pressable>
-
-        {/* ---- Capture ---- */}
+        {/* ---- Bas : capture ---- */}
         {recording && !locked && (
           <View style={styles.lockHint} pointerEvents="none">
             <Ionicons name="chevron-up" size={16} color="#fff" />
@@ -269,9 +267,13 @@ export default function Creer() {
           </View>
         )}
 
+        <Text style={styles.captureHint}>
+          {mode === 'Live' ? 'Appuie pour passer en direct' : mode === 'Reel' ? 'Maintiens pour filmer ton reel' : 'Appuie = photo · Maintiens = vidéo'}
+        </Text>
+
         <View style={styles.captureRow} pointerEvents="box-none">
           <Pressable style={styles.tool} onPress={() => pick('image')} hitSlop={8}>
-            <Ionicons name="images" size={26} color="#fff" />
+            <Ionicons name="images" size={24} color="#fff" />
           </Pressable>
 
           {/* Déclencheur */}
@@ -282,51 +284,25 @@ export default function Creer() {
           ) : (
             <View
               {...shutterPan.panHandlers}
-              style={[styles.shutterRing, recording && { borderColor: Afryko.live, transform: [{ scale: 1.15 }] }]}>
-              <View style={[styles.shutterCore, recording && styles.shutterCoreRec]} />
+              style={[styles.shutterRing, mode === 'Live' && styles.shutterLive, recording && { borderColor: Afryko.live, transform: [{ scale: 1.15 }] }]}>
+              <View style={[styles.shutterCore, mode === 'Live' && styles.shutterCoreLive, recording && styles.shutterCoreRec]} />
             </View>
           )}
 
           <Pressable style={styles.tool} onPress={() => pick('video')} hitSlop={8}>
-            <Ionicons name="film" size={26} color="#fff" />
+            <Ionicons name="film" size={24} color="#fff" />
           </Pressable>
         </View>
 
-        <Text style={styles.captureHint}>
-          {mode === 'Live' ? 'Appuie pour passer en direct' : 'Appuie = photo · Reste appuyé = vidéo'}
-        </Text>
-
-        {/* Onglets de mode */}
+        {/* Modes (segmentés) */}
         <View style={styles.modes} pointerEvents="box-none">
           {MODES.map((m) => (
-            <Pressable key={m} onPress={() => setMode(m)} hitSlop={6}>
+            <Pressable key={m} onPress={() => setMode(m)} style={[styles.modePill, mode === m && styles.modePillOn]} hitSlop={6}>
               <Text style={[styles.mode, mode === m && styles.modeActive]}>{m.toUpperCase()}</Text>
             </Pressable>
           ))}
         </View>
       </SafeAreaView>
-
-      {/* Sélecteur de produit */}
-      <Modal visible={productPicker} transparent animationType="slide" onRequestClose={() => setProductPicker(false)}>
-        <Pressable style={styles.pmOverlay} onPress={() => setProductPicker(false)}>
-          <View style={styles.pmSheet}>
-            <View style={styles.pmHandle} />
-            <Text style={styles.pmTitle}>Attacher un produit</Text>
-            <ScrollView>
-              {myProducts.map((p) => (
-                <Pressable key={p.id} onPress={() => { setProduct({ title: p.title, price: `${p.price} FCFA` }); setProductPicker(false); }} style={styles.pmRow}>
-                  <Image source={{ uri: p.image }} style={styles.pmImg} contentFit="cover" />
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.pmName} numberOfLines={1}>{p.title}</Text>
-                    <Text style={styles.pmPrice}>{p.price} FCFA</Text>
-                  </View>
-                  <Ionicons name="add-circle" size={22} color={Afryko.violet} />
-                </Pressable>
-              ))}
-            </ScrollView>
-          </View>
-        </Pressable>
-      </Modal>
     </View>
   );
 }
@@ -353,34 +329,22 @@ const styles = StyleSheet.create({
   recDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: Afryko.live },
   recText: { color: '#fff', fontFamily: Font.bold, fontSize: 12 },
 
-  attachProduct: { flexDirection: 'row', alignItems: 'center', gap: 10, marginHorizontal: 16, marginBottom: 12, backgroundColor: '#00000066', borderRadius: Radius.pill, paddingHorizontal: 16, height: 46 },
-  attachText: { flex: 1, color: '#ffffffcc', fontFamily: Font.medium, fontSize: 14 },
-
   lockHint: { flexDirection: 'row', alignItems: 'center', gap: 5, alignSelf: 'center', backgroundColor: '#00000066', paddingHorizontal: 12, paddingVertical: 6, borderRadius: Radius.pill, marginBottom: 12 },
   lockHintText: { color: '#fff', fontSize: 12, fontFamily: Font.medium },
 
-  captureRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-around', paddingHorizontal: 30 },
-  tool: { width: 54, height: 54, borderRadius: 27, backgroundColor: '#00000055', alignItems: 'center', justifyContent: 'center' },
+  captureRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-around', paddingHorizontal: 40, marginTop: 10 },
+  tool: { width: 50, height: 50, borderRadius: 25, backgroundColor: '#00000055', alignItems: 'center', justifyContent: 'center' },
   shutterRing: { width: 82, height: 82, borderRadius: 41, borderWidth: 5, borderColor: '#fff', alignItems: 'center', justifyContent: 'center' },
+  shutterLive: { borderColor: Afryko.live },
   shutterCore: { width: 64, height: 64, borderRadius: 32, backgroundColor: '#fff' },
   shutterCoreRec: { backgroundColor: Afryko.live },
+  shutterCoreLive: { backgroundColor: Afryko.live },
   stopCore: { width: 30, height: 30, borderRadius: 8, backgroundColor: Afryko.live },
-  captureHint: { color: '#ffffffcc', fontSize: 12, textAlign: 'center', marginTop: 14 },
+  captureHint: { color: '#ffffffcc', fontSize: 12, textAlign: 'center', marginBottom: 10 },
 
-  modes: { flexDirection: 'row', justifyContent: 'center', gap: 22, paddingTop: 14, paddingBottom: 8 },
-  mode: { color: '#ffffff88', fontFamily: Font.semibold, fontSize: 13, letterSpacing: 0.5 },
+  modes: { flexDirection: 'row', justifyContent: 'center', gap: 8, paddingTop: 16, paddingBottom: 8 },
+  modePill: { paddingHorizontal: 14, paddingVertical: 7, borderRadius: Radius.pill },
+  modePillOn: { backgroundColor: '#ffffff1f' },
+  mode: { color: '#ffffff99', fontFamily: Font.semibold, fontSize: 12, letterSpacing: 0.5 },
   modeActive: { color: '#fff', fontFamily: Font.bold },
-
-  previewBar: { paddingHorizontal: 16, paddingBottom: 14 },
-  publishBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, height: 54, borderRadius: Radius.pill, backgroundColor: Afryko.violet },
-  publishText: { color: '#fff', fontFamily: Font.bold, fontSize: 16 },
-
-  pmOverlay: { flex: 1, backgroundColor: '#00000088', justifyContent: 'flex-end' },
-  pmSheet: { backgroundColor: '#15151C', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 16, maxHeight: '60%' },
-  pmHandle: { width: 40, height: 4, borderRadius: 2, backgroundColor: '#ffffff33', alignSelf: 'center', marginBottom: 12 },
-  pmTitle: { color: '#fff', fontFamily: Font.bold, fontSize: 17, marginBottom: 12 },
-  pmRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 8 },
-  pmImg: { width: 48, height: 48, borderRadius: 10, backgroundColor: '#222' },
-  pmName: { color: '#fff', fontFamily: Font.semibold, fontSize: 15 },
-  pmPrice: { color: '#ffffffaa', fontSize: 13, marginTop: 2 },
 });

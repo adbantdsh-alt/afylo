@@ -3,12 +3,14 @@ import { Image } from 'expo-image';
 import { SaveFormat, manipulateAsync } from 'expo-image-manipulator';
 import { useVideoPlayer, VideoView } from 'expo-video';
 import { useRef, useState } from 'react';
-import { Animated, Image as RNImage, LayoutRectangle, PanResponder, Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Animated, Image as RNImage, LayoutRectangle, Modal, PanResponder, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { SoundPicker } from '@/components/sound-picker';
 import { Afryko, Font, Radius } from '@/constants/brand';
+import { photo } from '@/lib/mock';
 import type { Sound } from '@/lib/sounds';
+import type { Product } from '@/types/db';
 
 export type Overlay = {
   id: string;
@@ -26,6 +28,7 @@ export type EditResult = {
   overlays: Overlay[];
   muted: boolean;
   sound: Sound | null;
+  product: Product | null; // produit attaché (achat direct) — facultatif, manuel
 };
 
 const COLORS = ['#FFFFFF', '#111111', '#FF2D55', '#FFD60A', '#34C759', '#0A84FF', '#AF52DE'];
@@ -37,17 +40,23 @@ export function MediaEditor({
   onClose,
   onContinue,
   ctaLabel = 'Continuer',
+  products = [],
+  enableProduct = false,
 }: {
   media: { uri: string; type: 'image' | 'video' };
   onClose: () => void;
   onContinue: (r: EditResult) => void;
   ctaLabel?: string;
+  products?: Product[];
+  enableProduct?: boolean;
 }) {
   const [uri, setUri] = useState(media.uri);
   const [overlays, setOverlays] = useState<Overlay[]>([]);
   const [muted, setMuted] = useState(false);
   const [sound, setSound] = useState<Sound | null>(null);
   const [soundOpen, setSoundOpen] = useState(false);
+  const [product, setProduct] = useState<Product | null>(null);
+  const [productOpen, setProductOpen] = useState(false);
 
   // Édition de texte en cours
   const [draft, setDraft] = useState<{ id: string | null; text: string; color: string; kind: 'text' | 'link'; url: string } | null>(null);
@@ -95,7 +104,7 @@ export function MediaEditor({
     setBusy(false);
   };
 
-  const done = () => onContinue({ uri, type: media.type, overlays, muted, sound });
+  const done = () => onContinue({ uri, type: media.type, overlays, muted, sound, product });
 
   return (
     <View style={styles.root}>
@@ -128,7 +137,19 @@ export function MediaEditor({
         <Tool icon="musical-note" onPress={() => setSoundOpen(true)} />
         {isVideo && <Tool icon={muted ? 'volume-mute' : 'volume-high'} onPress={() => setMuted((m) => !m)} active={muted} />}
         <Tool icon="link" onPress={addLink} />
+        {enableProduct && <Tool icon="pricetag" onPress={() => setProductOpen(true)} active={!!product} />}
       </SafeAreaView>
+
+      {/* Chip produit attaché (achat direct) */}
+      {enableProduct && product && (
+        <SafeAreaView edges={['bottom']} style={styles.prodChipWrap} pointerEvents="box-none">
+          <Pressable onPress={() => setProductOpen(true)} style={styles.prodChip}>
+            <Image source={{ uri: product.image_url || photo(`p-${product.id}`, 80, 80) }} style={styles.prodChipImg} contentFit="cover" />
+            <Text style={styles.prodChipText} numberOfLines={1}>{product.title} · {product.price_cfa.toLocaleString('fr-FR')} F</Text>
+            <Ionicons name="close-circle" size={18} color="#ffffffaa" onPress={() => setProduct(null)} />
+          </Pressable>
+        </SafeAreaView>
+      )}
 
       {/* CTA */}
       <SafeAreaView edges={['bottom']} style={styles.bottom} pointerEvents="box-none">
@@ -178,6 +199,35 @@ export function MediaEditor({
       )}
 
       <SoundPicker visible={soundOpen} onSelect={(s) => { setSound(s); setSoundOpen(false); }} onClose={() => setSoundOpen(false)} />
+
+      {/* Sélecteur de produit (manuel) — les vrais produits de l'utilisateur */}
+      <Modal visible={productOpen} transparent animationType="slide" onRequestClose={() => setProductOpen(false)}>
+        <Pressable style={styles.sheetOverlay} onPress={() => setProductOpen(false)}>
+          <View style={styles.sheet}>
+            <View style={styles.sheetHandle} />
+            <Text style={styles.sheetTitle}>Attacher un produit</Text>
+            {products.length === 0 ? (
+              <Text style={styles.sheetEmpty}>Aucun produit — crée-en un depuis ta boutique.</Text>
+            ) : (
+              <ScrollView>
+                {products.map((p) => {
+                  const on = product?.id === p.id;
+                  return (
+                    <Pressable key={p.id} onPress={() => { setProduct(on ? null : p); setProductOpen(false); }} style={styles.sheetRow}>
+                      <Image source={{ uri: p.image_url || photo(`p-${p.id}`, 80, 80) }} style={styles.sheetImg} contentFit="cover" />
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.sheetName} numberOfLines={1}>{p.title}</Text>
+                        <Text style={styles.sheetPrice}>{p.price_cfa.toLocaleString('fr-FR')} F</Text>
+                      </View>
+                      <Ionicons name={on ? 'checkmark-circle' : 'add-circle-outline'} size={24} color={on ? Afryko.violet2 : '#fff'} />
+                    </Pressable>
+                  );
+                })}
+              </ScrollView>
+            )}
+          </View>
+        </Pressable>
+      </Modal>
     </View>
   );
 }
@@ -249,6 +299,21 @@ const styles = StyleSheet.create({
   tools: { position: 'absolute', top: 64, right: 8, gap: 18, alignItems: 'center' },
   tool: { alignItems: 'center', gap: 2 },
   toolLabel: { color: '#fff', fontSize: 9, fontFamily: Font.semibold },
+
+  prodChipWrap: { position: 'absolute', bottom: 70, left: 0, right: 0, paddingHorizontal: 16, alignItems: 'flex-start' },
+  prodChip: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#00000099', borderRadius: Radius.pill, paddingLeft: 6, paddingRight: 12, height: 40, maxWidth: '85%' },
+  prodChipImg: { width: 28, height: 28, borderRadius: 14, backgroundColor: '#333' },
+  prodChipText: { color: '#fff', fontFamily: Font.semibold, fontSize: 13, flexShrink: 1 },
+
+  sheetOverlay: { flex: 1, backgroundColor: '#00000088', justifyContent: 'flex-end' },
+  sheet: { backgroundColor: '#15151C', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 16, maxHeight: '60%' },
+  sheetHandle: { width: 40, height: 4, borderRadius: 2, backgroundColor: '#ffffff33', alignSelf: 'center', marginBottom: 12 },
+  sheetTitle: { color: '#fff', fontFamily: Font.bold, fontSize: 17, marginBottom: 12 },
+  sheetEmpty: { color: '#ffffff99', fontSize: 14, paddingVertical: 16 },
+  sheetRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 8 },
+  sheetImg: { width: 48, height: 48, borderRadius: 10, backgroundColor: '#222' },
+  sheetName: { color: '#fff', fontFamily: Font.semibold, fontSize: 15 },
+  sheetPrice: { color: Afryko.gold, fontSize: 13, fontFamily: Font.bold, marginTop: 2 },
 
   bottom: { position: 'absolute', bottom: 0, left: 0, right: 0, paddingHorizontal: 16, alignItems: 'flex-end' },
   cta: { flexDirection: 'row', alignItems: 'center', gap: 8, height: 50, paddingHorizontal: 22, borderRadius: Radius.pill, backgroundColor: Afryko.violet },
