@@ -13,9 +13,9 @@ import { PaymentSheet } from '@/components/payment-sheet';
 import { Afylo, Font, Radius } from '@/constants/brand';
 import { BuzzBadge } from '@/components/buzz-badge';
 import { useIsBuzz } from '@/lib/buzz';
-import { endLive, setLiveViewers } from '@/lib/db';
+import { endLive, listMyProducts, setLiveViewers } from '@/lib/db';
 import { useMe } from '@/lib/me';
-import { affiliationProducts, avatar, myProducts, video } from '@/lib/mock';
+import { avatar, photo, video } from '@/lib/mock';
 
 type SellProduct = { id: string; title: string; price: string; image: string; tag: string };
 type Comment = { id: string; name: string; avatar: string; text: string; gift?: boolean; system?: 'join' | 'like' | 'share' | 'guest' | 'sale'; product?: { title: string; price: string } };
@@ -27,15 +27,10 @@ type Sale = { id: string; buyer: string; avatar: string; title: string; price: s
 const priceNum = (s: string) => parseInt(s.replace(/\D/g, ''), 10) || 0;
 const fmtF = (n: number) => n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ') + ' FCFA';
 
-// Produits disponibles pour le vendeur : les siens + ceux en affiliation
-const AVAILABLE: SellProduct[] = [
-  ...myProducts.map((p) => ({ id: `m-${p.id}`, title: p.title, price: `${p.price} FCFA`, image: p.image, tag: 'Ma boutique' })),
-  ...affiliationProducts.slice(0, 6).map((p) => ({ id: `a-${p.id}`, title: p.title, price: `${p.price.toLocaleString('fr-FR')} FCFA`, image: p.image, tag: `Affiliation ${p.commission}%` })),
-];
-
 const CHATTERS = ['Awa', 'Modou', 'Sokhna', 'Cheikh', 'Mariama', 'Ibou', 'Aïda', 'Serigne'];
 const MSGS = ['Trop belle 😍', 'Ça coûte combien ?', 'Livraison à Thiès ?', '🔥🔥🔥', "J'achète !", 'Bravo 👏', "Tu as d'autres couleurs ?", 'Première fois ici 🙌', 'Salut de Dakar', 'Le lien du produit ?', 'Magnifique'];
 const GIFTS = [500, 1000, 2000, 5000];
+const BUZZ_GOAL = 100; // j'aime à atteindre pour que le live obtienne le Buzz
 const HEART_COLORS = ['#E11D48', '#FF4D8D', '#FF7AB8', '#B8791F', '#6E80FF', '#FF5A5F', '#FF2D55'];
 const SYS: Record<'join' | 'like' | 'share' | 'guest' | 'sale', { icon: keyof typeof Ionicons.glyphMap; color: string }> = {
   join: { icon: 'enter-outline', color: '#7EC8FF' },
@@ -60,12 +55,24 @@ export default function Live() {
   const [facing, setFacing] = useState<'front' | 'back'>('front');
   const [phase, setPhase] = useState<'setup' | 'live'>(isHost ? 'setup' : 'live');
 
-  const [sell, setSell] = useState<SellProduct[]>(isHost ? [] : AVAILABLE.slice(0, 3));
+  const [sell, setSell] = useState<SellProduct[]>([]);
+  const [available, setAvailable] = useState<SellProduct[]>([]); // VRAIS produits du vendeur
   const [productPicker, setProductPicker] = useState(false);
+
+  // Charge les vraies boutiques du vendeur (plus de produit fictif).
+  useEffect(() => {
+    if (!isHost) return;
+    listMyProducts()
+      .then((rows) => setAvailable(rows.map((p) => ({ id: p.id, title: p.title, price: fmtF(p.promo_cfa ?? p.price_cfa), image: p.image_url || photo(`p-${p.id}`, 200, 200), tag: 'Ma boutique' }))))
+      .catch(() => {});
+  }, [isHost]);
 
   const [comments, setComments] = useState<Comment[]>([]);
   const [text, setText] = useState('');
   const [viewers, setViewers] = useState(128);
+  const [likeCount, setLikeCount] = useState(0); // compteur de j'aime réel (objectif Buzz)
+  const [buzzReached, setBuzzReached] = useState(false);
+  const buzzRef = useRef(false);
   const [hearts, setHearts] = useState<Heart[]>([]);
   const [pops, setPops] = useState<{ id: number; x: number; y: number }[]>([]);
   const [followed, setFollowed] = useState(false);
@@ -86,6 +93,7 @@ export default function Live() {
   const [chooser, setChooser] = useState(false); // choix audio/vidéo après acceptation
   const [endConfirm, setEndConfirm] = useState(false); // confirmation avant de terminer le live (vendeur)
   const lastTap = useRef(0);
+  const commentsRef = useRef<ScrollView>(null); // auto-scroll vers le dernier message
 
   const leave = () => {
     if (isHost && liveId) endLive(liveId).catch(() => {}); // ferme le live en base
@@ -130,7 +138,18 @@ export default function Live() {
     setPops((p) => [...p, { id, x, y }]);
     setTimeout(() => setPops((p) => p.filter((z) => z.id !== id)), 700);
   };
-  const sendHeart = () => spawnHearts(width - 38, height - 130, 2); // bouton cœur (bas droite)
+  const addLikes = (n = 1) => setLikeCount((c) => c + n);
+  const sendHeart = () => { spawnHearts(width - 38, height - 130, 2); addLikes(2); }; // bouton cœur (bas droite)
+
+  // Objectif Buzz atteint → annonce visible par tous (viewers + hôte).
+  useEffect(() => {
+    if (buzzRef.current || likeCount < BUZZ_GOAL) return;
+    buzzRef.current = true;
+    setBuzzReached(true);
+    setComments((prev) => [...prev.slice(-50), { id: `buzz${seq.current++}`, name: '', avatar: '', text: '🔥 Ce live a le BUZZ !', system: 'like' }]);
+    showToast(isHost ? '🔥 Ton live a le Buzz !' : '🔥 Ce live a le Buzz !');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [likeCount]);
 
   const onGiftSent = (amount: number) => {
     addComment({ name: me.name, avatar: me.avatar, text: `a offert ${amount.toLocaleString('fr-FR')} FCFA 🎁`, gift: true });
@@ -168,7 +187,7 @@ export default function Live() {
   const onScreenTap = (e: any) => {
     const now = Date.now();
     const { locationX = width / 2, locationY = height / 2 } = e?.nativeEvent ?? {};
-    if (now - lastTap.current < 300) { bigPop(locationX, locationY); spawnHearts(locationX, locationY, 6); }
+    if (now - lastTap.current < 300) { bigPop(locationX, locationY); spawnHearts(locationX, locationY, 6); addLikes(1); }
     lastTap.current = now;
   };
 
@@ -217,7 +236,7 @@ export default function Live() {
         const roll = Math.round(Date.now() / 1000) % 6;
         if (roll === 0) addComment({ name: nm, avatar: av, text: `a offert ${GIFTS[seq.current % GIFTS.length].toLocaleString('fr-FR')} FCFA 🎁`, gift: true });
         else if (roll === 1) pushEvent(nm, av, 'join', 'a rejoint le live');
-        else if (roll === 2) { pushEvent(nm, av, 'like', 'a aimé'); spawnHearts(width - 38, height - 130, 1); }
+        else if (roll === 2) { pushEvent(nm, av, 'like', 'a aimé'); spawnHearts(width - 38, height - 130, 1); addLikes(1); }
         else if (roll === 3) pushEvent(nm, av, 'share', 'a partagé');
         else addComment({ name: nm, avatar: av, text: MSGS[seq.current % MSGS.length] });
       }
@@ -265,7 +284,7 @@ export default function Live() {
             </View>
             <Text style={styles.panelSub}>Tu peux lancer ton live sans produit. {sell.length > 0 ? `${sell.length} sélectionné(s).` : 'Ajoute-en quand tu veux pendant le live.'}</Text>
             <ScrollView style={{ maxHeight: 240 }} showsVerticalScrollIndicator={false}>
-              {AVAILABLE.map((p) => {
+              {available.map((p) => {
                 const on = !!sell.find((x) => x.id === p.id);
                 return (
                   <Pressable key={p.id} onPress={() => toggleSell(p)} style={[styles.pRow, on && styles.pRowOn]}>
@@ -314,7 +333,12 @@ export default function Live() {
           </Pressable>
           <View style={styles.liveBadge}><View style={styles.liveDot} /><Text style={styles.liveText}>EN DIRECT</Text></View>
           <View style={styles.viewersPill}><Ionicons name="eye" size={13} color="#fff" /><Text style={styles.viewersText}>{Math.max(1, viewers)}</Text></View>
-          {isBuzz && <BuzzBadge size="sm" />}
+          {/* Compteur de j'aime → objectif Buzz (temps réel) */}
+          <View style={[styles.viewersPill, buzzReached && { backgroundColor: '#FF2D5566' }]}>
+            <Ionicons name={buzzReached ? 'flame' : 'heart'} size={13} color={buzzReached ? Afylo.gold : Afylo.live} />
+            <Text style={styles.viewersText}>{buzzReached ? likeCount : `${likeCount}/${BUZZ_GOAL}`}</Text>
+          </View>
+          {(isBuzz || buzzReached) && <BuzzBadge size="sm" />}
           <View style={{ flex: 1 }} />
           {isHost && (
             <Pressable onPress={() => setFacing((f) => (f === 'front' ? 'back' : 'front'))} style={styles.close}>
@@ -351,9 +375,11 @@ export default function Live() {
 
         {/* Commentaires — scrollables, appui long pour agir */}
         <ScrollView
+          ref={commentsRef}
           style={styles.commentsScroll}
           contentContainerStyle={styles.commentsContent}
           showsVerticalScrollIndicator={false}
+          onContentSizeChange={() => commentsRef.current?.scrollToEnd({ animated: true })}
           pointerEvents="box-none">
           {comments.map((c) =>
             c.system ? (
@@ -515,7 +541,7 @@ export default function Live() {
             <View style={styles.mHandle} />
             <Text style={styles.mTitle}>Produits en vente</Text>
             <ScrollView style={{ maxHeight: 360 }}>
-              {AVAILABLE.map((p) => {
+              {available.map((p) => {
                 const on = !!sell.find((x) => x.id === p.id);
                 return (
                   <Pressable key={p.id} onPress={() => toggleSell(p)} style={styles.pRow}>
@@ -541,7 +567,7 @@ export default function Live() {
             <Text style={styles.mTitle}>Envoyer un lien produit{linkPicker && linkPicker !== me.name ? ` à ${linkPicker}` : ''}</Text>
             <Text style={styles.linkHint}>Le produit s'affiche dans le chat avec un bouton « Acheter ».</Text>
             <ScrollView style={{ maxHeight: height * 0.6 - 130 }} showsVerticalScrollIndicator={false}>
-              {(sell.length > 0 ? sell : AVAILABLE).map((p) => (
+              {(sell.length > 0 ? sell : available).map((p) => (
                 <Pressable key={p.id} onPress={() => sendProductLink(p)} style={styles.pRow}>
                   <Image source={{ uri: p.image }} style={styles.pImg} contentFit="cover" />
                   <View style={{ flex: 1 }}>
