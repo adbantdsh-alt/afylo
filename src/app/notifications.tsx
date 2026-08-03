@@ -16,7 +16,7 @@ const ICON: Record<Notif['kind'], { name: keyof typeof Ionicons.glyphMap; color:
   live: { name: 'radio', color: Afylo.live },
   sale: { name: 'bag-check', color: Afylo.green },
   commission: { name: 'cash', color: Afylo.gold },
-  like: { name: 'heart', color: Afylo.live },
+  like: { name: 'star', color: Afylo.gold },
   comment: { name: 'chatbubble', color: Afylo.violet2 },
   mention: { name: 'at', color: Afylo.violet },
   repost: { name: 'repeat', color: Afylo.green },

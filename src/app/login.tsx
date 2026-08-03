@@ -6,7 +6,7 @@ import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { PillButton } from '@/components/ui-kit';
-import { Afylo, Radius } from '@/constants/brand';
+import { Afylo, isDark, Radius } from '@/constants/brand';
 import { setAddingAccount } from '@/lib/accounts';
 import { redirectOrigin, useAuth } from '@/lib/auth';
 import { supabase } from '@/lib/supabase';
@@ -68,7 +68,7 @@ export default function Login() {
 
   return (
     <View style={styles.root}>
-      <LinearGradient colors={['#EEF1FF', '#FFFFFF', '#FFFFFF']} style={StyleSheet.absoluteFill} />
+      <LinearGradient colors={isDark ? ['#17161E', Afylo.bg, Afylo.bg] : ['#EEF1FF', '#FFFFFF', '#FFFFFF']} style={StyleSheet.absoluteFill} />
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
         <SafeAreaView style={{ flex: 1 }}>
          <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
