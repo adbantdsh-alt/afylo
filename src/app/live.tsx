@@ -13,7 +13,7 @@ import { PaymentSheet } from '@/components/payment-sheet';
 import { Afylo, Font, Radius } from '@/constants/brand';
 import { BuzzBadge } from '@/components/buzz-badge';
 import { useIsBuzz } from '@/lib/buzz';
-import { endLive, listMyProducts, setLiveViewers } from '@/lib/db';
+import { endLive, listFeedProducts, listMyProducts, setLiveViewers } from '@/lib/db';
 import { useMe } from '@/lib/me';
 import { avatar, photo, video } from '@/lib/mock';
 
@@ -30,7 +30,7 @@ const fmtF = (n: number) => n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ') +
 const CHATTERS = ['Awa', 'Modou', 'Sokhna', 'Cheikh', 'Mariama', 'Ibou', 'Aïda', 'Serigne'];
 const MSGS = ['Trop belle 😍', 'Ça coûte combien ?', 'Livraison à Thiès ?', '🔥🔥🔥', "J'achète !", 'Bravo 👏', "Tu as d'autres couleurs ?", 'Première fois ici 🙌', 'Salut de Dakar', 'Le lien du produit ?', 'Magnifique'];
 const GIFTS = [500, 1000, 2000, 5000];
-const BUZZ_GOAL = 100; // j'aime à atteindre pour que le live obtienne le Buzz
+const BUZZ_GOAL = 10000; // j'aime à atteindre pour que le live obtienne le Buzz
 const HEART_COLORS = ['#E11D48', '#FF4D8D', '#FF7AB8', '#B8791F', '#6E80FF', '#FF5A5F', '#FF2D55'];
 const SYS: Record<'join' | 'like' | 'share' | 'guest' | 'sale', { icon: keyof typeof Ionicons.glyphMap; color: string }> = {
   join: { icon: 'enter-outline', color: '#7EC8FF' },
@@ -44,7 +44,7 @@ export default function Live() {
   const router = useRouter();
   const me = useMe();
   const { width, height } = useWindowDimensions();
-  const params = useLocalSearchParams<{ role?: string; name?: string; avatar?: string; liveId?: string }>();
+  const params = useLocalSearchParams<{ role?: string; name?: string; avatar?: string; liveId?: string; product?: string }>();
   const isHost = params.role !== 'viewer';
   const liveId = params.liveId || null;
   const isBuzz = useIsBuzz(liveId);
@@ -59,13 +59,32 @@ export default function Live() {
   const [available, setAvailable] = useState<SellProduct[]>([]); // VRAIS produits du vendeur
   const [productPicker, setProductPicker] = useState(false);
 
-  // Charge les vraies boutiques du vendeur (plus de produit fictif).
+  // Produits vendables en live : SES produits + les produits en AFFILIATION (ceux des autres
+  // avec une commission) → on peut promouvoir/vendre l'article d'autrui et toucher sa commission.
   useEffect(() => {
     if (!isHost) return;
-    listMyProducts()
-      .then((rows) => setAvailable(rows.map((p) => ({ id: p.id, title: p.title, price: fmtF(p.promo_cfa ?? p.price_cfa), image: p.image_url || photo(`p-${p.id}`, 200, 200), tag: 'Ma boutique' }))))
+    Promise.all([listMyProducts(), listFeedProducts()])
+      .then(([mine, feed]) => {
+        const own = mine.map((p) => ({ id: p.id, title: p.title, price: fmtF(p.promo_cfa ?? p.price_cfa), image: p.image_url || photo(`p-${p.id}`, 200, 200), tag: 'Ma boutique' }));
+        const affil = feed
+          .filter((p) => (p.commission_pct ?? 0) > 0 && p.owner?.id !== me.id)
+          .slice(0, 40)
+          .map((p) => ({ id: `aff-${p.id}`, title: p.title, price: fmtF(p.promo_cfa ?? p.price_cfa), image: p.image_url || photo(`p-${p.id}`, 200, 200), tag: `Affiliation ${p.commission_pct}%` }));
+        setAvailable([...own, ...affil]);
+      })
       .catch(() => {});
-  }, [isHost]);
+  }, [isHost, me.id]);
+
+  // Produit pré-sélectionné (ex: bouton « Vendre en live » depuis la page Affiliation).
+  useEffect(() => {
+    if (!isHost || !params.product) return;
+    try {
+      const p = JSON.parse(params.product) as SellProduct;
+      setSell((prev) => (prev.find((x) => x.id === p.id) ? prev : [...prev, p]));
+      setAvailable((prev) => (prev.find((x) => x.id === p.id) ? prev : [p, ...prev]));
+    } catch {}
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isHost, params.product]);
 
   const [comments, setComments] = useState<Comment[]>([]);
   const [text, setText] = useState('');
@@ -370,6 +389,15 @@ export default function Live() {
           <Pressable onPress={share} style={styles.close}><Ionicons name="share-social" size={18} color="#fff" /></Pressable>
           <Pressable onPress={() => (isHost ? setEndConfirm(true) : leave())} style={styles.close}><Ionicons name="close" size={24} color="#fff" /></Pressable>
         </View>
+
+        {/* Demandes pour rejoindre le live (hôte) — bannière visible */}
+        {isHost && requests.length > 0 && (
+          <Pressable onPress={() => setRequestsOpen(true)} style={styles.reqBanner}>
+            <Ionicons name="hand-left" size={16} color="#fff" />
+            <Text style={styles.reqBannerText} numberOfLines={1}>{requests.length} demande{requests.length > 1 ? 's' : ''} pour intervenir — appuie pour voir</Text>
+            <Ionicons name="chevron-forward" size={16} color="#fff" />
+          </Pressable>
+        )}
 
         {/* Commentaire épinglé */}
         {pinned && (
@@ -840,6 +868,8 @@ const styles = StyleSheet.create({
   guestPip: { width: 86, height: 116, borderRadius: 16, overflow: 'hidden', backgroundColor: '#111', borderWidth: 2, borderColor: Afylo.violet },
   guestAudio: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#1a1a22' },
   audioRing: { position: 'absolute', width: 54, height: 54, borderRadius: 27, backgroundColor: Afylo.violet2 },
+  reqBanner: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: Afylo.violet, marginHorizontal: 14, marginTop: 8, paddingHorizontal: 14, height: 42, borderRadius: Radius.pill },
+  reqBannerText: { flex: 1, color: '#fff', fontFamily: Font.semibold, fontSize: 13 },
   pipControls: { position: 'absolute', top: 5, left: 0, right: 0, flexDirection: 'row', justifyContent: 'center', gap: 5 },
   pipBtn: { width: 24, height: 24, borderRadius: 12, backgroundColor: '#00000088', alignItems: 'center', justifyContent: 'center' },
   guestNameBar: { position: 'absolute', left: 0, right: 0, bottom: 0, flexDirection: 'row', alignItems: 'center', gap: 3, paddingHorizontal: 5, paddingVertical: 3, backgroundColor: '#00000088' },

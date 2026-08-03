@@ -7,10 +7,20 @@ import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Afylo, Font, Radius, Type } from '@/constants/brand';
+import { startLive } from '@/lib/db';
+import { useMe } from '@/lib/me';
 import { affiliationProducts, CITIES, NICHES, type AffiliationProduct } from '@/lib/mock';
 
 export default function Affiliation() {
   const router = useRouter();
+  const me = useMe();
+
+  // « Vendre en live » : lance un live avec le produit d'affiliation déjà sélectionné à la vente.
+  const sellLive = async (p: AffiliationProduct) => {
+    const live = await startLive({ title: `Live · ${me.name}`, kind: 'sell', thumbnail_url: me.avatar }).catch(() => null);
+    const product = JSON.stringify({ id: `aff-${p.id}`, title: p.title, price: `${(p.promo ?? p.price).toLocaleString('fr-FR')} FCFA`, image: p.image, tag: `Affiliation ${p.commission}%` });
+    router.push({ pathname: '/live', params: { role: 'host', liveId: live?.id ?? '', name: me.name, avatar: me.avatar, product } });
+  };
   const [niche, setNiche] = useState('Tout');
   const [city, setCity] = useState('Toutes');
   const [query, setQuery] = useState('');
@@ -76,7 +86,7 @@ export default function Affiliation() {
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 16, paddingBottom: 40 }}>
         <Text style={styles.count}>{list.length} produit{list.length > 1 ? 's' : ''} à revendre</Text>
         {list.map((p) => (
-          <ProductRow key={p.id} p={p} copied={copiedId === p.id} onCopy={() => copyLink(p)} />
+          <ProductRow key={p.id} p={p} copied={copiedId === p.id} onCopy={() => copyLink(p)} onSellLive={() => sellLive(p)} />
         ))}
         {list.length === 0 && <Text style={styles.empty}>Aucun produit pour ces filtres.</Text>}
       </ScrollView>
@@ -92,7 +102,7 @@ function Chip({ label, active, onPress, subtle }: { label: string; active: boole
   );
 }
 
-function ProductRow({ p, copied, onCopy }: { p: AffiliationProduct; copied: boolean; onCopy: () => void }) {
+function ProductRow({ p, copied, onCopy, onSellLive }: { p: AffiliationProduct; copied: boolean; onCopy: () => void; onSellLive: () => void }) {
   const earn = Math.round(((p.promo ?? p.price) * p.commission) / 100);
   const [resold, setResold] = useState(false);
   return (
@@ -129,6 +139,12 @@ function ProductRow({ p, copied, onCopy }: { p: AffiliationProduct; copied: bool
             <Text style={styles.resellText}>{resold ? 'Dans ta boutique' : 'Revendre'}</Text>
           </Pressable>
         </View>
+
+        {/* Vendre en live : passe en direct avec ce produit d'affiliation déjà sélectionné */}
+        <Pressable onPress={onSellLive} style={styles.sellLiveBtn}>
+          <Ionicons name="radio" size={16} color="#fff" />
+          <Text style={styles.sellLiveText}>Vendre en live</Text>
+        </Pressable>
       </View>
     </View>
   );
@@ -156,6 +172,8 @@ const styles = StyleSheet.create({
 
   card: { flexDirection: 'row', backgroundColor: Afylo.surface, borderRadius: Radius.lg, padding: 10, marginBottom: 12, borderWidth: 1, borderColor: Afylo.border },
   cardImg: { width: 96, height: 96, borderRadius: Radius.md, backgroundColor: Afylo.surfaceAlt },
+  sellLiveBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: 8, height: 44, borderRadius: Radius.pill, backgroundColor: Afylo.live },
+  sellLiveText: { color: '#fff', fontFamily: Font.bold, fontSize: 14 },
   commissionBadge: { position: 'absolute', top: 16, left: 16, backgroundColor: Afylo.green, paddingHorizontal: 8, paddingVertical: 3, borderRadius: Radius.pill },
   commissionText: { color: '#fff', fontFamily: Font.bold, fontSize: 12 },
   cardBody: { flex: 1, marginLeft: 12 },
