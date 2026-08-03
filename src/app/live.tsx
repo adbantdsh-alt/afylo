@@ -22,7 +22,18 @@ type Comment = { id: string; name: string; avatar: string; text: string; gift?: 
 type GuestMode = 'audio' | 'video';
 type Guest = { id: string; name: string; avatar: string; mode: GuestMode; local?: boolean };
 type Heart = { id: number; x: number; y: number; color: string; size: number };
-type Sale = { id: string; buyer: string; avatar: string; title: string; price: string };
+type Sale = { id: string; buyer: string; avatar: string; title: string; price: string; tag?: string };
+
+const PLATFORM_FEE = 0.05; // Afylo garde 5% de chaque vente
+// Gain NET du vendeur/animateur : produit affilié → sa commission ; son produit → montant - 5% plateforme.
+function saleNet(s: Sale): number {
+  const price = priceNum(s.price);
+  if (s.tag && s.tag.startsWith('Affiliation')) {
+    const pct = parseInt(s.tag.replace(/\D/g, ''), 10) || 0;
+    return Math.round((price * pct) / 100); // commission de l'affilié
+  }
+  return Math.round(price * (1 - PLATFORM_FEE)); // son produit : -5% plateforme
+}
 
 const priceNum = (s: string) => parseInt(s.replace(/\D/g, ''), 10) || 0;
 const fmtF = (n: number) => n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ') + ' FCFA';
@@ -300,7 +311,7 @@ export default function Live() {
       if (isHost && sell.length > 0 && Math.round(Date.now() / 1000) % 5 === 0) {
         const prod = sell[seq.current % sell.length];
         const sid = nid('s');
-        setSales((prev) => [{ id: sid, buyer: nm, avatar: av, title: prod.title, price: prod.price }, ...prev].slice(0, 60));
+        setSales((prev) => [{ id: sid, buyer: nm, avatar: av, title: prod.title, price: prod.price, tag: prod.tag }, ...prev].slice(0, 60));
         pushEvent(nm, av, 'sale', `a acheté ${prod.title}`);
       }
     }, 2200);
@@ -688,15 +699,16 @@ export default function Live() {
 
             <View style={styles.salesStats}>
               <View style={styles.salesStat}>
-                <Text style={styles.salesStatValue}>{sales.length}</Text>
-                <Text style={styles.salesStatLabel}>ventes</Text>
+                <Text style={styles.salesStatValue}>{fmtF(sales.reduce((s, x) => s + priceNum(x.price), 0))}</Text>
+                <Text style={styles.salesStatLabel}>CA encaissé</Text>
               </View>
               <View style={styles.salesDivider} />
               <View style={styles.salesStat}>
-                <Text style={[styles.salesStatValue, { color: '#37D67A' }]}>{fmtF(sales.reduce((s, x) => s + priceNum(x.price), 0))}</Text>
-                <Text style={styles.salesStatLabel}>encaissé</Text>
+                <Text style={[styles.salesStatValue, { color: '#37D67A' }]}>{fmtF(sales.reduce((s, x) => s + saleNet(x), 0))}</Text>
+                <Text style={styles.salesStatLabel}>ton gain net</Text>
               </View>
             </View>
+            <Text style={styles.salesFee}>Afylo prélève 5%. Produit affilié → tu touches ta commission ; ton produit → CA − 5%.</Text>
 
             {sales.length === 0 ? (
               <View style={styles.salesEmpty}>
@@ -711,9 +723,12 @@ export default function Live() {
                     <Avatar uri={s.avatar} size={38} />
                     <View style={{ flex: 1 }}>
                       <Text style={styles.saleTitle} numberOfLines={1}>{s.title}</Text>
-                      <Text style={styles.saleBuyer}>{s.buyer}</Text>
+                      <Text style={styles.saleBuyer}>{s.buyer}{s.tag?.startsWith('Affiliation') ? ` · affilié ${s.tag.replace('Affiliation ', '')}` : ''}</Text>
                     </View>
-                    <Text style={styles.salePrice}>{s.price}</Text>
+                    <View style={{ alignItems: 'flex-end' }}>
+                      <Text style={styles.salePrice}>+{fmtF(saleNet(s))}</Text>
+                      <Text style={styles.saleGross}>{s.price}</Text>
+                    </View>
                   </View>
                 ))}
               </ScrollView>
@@ -998,6 +1013,7 @@ const styles = StyleSheet.create({
   salesStat: { flex: 1, alignItems: 'center' },
   salesStatValue: { color: '#fff', fontFamily: Font.bold, fontSize: 22 },
   salesStatLabel: { color: '#ffffff99', fontSize: 12, marginTop: 2 },
+  salesFee: { color: '#ffffff77', fontSize: 11, marginTop: 8, marginBottom: 4, lineHeight: 15 },
   salesDivider: { width: 1, height: 34, backgroundColor: '#ffffff1f' },
   salesEmpty: { alignItems: 'center', paddingVertical: 30, gap: 8 },
   salesEmptyText: { color: '#fff', fontFamily: Font.semibold, fontSize: 15 },
@@ -1006,6 +1022,7 @@ const styles = StyleSheet.create({
   saleTitle: { color: '#fff', fontFamily: Font.semibold, fontSize: 14 },
   saleBuyer: { color: '#ffffff99', fontSize: 12, marginTop: 1 },
   salePrice: { color: '#37D67A', fontFamily: Font.bold, fontSize: 14 },
+  saleGross: { color: '#ffffff66', fontSize: 11, textDecorationLine: 'line-through', marginTop: 1 },
   reqRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 8 },
   reqName: { color: '#fff', fontFamily: Font.semibold, fontSize: 14 },
   reqSub: { color: '#ffffff99', fontSize: 12, marginTop: 1 },
