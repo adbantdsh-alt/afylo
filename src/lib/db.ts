@@ -758,6 +758,51 @@ export async function hasLikedPost(postId: string): Promise<boolean> {
   return !!data;
 }
 
+// ---- Enregistrements (posts sauvegardés) ----
+export async function savePost(postId: string): Promise<void> {
+  const user_id = await requireUserId();
+  await supabase.from('saved_posts').insert({ user_id, post_id: postId });
+}
+export async function unsavePost(postId: string): Promise<void> {
+  const user_id = await requireUserId();
+  await supabase.from('saved_posts').delete().eq('user_id', user_id).eq('post_id', postId);
+}
+export async function listSavedPostIds(): Promise<Set<string>> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return new Set();
+  const { data } = await supabase.from('saved_posts').select('post_id').eq('user_id', user.id);
+  return new Set((data ?? []).map((r: any) => r.post_id as string));
+}
+/** Posts enregistrés, prêts pour le feed (récents d'abord). */
+export async function listSavedPosts(): Promise<FeedPost[]> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return [];
+  const { data, error } = await supabase
+    .from('saved_posts')
+    .select('created_at, post:posts(*, author:profiles!posts_author_id_fkey(*), post_products(product:products(*)))')
+    .eq('user_id', user.id)
+    .order('created_at', { ascending: false });
+  if (error) return [];
+  return ((data ?? []).map((r: any) => r.post).filter(Boolean)) as FeedPost[];
+}
+
+// ---- Blocages ----
+export async function blockUser(userId: string): Promise<void> {
+  const blocker_id = await requireUserId();
+  if (blocker_id === userId) return;
+  await supabase.from('blocks').insert({ blocker_id, blocked_id: userId });
+}
+export async function unblockUser(userId: string): Promise<void> {
+  const blocker_id = await requireUserId();
+  await supabase.from('blocks').delete().eq('blocker_id', blocker_id).eq('blocked_id', userId);
+}
+export async function listBlockedIds(): Promise<Set<string>> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return new Set();
+  const { data } = await supabase.from('blocks').select('blocked_id').eq('blocker_id', user.id);
+  return new Set((data ?? []).map((r: any) => r.blocked_id as string));
+}
+
 /** Toutes les publications d'un compte (lecteur façon Instagram : flux scrollable). */
 export async function listPostsByAuthor(authorId: string): Promise<FeedPost[]> {
   const { data, error } = await supabase

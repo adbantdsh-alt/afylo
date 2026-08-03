@@ -249,7 +249,7 @@ export default function Profil() {
             {isPro && <MenuItem icon="repeat" label="Affiliation — produits à revendre" onPress={() => { setMenuOpen(false); router.push('/affiliation'); }} />}
             {isOwner && isPro && <MenuItem icon="wallet-outline" label="Portefeuille" onPress={() => { setMenuOpen(false); router.push('/studio'); }} />}
             <MenuItem icon="share-social-outline" label="Partager le profil" onPress={() => { setMenuOpen(false); share(); }} />
-            <MenuItem icon="bookmark-outline" label="Enregistrements" onPress={() => setMenuOpen(false)} />
+            <MenuItem icon="bookmark-outline" label="Enregistrements" onPress={() => { setMenuOpen(false); router.push('/saved'); }} />
             {isOwner && <MenuItem icon="people-outline" label="Changer de compte" onPress={() => { setMenuOpen(false); setAccountsOpen(true); }} />}
             <MenuItem icon="settings-outline" label="Paramètres" onPress={() => { setMenuOpen(false); router.push('/settings'); }} />
           </SafeAreaView>

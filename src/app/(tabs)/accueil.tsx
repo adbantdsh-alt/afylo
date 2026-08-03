@@ -19,7 +19,7 @@ import { useIsBuzz } from '@/lib/buzz';
 import { VerifiedBadge } from '@/components/verified';
 import { Afryko, Font, Radius, Type } from '@/constants/brand';
 import { useAuthGate } from '@/lib/auth-gate';
-import { createTextPost, deletePost, followUser, likePost, listConversations, listFeed, listMyLikedPostIds, unfollowUser, unlikePost, unreadNotifCount, updatePostCaption } from '@/lib/db';
+import { blockUser, createTextPost, deletePost, followUser, likePost, listBlockedIds, listConversations, listFeed, listMyLikedPostIds, listSavedPostIds, myFollowingIds, savePost, unfollowUser, unlikePost, unsavePost, unreadNotifCount, updatePostCaption } from '@/lib/db';
 import { mapFeed } from '@/lib/feed-map';
 import { usePendingUpload } from '@/lib/pending-upload';
 import { useMe } from '@/lib/me';
@@ -39,11 +39,23 @@ export default function Feed() {
   const { avatar: myAvatar, name: myName, handle: myHandle, isPro } = useMe(); // profil connecté, partagé
   const [feed, setFeed] = useState<Post[]>([]); // réseau réel (Supabase) — plus de données fictives
   const [likedIds, setLikedIds] = useState<Set<string>>(new Set()); // posts aimés (persistant)
+  const [savedIds, setSavedIds] = useState<Set<string>>(new Set()); // posts enregistrés
+  const [followingIds, setFollowingIds] = useState<Set<string>>(new Set()); // créateurs suivis
+  const [blockedIds, setBlockedIds] = useState<Set<string>>(new Set()); // comptes bloqués (masqués du feed)
   const [loading, setLoading] = useState(true);
 
   const onLike = (id: string, liked: boolean) => {
     setLikedIds((prev) => { const n = new Set(prev); if (liked) n.add(id); else n.delete(id); return n; });
     (liked ? likePost(id) : unlikePost(id)).catch(() => {});
+  };
+  const onSave = (id: string, saved: boolean) => {
+    setSavedIds((prev) => { const n = new Set(prev); if (saved) n.add(id); else n.delete(id); return n; });
+    (saved ? savePost(id) : unsavePost(id)).catch(() => {});
+  };
+  const onBlock = (authorId?: string) => {
+    if (!authorId) return;
+    setBlockedIds((prev) => new Set(prev).add(authorId));
+    blockUser(authorId).catch(() => {});
   };
   const [composeOpen, setComposeOpen] = useState(false);
   const [composeText, setComposeText] = useState('');
@@ -88,6 +100,9 @@ export default function Feed() {
     // Se recharge aussi quand une publication en tâche de fond se termine (feedVersion).
     listFeed().then((rows) => setFeed(mapFeed(rows ?? []))).catch(() => {}).finally(() => setLoading(false));
     listMyLikedPostIds().then(setLikedIds).catch(() => {});
+    listSavedPostIds().then(setSavedIds).catch(() => {});
+    myFollowingIds().then((ids) => setFollowingIds(new Set(ids))).catch(() => {});
+    listBlockedIds().then(setBlockedIds).catch(() => {});
   }, [feedVersion]);
 
   return (
@@ -192,8 +207,21 @@ export default function Feed() {
             <Text style={styles.feedEmptySub}>Suis des créateurs ou publie ta première vidéo pour lancer ton réseau.</Text>
           </View>
         ) : (
-          feed.map((p) => (
-            <PostCard key={p.id} post={p} isPro={isPro} myHandle={myHandle} initialLiked={likedIds.has(p.id)} onLike={onLike} onDeletePost={removePost} onEditPost={editPost} />
+          feed.filter((p) => !(p.authorId && blockedIds.has(p.authorId))).map((p) => (
+            <PostCard
+              key={p.id}
+              post={p}
+              isPro={isPro}
+              myHandle={myHandle}
+              initialLiked={likedIds.has(p.id)}
+              initialSaved={savedIds.has(p.id)}
+              initialFollowed={!!p.authorId && followingIds.has(p.authorId)}
+              onLike={onLike}
+              onSave={onSave}
+              onBlock={onBlock}
+              onDeletePost={removePost}
+              onEditPost={editPost}
+            />
           ))
         )}
       </ScrollView>
@@ -227,11 +255,12 @@ export default function Feed() {
   );
 }
 
-function PostCard({ post, isPro, myHandle, initialLiked, onLike, onDeletePost, onEditPost }: { post: Post; isPro: boolean; myHandle: string; initialLiked?: boolean; onLike?: (id: string, liked: boolean) => void; onDeletePost: (id: string) => void; onEditPost: (p: Post) => void }) {
+function PostCard({ post, isPro, myHandle, initialLiked, initialSaved, initialFollowed, onLike, onSave, onBlock, onDeletePost, onEditPost }: { post: Post; isPro: boolean; myHandle: string; initialLiked?: boolean; initialSaved?: boolean; initialFollowed?: boolean; onLike?: (id: string, liked: boolean) => void; onSave?: (id: string, saved: boolean) => void; onBlock?: (authorId?: string) => void; onDeletePost: (id: string) => void; onEditPost: (p: Post) => void }) {
   const router = useRouter();
   const gate = useAuthGate();
   const { addRepost, hasReposted } = useReposts();
-  const [followed, setFollowed] = useState(false);
+  const [followed, setFollowed] = useState(!!initialFollowed);
+  useEffect(() => { setFollowed(!!initialFollowed); }, [initialFollowed]);
   const [liked, setLiked] = useState(!!initialLiked);
   useEffect(() => { setLiked(!!initialLiked); }, [initialLiked]);
   const [bought, setBought] = useState(false);
@@ -242,7 +271,8 @@ function PostCard({ post, isPro, myHandle, initialLiked, onLike, onDeletePost, o
   const [reportOpen, setReportOpen] = useState(false);
   const [repostOpen, setRepostOpen] = useState(false);
   const [optionsOpen, setOptionsOpen] = useState(false);
-  const [saved, setSaved] = useState(false);
+  const [saved, setSaved] = useState(!!initialSaved);
+  useEffect(() => { setSaved(!!initialSaved); }, [initialSaved]);
   const [hidden, setHidden] = useState(false);
   const [revealed, setRevealed] = useState(false);
   const lastTap = useRef(0);
@@ -408,8 +438,9 @@ function PostCard({ post, isPro, myHandle, initialLiked, onLike, onDeletePost, o
         onShare={share}
         onInterested={() => setLiked(true)}
         onNotInterested={() => setHidden(true)}
-        onSave={() => setSaved((v) => !v)}
+        onSave={() => { const nv = !saved; setSaved(nv); onSave?.(post.id, nv); }}
         onReport={() => setReportOpen(true)}
+        onBlock={() => { setHidden(true); onBlock?.(post.authorId); }}
         onEdit={() => onEditPost(post)}
         onDelete={() => onDeletePost(post.id)}
       />

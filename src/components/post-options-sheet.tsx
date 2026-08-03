@@ -17,6 +17,7 @@ export function PostOptionsSheet({
   onNotInterested,
   onSave,
   onReport,
+  onBlock,
   onEdit,
   onDelete,
 }: {
@@ -29,6 +30,7 @@ export function PostOptionsSheet({
   onNotInterested: () => void;
   onSave: () => void;
   onReport: () => void;
+  onBlock?: () => void;
   onEdit?: () => void;
   onDelete?: () => void;
 }) {
@@ -67,6 +69,7 @@ export function PostOptionsSheet({
               <View style={styles.list}>
                 <Row icon="share-social-outline" label="Partager" onPress={() => act(onShare)} />
                 <Row icon={saved ? 'bookmark' : 'bookmark-outline'} label={saved ? 'Retirer des enregistrements' : 'Enregistrer'} onPress={() => act(onSave)} />
+                <Row icon="ban-outline" label="Bloquer" danger onPress={() => act(onBlock)} />
                 <Row icon="flag-outline" label="Signaler" danger onPress={() => act(onReport)} last />
               </View>
             </>

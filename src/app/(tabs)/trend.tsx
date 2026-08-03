@@ -3,7 +3,7 @@ import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Modal, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { Modal, Pressable, ScrollView, Share, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useVideoPlayer, VideoView } from 'expo-video';
 
@@ -13,9 +13,12 @@ import { PaymentSheet } from '@/components/payment-sheet';
 import { RateSheet } from '@/components/rate-sheet';
 import { RatingStar } from '@/components/rating-star';
 import { ReportSheet } from '@/components/report-sheet';
+import { RepostSheet } from '@/components/repost-sheet';
 import { Afryko, Font, Radius, Type } from '@/constants/brand';
 import { NICHES, rankPosts } from '@/lib/algo';
 import { useAuthGate } from '@/lib/auth-gate';
+import { useMe } from '@/lib/me';
+import { useReposts } from '@/lib/reposts';
 import { avatar, face, type Post, posts as basePosts, video } from '@/lib/mock';
 import { useHideOnScroll } from '@/lib/tabbar';
 
@@ -144,7 +147,10 @@ function Reel({ post, index, active, height, width, showBuzz, onNotInterested }:
   }, [active, player]);
   const [liked, setLiked] = useState(false);
   const [saved, setSaved] = useState(false);
-  const [reposted, setReposted] = useState(false);
+  const [repostOpen, setRepostOpen] = useState(false);
+  const { addRepost, hasReposted } = useReposts();
+  const { handle: myHandle, isPro } = useMe();
+  const reposted = hasReposted(post.id);
   const [rating, setRating] = useState(0);
   const [reaction, setReaction] = useState<string | null>(null);
   const [rateOpen, setRateOpen] = useState(false);
@@ -159,7 +165,8 @@ function Reel({ post, index, active, height, width, showBuzz, onNotInterested }:
 
   const like = () => { if (gate('aimer')) setLiked((v) => !v); };
   const save = () => { if (gate('enregistrer')) setSaved((v) => !v); };
-  const share = () => { if (gate('republier')) setReposted((v) => !v); };
+  const republish = () => { if (gate('republier')) setRepostOpen(true); };
+  const sharePost = async () => { try { await Share.share({ message: `${post.name} sur Afryko : ${post.caption || ''}` }); } catch {} };
   const rate = () => { if (gate('noter')) setRateOpen(true); };
   const buy = () => { if (gate('acheter')) setPayOpen(true); };
   const openComments = () => router.push({ pathname: '/comments/[id]', params: { id: post.id, image: post.image, name: post.name } });
@@ -186,7 +193,8 @@ function Reel({ post, index, active, height, width, showBuzz, onNotInterested }:
         />
         <Action icon="chatbubble-ellipses" label={post.comments} onPress={openComments} />
         <Action icon={saved ? 'bookmark' : 'bookmark-outline'} label="Enreg." color={saved ? Afryko.gold : '#fff'} onPress={save} />
-        <Action icon="arrow-redo" label={reposted ? 'Republié' : post.shares} color={reposted ? Afryko.green : '#fff'} onPress={share} />
+        <Action icon="repeat" label={reposted ? 'Republié' : 'Republier'} color={reposted ? Afryko.green : '#fff'} onPress={republish} />
+        <Action icon="arrow-redo" label="Partager" onPress={sharePost} />
       </View>
 
       {/* Infos en bas */}
@@ -266,6 +274,15 @@ function Reel({ post, index, active, height, width, showBuzz, onNotInterested }:
       </Modal>
 
       <ReportSheet visible={reportOpen} onClose={() => setReportOpen(false)} />
+
+      <RepostSheet
+        visible={repostOpen}
+        isPro={isPro}
+        onUpgrade={() => router.push('/upgrade-pro')}
+        post={{ id: post.id, name: post.name, avatar: post.avatar, caption: post.caption, image: post.image, product: post.product }}
+        onClose={() => setRepostOpen(false)}
+        onPublish={(p) => addRepost({ mode: p.mode, text: p.text, media: p.media, by: myHandle, pro: isPro, post: { id: post.id, name: post.name, avatar: post.avatar, caption: post.caption, image: post.image, product: post.product } })}
+      />
     </View>
   );
 }
