@@ -12,7 +12,7 @@ import { useAuthGate } from '@/lib/auth-gate';
 import { createProduct, getProduct, updateProduct, uploadFile, uploadImage } from '@/lib/db';
 import { classifyProduct } from '@/lib/moderation';
 
-const MIN_COMMISSION = 15;
+const MIN_COMMISSION = 5; // commission minimale versée à l'affilié (Afylo prélève 5% en plus)
 const CONDITIONS = ['Neuf', 'Comme neuf', 'Occasion', 'Fait main'];
 
 export default function ProductNew() {
@@ -33,6 +33,7 @@ export default function ProductNew() {
   const [tiers, setTiers] = useState<{ qty: string; price: string }[]>([]);
   const [affiliationOn, setAffiliationOn] = useState(false);
   const [commission, setCommission] = useState('15');
+  const [free, setFree] = useState(false); // produit digital gratuit (téléchargement gratuit)
   const [description, setDescription] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -53,6 +54,7 @@ export default function ProductNew() {
         if (p.digital_file_url) setFile({ uri: p.digital_file_url, name: 'Fichier actuel' });
         setDescription(p.description ?? '');
         if (p.commission_pct > 0) { setAffiliationOn(true); setCommission(String(p.commission_pct)); }
+        if (p.kind === 'digital' && p.price_cfa === 0) setFree(true);
         setTiers((p.quantity_tiers ?? []).map((t) => ({ qty: String(t.qty), price: String(t.price_cfa) })));
       })
       .catch(() => {});
@@ -80,12 +82,13 @@ export default function ProductNew() {
   const submit = async () => {
     setError(null);
     if (!gate('vendre')) return;
-    if (!title.trim() || !price.trim()) return setError('Le nom et le prix sont obligatoires.');
+    const isFree = kind === 'digital' && free;
+    if (!title.trim() || (!isFree && !price.trim())) return setError('Le nom et le prix sont obligatoires.');
     const modo = classifyProduct(title, description);
     if (modo.level === 'blocked') return setError(`🚫 Produit refusé : ${modo.reason}`);
     if (kind === 'digital' && !file && !hadFile) return setError('Ajoute le fichier que recevra l\'acheteur.');
-    const priceN = parseInt(price.replace(/\D/g, ''), 10) || 0;
-    const promoN = promo.trim() ? parseInt(promo.replace(/\D/g, ''), 10) : null;
+    const priceN = isFree ? 0 : parseInt(price.replace(/\D/g, ''), 10) || 0;
+    const promoN = isFree ? null : promo.trim() ? parseInt(promo.replace(/\D/g, ''), 10) : null;
     if (promoN && promoN >= priceN) return setError('Le prix promo doit être inférieur au prix normal.');
     let commissionN = 0;
     if (affiliationOn) commissionN = Math.max(MIN_COMMISSION, parseInt(commission.replace(/\D/g, ''), 10) || 0);
@@ -142,15 +145,16 @@ export default function ProductNew() {
 
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
         <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 30 }} keyboardShouldPersistTaps="handled">
-          {/* Type */}
+          {/* Type — verrouillé en modification (un produit ne change pas de nature) */}
           <View style={styles.typeRow}>
             {(['physical', 'digital'] as const).map((k) => (
-              <Pressable key={k} onPress={() => setKind(k)} style={[styles.type, kind === k && styles.typeOn]}>
+              <Pressable key={k} disabled={!!editId} onPress={() => setKind(k)} style={[styles.type, kind === k && styles.typeOn, !!editId && kind !== k && { opacity: 0.35 }]}>
                 <Ionicons name={k === 'physical' ? 'cube-outline' : 'cloud-download-outline'} size={18} color={kind === k ? '#fff' : Afylo.textDim} />
                 <Text style={[styles.typeText, kind === k && { color: '#fff' }]}>{k === 'physical' ? 'Physique' : 'Digital'}</Text>
               </Pressable>
             ))}
           </View>
+          {!!editId && <Text style={styles.lockNote}>🔒 Le type ne peut pas être changé après création.</Text>}
 
           {/* Photos */}
           <Text style={styles.section}>{kind === 'digital' ? 'Visuel (1 image)' : 'Photos'}</Text>
@@ -178,17 +182,29 @@ export default function ProductNew() {
                 <Ionicons name={file ? 'document-attach' : 'cloud-upload-outline'} size={22} color={Afylo.violet} />
                 <Text style={styles.fileText} numberOfLines={1}>{file ? file.name : 'Choisir un fichier (PDF, ZIP, MP3…)'}</Text>
               </Pressable>
-              <Text style={styles.hint}>Stock illimité (∞) · le fichier est envoyé après paiement sécurisé XaalisPay.</Text>
+              {/* Téléchargement gratuit — réservé aux produits digitaux */}
+              <View style={[styles.switchRow, { marginTop: 12 }]}>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.switchTitle}>Téléchargement gratuit</Text>
+                  <Text style={styles.switchHint}>Les acheteurs le téléchargent sans payer.</Text>
+                </View>
+                <Switch value={free} onValueChange={setFree} trackColor={{ true: Afylo.violet }} />
+              </View>
+              <Text style={styles.hint}>Stock illimité (∞) · {free ? 'gratuit — aucun paiement.' : 'envoyé après paiement sécurisé XaalisPay.'}</Text>
             </Card>
           )}
 
           {/* Infos */}
           <Card>
             <Field label="Nom du produit *" value={title} onChange={setTitle} placeholder="Ex : Ensemble wax / Ebook marketing" />
-            <View style={styles.row}>
-              <View style={{ flex: 1 }}><Field label="Prix (FCFA) *" value={price} onChange={setPrice} placeholder="18500" numeric /></View>
-              <View style={{ flex: 1 }}><Field label="Prix promo" value={promo} onChange={setPromo} placeholder="14900" numeric /></View>
-            </View>
+            {kind === 'digital' && free ? (
+              <View style={styles.freeBanner}><Ionicons name="gift" size={18} color={Afylo.green} /><Text style={styles.freeBannerText}>Produit gratuit — aucun prix.</Text></View>
+            ) : (
+              <View style={styles.row}>
+                <View style={{ flex: 1 }}><Field label="Prix (FCFA) *" value={price} onChange={setPrice} placeholder="18500" numeric /></View>
+                <View style={{ flex: 1 }}><Field label="Prix promo" value={promo} onChange={setPromo} placeholder="14900" numeric /></View>
+              </View>
+            )}
             {kind === 'physical' && <Field label="Stock disponible" value={stock} onChange={setStock} placeholder="24" numeric />}
           </Card>
 
@@ -232,8 +248,8 @@ export default function ProductNew() {
             </View>
             {affiliationOn && (
               <>
-                <Field label="Commission (%) — min. 15" value={commission} onChange={setCommission} placeholder="15" numeric />
-                <Text style={styles.hint}>Sur {commission || '15'}% : le créateur touche {Math.max(0, (parseInt(commission, 10) || 15) - 5)}%, Afylo 5%.</Text>
+                <Field label="Commission (%) — min. 5" value={commission} onChange={setCommission} placeholder="15" numeric />
+                <Text style={styles.hint}>Cette commission ({Math.max(MIN_COMMISSION, parseInt(commission, 10) || 0)}%) va au créateur qui revend ton produit. Afylo prélève 5% de la vente en plus.</Text>
               </>
             )}
           </Card>
@@ -288,6 +304,9 @@ const styles = StyleSheet.create({
 
   section: { ...Type.body, fontFamily: Font.semibold, color: Afylo.text, marginTop: 8 },
   hint: { ...Type.caption, color: Afylo.textDim, marginTop: 8, lineHeight: 17 },
+  lockNote: { ...Type.caption, color: Afylo.textDim, marginTop: 8, marginLeft: 2 },
+  freeBanner: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: Afylo.green + '1A', borderRadius: Radius.md, paddingHorizontal: 14, height: 48, marginTop: 4 },
+  freeBannerText: { color: Afylo.green, fontFamily: Font.semibold, fontSize: 14 },
   thumb: { width: 88, height: 88, borderRadius: Radius.md, overflow: 'hidden', backgroundColor: Afylo.surfaceAlt },
   coverTag: { position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: '#000000AA', paddingVertical: 2, alignItems: 'center' },
   coverText: { color: '#fff', fontSize: 9, fontFamily: Font.semibold },

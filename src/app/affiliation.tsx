@@ -12,7 +12,7 @@ import { useMe } from '@/lib/me';
 import { photo } from '@/lib/mock';
 
 /** Produit affiliable affiché (issu d'un vrai produit d'un autre vendeur). */
-type AffItem = { id: string; title: string; price: number; promo: number | null; commission: number; image: string; seller: string };
+type AffItem = { id: string; title: string; price: number; promo: number | null; commission: number; image: string; seller: string; tiers: { qty: number; price_cfa: number }[] };
 const toAff = (p: FeedProduct): AffItem => ({
   id: p.id,
   title: p.title,
@@ -21,6 +21,7 @@ const toAff = (p: FeedProduct): AffItem => ({
   commission: p.commission_pct,
   image: p.image_url || photo(`p-${p.id}`, 400, 400),
   seller: p.owner?.display_name || p.owner?.handle || 'Vendeur',
+  tiers: p.quantity_tiers ?? [],
 });
 
 export default function Affiliation() {
@@ -135,6 +136,9 @@ function ProductRow({ p, copied, resold, onCopy, onSellLive, onResell }: { p: Af
         </View>
 
         <Text style={styles.earn}>Tu gagnes ≈ {earn.toLocaleString('fr-FR')} F / vente</Text>
+        {p.tiers.length > 0 && (
+          <Text style={styles.tiers} numberOfLines={1}>Prix par lot : {p.tiers.map((t) => `${t.qty}→${t.price_cfa.toLocaleString('fr-FR')}`).join(' · ')}</Text>
+        )}
 
         <View style={styles.actions}>
           <Pressable onPress={onCopy} style={[styles.copyBtn, copied && styles.copyBtnDone]}>
@@ -191,6 +195,7 @@ const styles = StyleSheet.create({
   promo: { fontFamily: Font.bold, fontSize: 16, color: Afylo.live },
   priceStrike: { ...Type.small, color: Afylo.textFaint, textDecorationLine: 'line-through' },
   earn: { ...Type.small, color: Afylo.green, marginTop: 4 },
+  tiers: { ...Type.caption, color: Afylo.textDim, marginTop: 3 },
 
   actions: { flexDirection: 'row', gap: 8, marginTop: 10 },
   copyBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, height: 38, borderRadius: Radius.pill, borderWidth: 1.5, borderColor: Afylo.violet },
