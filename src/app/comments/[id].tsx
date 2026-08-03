@@ -116,14 +116,15 @@ export default function Comments() {
       {/* Façon TikTok : sur mobile l'écran du dessous (la vidéo) reste visible ET
           en lecture derrière le panneau transparent. Sur le web (pas de
           compositing inter-écrans), on affiche l'image du post en repli. */}
+      {/* Zone du haut : l'image reste ENTIÈREMENT visible (contain, pas de rognage/zoom).
+          Tap = fermer. Sur mobile (transparent), l'écran du dessous reste visible. */}
       {Platform.OS === 'web' && params.image ? (
-        <>
-          <Image source={{ uri: params.image }} style={StyleSheet.absoluteFill} contentFit="cover" transition={150} />
-          <View style={[StyleSheet.absoluteFill, styles.scrim]} />
-        </>
-      ) : null}
-      {/* Tap sur la zone haute = fermer */}
-      <Pressable style={StyleSheet.absoluteFill} onPress={close} />
+        <Pressable style={styles.topMedia} onPress={close}>
+          <Image source={{ uri: params.image }} style={StyleSheet.absoluteFill} contentFit="contain" transition={150} />
+        </Pressable>
+      ) : (
+        <Pressable style={{ flex: 1 }} onPress={close} />
+      )}
 
       <View style={styles.sheet}>
         <View style={styles.grip} />
@@ -265,8 +266,8 @@ const styles = StyleSheet.create({
   giftNote: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: Afryko.gold + '1A', borderWidth: 1, borderColor: Afryko.gold + '55', borderRadius: Radius.md, paddingHorizontal: 10, paddingVertical: 7, marginTop: 4, alignSelf: 'flex-start' },
   giftNoteText: { color: Afryko.gold, fontFamily: Font.bold, fontSize: 13 },
   overlay: { flex: 1, backgroundColor: 'transparent', justifyContent: 'flex-end' },
-  scrim: { backgroundColor: '#00000040' },
-  sheet: { height: '66%', backgroundColor: Afryko.bg, borderTopLeftRadius: 24, borderTopRightRadius: 24, overflow: 'hidden' },
+  topMedia: { flex: 1 },
+  sheet: { height: '60%', backgroundColor: Afryko.bg, borderTopLeftRadius: 24, borderTopRightRadius: 24, overflow: 'hidden' },
   grip: { width: 40, height: 4, borderRadius: 2, backgroundColor: Afryko.border, alignSelf: 'center', marginTop: 10 },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: Afryko.border },
   title: { ...Type.subtitle, color: Afryko.text },
