@@ -4,7 +4,7 @@ import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { PanResponder, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Animated, PanResponder, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { withTiming } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -15,7 +15,7 @@ import { listMyProducts, startLive } from '@/lib/db';
 import { useMe } from '@/lib/me';
 import { useStories } from '@/lib/stories';
 import { useTabBar } from '@/lib/tabbar';
-import { captureWebFrameDataUrl, captureWebPhoto, startWebRecording, stopWebRecording } from '@/lib/web-recorder';
+import { captureWebFrameDataUrl, captureWebPhoto, startWebRecording, stopWebRecording, unmirrorCameraVideo } from '@/lib/web-recorder';
 import type { Product } from '@/types/db';
 
 type Mode = 'Publication' | 'Story' | 'Reel' | 'Live';
@@ -90,8 +90,17 @@ export default function Creer() {
     setFacing((f) => (f === 'back' ? 'front' : 'back'));
   };
   const lastTap = useRef(0);
-  const onCameraTap = () => {
+  const [focusPt, setFocusPt] = useState<{ x: number; y: number } | null>(null);
+  const focusAnim = useRef(new Animated.Value(0)).current;
+  const showFocus = (x: number, y: number) => {
+    setFocusPt({ x, y });
+    focusAnim.setValue(1);
+    Animated.timing(focusAnim, { toValue: 0, duration: 700, delay: 300, useNativeDriver: true }).start();
+  };
+  const onCameraTap = (e: { nativeEvent: { locationX: number; locationY: number } }) => {
     const now = Date.now();
+    const { locationX, locationY } = e.nativeEvent;
+    showFocus(locationX, locationY); // tap = mise au point (autofocus déclenché + repère visuel)
     if (now - lastTap.current < 300) flip(); // double-tap = retourner la caméra
     lastTap.current = now;
   };
@@ -251,12 +260,23 @@ export default function Creer() {
             facing={facing}
             mode="video"
             mirror={false}
-            onCameraReady={() => { if (freezeTimer.current) clearTimeout(freezeTimer.current); setFlipFreeze(null); }}
+            autofocus="on"
+            onCameraReady={() => {
+              if (Platform.OS === 'web') { unmirrorCameraVideo(); setTimeout(unmirrorCameraVideo, 120); } // aperçu non-miroir (front = arrière)
+              if (freezeTimer.current) clearTimeout(freezeTimer.current);
+              setFlipFreeze(null);
+            }}
           />
           {/* Frame figée pendant la bascule (pas d'écran noir) */}
           {flipFreeze && <Image source={{ uri: flipFreeze }} style={StyleSheet.absoluteFill} contentFit="cover" />}
-          {/* Double-tap n'importe où = retourner la caméra */}
+          {/* Tap = focus · Double-tap = retourner la caméra */}
           <Pressable style={StyleSheet.absoluteFill} onPress={onCameraTap} />
+          {focusPt && (
+            <Animated.View
+              pointerEvents="none"
+              style={[styles.focusRing, { left: focusPt.x - 36, top: focusPt.y - 36, opacity: focusAnim, transform: [{ scale: focusAnim.interpolate({ inputRange: [0, 1], outputRange: [1.25, 1] }) }] }]}
+            />
+          )}
         </>
       ) : (
         <View style={[StyleSheet.absoluteFill, styles.stageEmpty]}>
@@ -355,6 +375,8 @@ const styles = StyleSheet.create({
   recPill: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#000000AA', paddingHorizontal: 12, paddingVertical: 5, borderRadius: Radius.pill },
   recDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: Afryko.live },
   recText: { color: '#fff', fontFamily: Font.bold, fontSize: 12 },
+
+  focusRing: { position: 'absolute', width: 72, height: 72, borderRadius: 10, borderWidth: 1.5, borderColor: '#FFD60A' },
 
   lockHint: { flexDirection: 'row', alignItems: 'center', gap: 5, alignSelf: 'center', backgroundColor: '#00000066', paddingHorizontal: 12, paddingVertical: 6, borderRadius: Radius.pill, marginBottom: 12 },
   lockHintText: { color: '#fff', fontSize: 12, fontFamily: Font.medium },

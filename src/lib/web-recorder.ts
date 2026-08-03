@@ -64,6 +64,18 @@ export function captureWebFrameDataUrl(): string | null {
   }
 }
 
+/**
+ * Force l'aperçu caméra web à NE PAS être en miroir (le frontal est souvent
+ * affiché en miroir par défaut). Ainsi l'aperçu = la capture = l'arrière.
+ */
+export function unmirrorCameraVideo() {
+  const v = getCameraVideoEl();
+  if (!v) return;
+  v.style.transform = 'none';
+  // @ts-ignore préfixe webkit pour anciens navigateurs
+  v.style.webkitTransform = 'none';
+}
+
 export function canWebRecord(): boolean {
   return typeof MediaRecorder !== 'undefined' && !!getCameraStream();
 }
