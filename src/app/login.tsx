@@ -1,12 +1,13 @@
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { PillButton } from '@/components/ui-kit';
 import { Afylo, Radius } from '@/constants/brand';
+import { setAddingAccount } from '@/lib/accounts';
 import { redirectOrigin, useAuth } from '@/lib/auth';
 import { supabase } from '@/lib/supabase';
 
@@ -21,6 +22,9 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
+
+  // Réinitialise l'intention « ajouter un compte » en quittant cet écran.
+  useEffect(() => () => setAddingAccount(false), []);
 
   const submit = async () => {
     setError(null);

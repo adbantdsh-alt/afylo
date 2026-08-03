@@ -22,6 +22,12 @@ export type SavedAccount = {
 
 const KEY = 'afylo-accounts';
 
+// Intention « ajouter un compte » : autorise un utilisateur connecté à atteindre /login
+// (sinon le garde de _layout le renvoie vers l'app). Réinitialisé en quittant /login.
+let _adding = false;
+export const setAddingAccount = (v: boolean) => { _adding = v; };
+export const isAddingAccount = () => _adding;
+
 export async function listAccounts(): Promise<SavedAccount[]> {
   try {
     const raw = await AsyncStorage.getItem(KEY);

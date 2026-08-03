@@ -13,6 +13,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { Afylo, isDark } from '@/constants/brand';
 import '../global.css';
+import { isAddingAccount } from '@/lib/accounts';
 import { AuthProvider, useAuth } from '@/lib/auth';
 import { AuthGateProvider } from '@/lib/auth-gate';
 import { StoriesProvider } from '@/lib/stories';
@@ -38,8 +39,10 @@ function useProtectedRoute() {
 
     if (!authed && !inPublic) {
       router.replace('/'); // ni connecté ni invité → accueil public
-    } else if (session && (first === 'index' || first === 'login')) {
+    } else if (session && first === 'index') {
       router.replace('/accueil'); // déjà connecté → app
+    } else if (session && first === 'login' && !isAddingAccount()) {
+      router.replace('/accueil'); // déjà connecté → app (sauf ajout d'un 2e compte)
     }
   }, [session, guest, loading, segments, router]);
 }

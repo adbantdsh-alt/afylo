@@ -6,7 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Avatar } from '@/components/ui-kit';
 import { Afylo, Font, Radius } from '@/constants/brand';
-import { listAccounts, removeAccount, switchAccount, upsertTokens, type SavedAccount } from '@/lib/accounts';
+import { listAccounts, removeAccount, setAddingAccount, switchAccount, upsertTokens, type SavedAccount } from '@/lib/accounts';
 import { useAuth } from '@/lib/auth';
 import { face } from '@/lib/mock';
 
@@ -38,9 +38,15 @@ export function AccountSwitcher({ visible, onClose }: { visible: boolean; onClos
 
   const onRemove = async (id: string) => { await removeAccount(id); load(); };
 
-  // Ajouter/créer un compte : on sauvegarde d'abord le compte actif (pour pouvoir y revenir),
-  // puis on ouvre la connexion/inscription. Se connecter à un autre compte ne déconnecte pas le 1er.
-  const addAccount = async () => { await upsertTokens(session); onClose(); router.push('/login'); };
+  // Ajouter/créer un compte : on sauvegarde le compte actif en tâche de fond (pour pouvoir y
+  // revenir) et on ouvre TOUT DE SUITE la connexion/inscription. Se connecter à un autre compte
+  // ne déconnecte pas le 1er : les jetons de chacun sont conservés (switch sans déconnexion).
+  const addAccount = () => {
+    void upsertTokens(session);
+    setAddingAccount(true); // autorise l'accès à /login même connecté
+    onClose();
+    router.push('/login?mode=signup');
+  };
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
