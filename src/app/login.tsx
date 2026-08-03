@@ -2,13 +2,16 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { Image } from 'expo-image';
+
 import { PillButton } from '@/components/ui-kit';
-import { Afylo, isDark, Radius } from '@/constants/brand';
+import { Afylo, Font, isDark, Radius } from '@/constants/brand';
 import { setAddingAccount } from '@/lib/accounts';
 import { redirectOrigin, useAuth } from '@/lib/auth';
+import { AFRICAN_COUNTRIES, DIAL_CODES, countryName, flagUrl } from '@/lib/geo';
 import { supabase } from '@/lib/supabase';
 
 export default function Login() {
@@ -19,6 +22,14 @@ export default function Login() {
   const [mode, setMode] = useState<'login' | 'signup'>(params.mode === 'signup' ? 'signup' : 'login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [phone, setPhone] = useState('');
+  const [country, setCountry] = useState<string>(''); // code pays (obligatoire à l'inscription)
+  const [countryOpen, setCountryOpen] = useState(false);
+  const [countryQuery, setCountryQuery] = useState('');
+  const countryList = AFRICAN_COUNTRIES.filter((c) => {
+    const q = countryQuery.trim().toLowerCase();
+    return !q || c.name.toLowerCase().includes(q) || c.code.toLowerCase().includes(q) || (DIAL_CODES[c.code] ?? '').includes(q);
+  });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
@@ -37,6 +48,10 @@ export default function Login() {
       setError('Le mot de passe doit faire au moins 6 caractères.');
       return;
     }
+    if (mode === 'signup') {
+      if (!country) { setError('Choisis ton pays.'); return; }
+      if (phone.replace(/\D/g, '').length < 6) { setError('Renseigne un numéro de téléphone valide.'); return; }
+    }
     setLoading(true);
     if (mode === 'login') {
       const { error } = await signIn(email, password);
@@ -44,7 +59,8 @@ export default function Login() {
       if (error) setError(traduire(error));
       else router.replace('/accueil');
     } else {
-      const { error, needsConfirm } = await signUp(email, password);
+      const fullPhone = `${DIAL_CODES[country] ?? ''} ${phone.trim()}`.trim();
+      const { error, needsConfirm } = await signUp(email, password, { phone: fullPhone, country });
       setLoading(false);
       if (error) setError(traduire(error));
       else if (needsConfirm) {
@@ -62,7 +78,7 @@ export default function Login() {
       return;
     }
     const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), { redirectTo: redirectOrigin });
-    if (error) setError(traduire(error));
+    if (error) setError(traduire(error.message));
     else setInfo('Email de réinitialisation envoyé. Vérifie ta boîte mail.');
   };
 
@@ -99,7 +115,29 @@ export default function Login() {
 
           <Field icon="mail-outline" placeholder="Email" value={email} onChange={setEmail} keyboardType="email-address" />
           <Field icon="lock-closed-outline" placeholder="Mot de passe" value={password} onChange={setPassword} secure />
-          {mode === 'signup' && <Text style={styles.hint}>Au moins 6 caractères.</Text>}
+
+          {mode === 'signup' && (
+            <>
+              {/* Pays (obligatoire — éligibilité rémunération) */}
+              <Pressable onPress={() => setCountryOpen(true)} style={styles.field}>
+                {country ? (
+                  <Image source={{ uri: flagUrl(country) }} style={styles.flag} contentFit="cover" />
+                ) : (
+                  <Ionicons name="flag-outline" size={20} color={Afylo.textDim} />
+                )}
+                <Text style={{ flex: 1, color: country ? Afylo.text : Afylo.textFaint, fontSize: 16 }}>{country ? countryName(country) : 'Pays'}</Text>
+                <Ionicons name="chevron-down" size={18} color={Afylo.textFaint} />
+              </Pressable>
+              {/* Téléphone (obligatoire) */}
+              <View style={styles.field}>
+                <Ionicons name="call-outline" size={20} color={Afylo.textDim} />
+                {country ? <Text style={{ color: Afylo.textDim, fontSize: 15 }}>{DIAL_CODES[country]}</Text> : null}
+                <TextInput style={styles.input} placeholder="Numéro de téléphone" placeholderTextColor={Afylo.textFaint} value={phone} onChangeText={setPhone} keyboardType="phone-pad" />
+              </View>
+            </>
+          )}
+
+          {mode === 'signup' && <Text style={styles.hint}>Mot de passe : 6 caractères min. · Téléphone et pays requis.</Text>}
 
           {mode === 'login' && (
             <Text style={styles.forgot} onPress={forgotPassword}>Mot de passe oublié ?</Text>
@@ -156,6 +194,30 @@ export default function Login() {
          </ScrollView>
         </SafeAreaView>
       </KeyboardAvoidingView>
+
+      {/* Sélecteur de pays (inscription) */}
+      <Modal visible={countryOpen} transparent animationType="slide" onRequestClose={() => setCountryOpen(false)}>
+        <Pressable style={styles.cOverlay} onPress={() => setCountryOpen(false)}>
+          <Pressable style={styles.cSheet} onPress={(e) => e.stopPropagation?.()}>
+            <View style={styles.cGrip} />
+            <Text style={styles.cTitle}>Choisis ton pays</Text>
+            <View style={styles.cSearch}>
+              <Ionicons name="search" size={17} color={Afylo.textDim} />
+              <TextInput style={styles.cSearchInput} value={countryQuery} onChangeText={setCountryQuery} placeholder="Rechercher un pays…" placeholderTextColor={Afylo.textFaint} autoFocus />
+            </View>
+            <ScrollView style={{ maxHeight: 340 }} keyboardShouldPersistTaps="handled">
+              {countryList.map((c) => (
+                <Pressable key={c.code} onPress={() => { setCountry(c.code); setCountryOpen(false); setCountryQuery(''); }} style={styles.cRow}>
+                  <Image source={{ uri: flagUrl(c.code) }} style={styles.flag} contentFit="cover" />
+                  <Text style={styles.cName}>{c.name}</Text>
+                  <Text style={styles.cDial}>{DIAL_CODES[c.code]}</Text>
+                </Pressable>
+              ))}
+              {countryList.length === 0 && <Text style={{ color: Afylo.textDim, paddingVertical: 16 }}>Aucun pays trouvé.</Text>}
+            </ScrollView>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </View>
   );
 }
@@ -251,6 +313,16 @@ const styles = StyleSheet.create({
   forgot: { color: Afylo.violet, fontSize: 14, fontWeight: '700', textAlign: 'right', marginTop: 12 },
   error: { color: Afylo.live, fontSize: 14, marginTop: 14, fontWeight: '600' },
   info: { color: Afylo.green, fontSize: 14, marginTop: 14, fontWeight: '600', lineHeight: 20 },
+  cOverlay: { flex: 1, backgroundColor: '#00000088', justifyContent: 'flex-end' },
+  flag: { width: 28, height: 20, borderRadius: 3, backgroundColor: Afylo.surfaceAlt },
+  cSheet: { backgroundColor: Afylo.bg, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 16, paddingBottom: 28 },
+  cSearch: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: Afylo.surface, borderRadius: Radius.pill, paddingHorizontal: 14, height: 44, marginBottom: 8, borderWidth: 1, borderColor: Afylo.border },
+  cSearchInput: { flex: 1, color: Afylo.text, fontSize: 15, height: '100%' },
+  cGrip: { width: 40, height: 4, borderRadius: 2, backgroundColor: Afylo.border, alignSelf: 'center', marginBottom: 14 },
+  cTitle: { color: Afylo.text, fontFamily: Font.bold, fontSize: 18, marginBottom: 10 },
+  cRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: Afylo.border },
+  cName: { flex: 1, color: Afylo.text, fontSize: 15, fontFamily: Font.semibold },
+  cDial: { color: Afylo.textDim, fontSize: 14 },
   guest: { color: Afylo.textDim, fontSize: 15, fontWeight: '700', textAlign: 'center', marginTop: 22 },
   legal: { color: Afylo.textFaint, fontSize: 12, textAlign: 'center', marginTop: 20, lineHeight: 18 },
 });

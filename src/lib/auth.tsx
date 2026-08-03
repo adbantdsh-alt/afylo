@@ -14,7 +14,7 @@ type AuthState = {
   guest: boolean;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<{ error: string | null }>;
-  signUp: (email: string, password: string) => Promise<{ error: string | null; needsConfirm: boolean }>;
+  signUp: (email: string, password: string, extra?: { phone?: string; country?: string }) => Promise<{ error: string | null; needsConfirm: boolean }>;
   signOut: () => Promise<void>;
   enterGuest: () => void;
 };
@@ -44,11 +44,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return { error: error?.message ?? null };
   };
 
-  const signUp: AuthState['signUp'] = async (email, password) => {
+  const signUp: AuthState['signUp'] = async (email, password, extra) => {
     const { data, error } = await supabase.auth.signUp({
       email: email.trim(),
       password,
-      options: { emailRedirectTo: redirectOrigin },
+      options: { emailRedirectTo: redirectOrigin, data: { phone: extra?.phone, country: extra?.country } },
     });
     // Si la confirmation email est requise, il n'y a pas encore de session.
     return { error: error?.message ?? null, needsConfirm: !error && !data.session };

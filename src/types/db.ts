@@ -24,6 +24,8 @@ export interface Profile {
   banner_position: number | null;
   bio: string | null;
   website: string | null;
+  phone: string | null;
+  country: string | null;
   account_type: AccountType;
   messages_from: 'everyone' | 'followers' | 'nobody';
   is_verified: boolean;
