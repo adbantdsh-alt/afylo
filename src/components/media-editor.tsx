@@ -145,7 +145,7 @@ export function MediaEditor({
         <SafeAreaView edges={['bottom']} style={styles.prodChipWrap} pointerEvents="box-none">
           <Pressable onPress={() => setProductOpen(true)} style={styles.prodChip}>
             <Image source={{ uri: product.image_url || photo(`p-${product.id}`, 80, 80) }} style={styles.prodChipImg} contentFit="cover" />
-            <Text style={styles.prodChipText} numberOfLines={1}>{product.title} · {product.price_cfa.toLocaleString('fr-FR')} F</Text>
+            <Text style={styles.prodChipText} numberOfLines={1}>{product.title} · {(product.promo_cfa ?? product.price_cfa).toLocaleString('fr-FR')} F</Text>
             <Ionicons name="close-circle" size={18} color="#ffffffaa" onPress={() => setProduct(null)} />
           </Pressable>
         </SafeAreaView>
@@ -217,7 +217,10 @@ export function MediaEditor({
                       <Image source={{ uri: p.image_url || photo(`p-${p.id}`, 80, 80) }} style={styles.sheetImg} contentFit="cover" />
                       <View style={{ flex: 1 }}>
                         <Text style={styles.sheetName} numberOfLines={1}>{p.title}</Text>
-                        <Text style={styles.sheetPrice}>{p.price_cfa.toLocaleString('fr-FR')} F</Text>
+                        <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 6 }}>
+                          <Text style={styles.sheetPrice}>{(p.promo_cfa ?? p.price_cfa).toLocaleString('fr-FR')} F</Text>
+                          {p.promo_cfa && p.promo_cfa < p.price_cfa ? <Text style={styles.sheetPriceOld}>{p.price_cfa.toLocaleString('fr-FR')} F</Text> : null}
+                        </View>
                       </View>
                       <Ionicons name={on ? 'checkmark-circle' : 'add-circle-outline'} size={24} color={on ? Afryko.violet2 : '#fff'} />
                     </Pressable>
@@ -314,6 +317,7 @@ const styles = StyleSheet.create({
   sheetImg: { width: 48, height: 48, borderRadius: 10, backgroundColor: '#222' },
   sheetName: { color: '#fff', fontFamily: Font.semibold, fontSize: 15 },
   sheetPrice: { color: Afryko.gold, fontSize: 13, fontFamily: Font.bold, marginTop: 2 },
+  sheetPriceOld: { color: '#ffffff77', fontSize: 11, fontFamily: Font.semibold, textDecorationLine: 'line-through' },
 
   bottom: { position: 'absolute', bottom: 0, left: 0, right: 0, paddingHorizontal: 16, alignItems: 'flex-end' },
   cta: { flexDirection: 'row', alignItems: 'center', gap: 8, height: 50, paddingHorizontal: 22, borderRadius: Radius.pill, backgroundColor: Afryko.violet },

@@ -344,7 +344,10 @@ function PostCard({ post, isPro, myHandle, onDeletePost, onEditPost }: { post: P
             <Text style={styles.buyTitle} numberOfLines={1}>
               {post.products && post.products.length > 1 ? `${post.products.length} produits · à partir de` : post.product.title}
             </Text>
-            <Text style={styles.buyPrice}>{post.product.price}</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 6 }}>
+              <Text style={styles.buyPrice}>{post.product.price}</Text>
+              {post.product.priceOld && <Text style={styles.buyPriceOld}>{post.product.priceOld}</Text>}
+            </View>
           </View>
           <Pressable onPress={buy} style={[styles.buyCta, bought && { backgroundColor: Afryko.green }]}>
             <Text style={[styles.buyCtaText, bought && { color: '#fff' }]}>{bought ? 'Ajouté ✓' : 'Acheter'}</Text>
@@ -633,6 +636,7 @@ const styles = StyleSheet.create({
   buyIcon: { width: 38, height: 38, borderRadius: 10, backgroundColor: Afryko.surface, alignItems: 'center', justifyContent: 'center' },
   buyTitle: { color: Afryko.ink, fontSize: 13, fontWeight: '700' },
   buyPrice: { color: Afryko.violet, fontSize: 14, fontWeight: '800', marginTop: 1 },
+  buyPriceOld: { color: Afryko.textFaint, fontSize: 12, fontWeight: '600', textDecorationLine: 'line-through' },
   buyCta: { backgroundColor: Afryko.violet, paddingHorizontal: 16, paddingVertical: 10, borderRadius: Radius.pill },
   buyCtaText: { color: '#fff', fontWeight: '800', fontSize: 13 },
 

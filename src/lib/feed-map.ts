@@ -74,8 +74,15 @@ export function mapFeedPost(fp: FeedPost): Post {
     views: fmtCount(fp.view_count),
     shares: fmtCount(Math.round((fp.like_count ?? 0) / 12)),
     caption: fp.caption || '',
-    product: first ? { title: first.title, price: formatCfa(first.price_cfa), commission: pct(first.commission_pct) } : undefined,
-    products: prods.length > 1 ? prods.map((p) => ({ title: p.title, price: formatCfa(p.price_cfa) })) : undefined,
+    product: first
+      ? {
+          title: first.title,
+          price: formatCfa(first.promo_cfa ?? first.price_cfa),
+          priceOld: first.promo_cfa && first.promo_cfa < first.price_cfa ? formatCfa(first.price_cfa) : undefined, // prix barré si promo
+          commission: pct(first.commission_pct),
+        }
+      : undefined,
+    products: prods.length > 1 ? prods.map((p) => ({ title: p.title, price: formatCfa(p.promo_cfa ?? p.price_cfa) })) : undefined,
   };
 }
 

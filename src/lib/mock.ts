@@ -76,7 +76,7 @@ export const lives: Live[] = [
   { id: 'l6', name: 'Aida', avatar: avatar(45), live: true, viewers: '2.1 K' },
 ];
 
-export type Product = { title: string; price: string; commission?: string };
+export type Product = { title: string; price: string; priceOld?: string; commission?: string };
 
 export type Post = {
   id: string;

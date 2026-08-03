@@ -131,7 +131,10 @@ function PostView({ post, onOpenComments }: { post: Post; onOpenComments: () => 
           <View style={styles.buyIcon}><Ionicons name="bag-handle" size={18} color={Afryko.ink} /></View>
           <View style={{ flex: 1 }}>
             <Text style={styles.buyTitle} numberOfLines={1}>{post.product.title}</Text>
-            <Text style={styles.buyPrice}>{post.product.price}</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 6 }}>
+              <Text style={styles.buyPrice}>{post.product.price}</Text>
+              {post.product.priceOld && <Text style={styles.buyPriceOld}>{post.product.priceOld}</Text>}
+            </View>
           </View>
           <Pressable style={styles.buyBtn}><Text style={styles.buyBtnText}>Acheter</Text></Pressable>
         </View>
@@ -175,6 +178,7 @@ const styles = StyleSheet.create({
   buyIcon: { width: 38, height: 38, borderRadius: 10, backgroundColor: Afryko.gold, alignItems: 'center', justifyContent: 'center' },
   buyTitle: { color: Afryko.text, fontSize: 14, fontFamily: Font.semibold },
   buyPrice: { color: Afryko.gold, fontSize: 14, fontFamily: Font.bold, marginTop: 1 },
+  buyPriceOld: { color: Afryko.textFaint, fontSize: 12, fontFamily: Font.semibold, textDecorationLine: 'line-through' },
   buyBtn: { backgroundColor: Afryko.violet, borderRadius: Radius.pill, paddingHorizontal: 16, paddingVertical: 9 },
   buyBtnText: { color: '#fff', fontFamily: Font.bold, fontSize: 13 },
 

@@ -288,7 +288,10 @@ export default function PostNew() {
                   <Image source={{ uri: p.image_url || photo(`p-${p.id}`, 100, 100) }} style={styles.prodThumb} contentFit="cover" />
                   <View style={{ flex: 1 }}>
                     <Text style={styles.prodTitle} numberOfLines={1}>{p.title}</Text>
-                    <Text style={styles.prodPrice}>{p.price_cfa.toLocaleString('fr-FR')} F</Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 6 }}>
+                      <Text style={styles.prodPrice}>{(p.promo_cfa ?? p.price_cfa).toLocaleString('fr-FR')} F</Text>
+                      {p.promo_cfa && p.promo_cfa < p.price_cfa ? <Text style={styles.prodPriceOld}>{p.price_cfa.toLocaleString('fr-FR')} F</Text> : null}
+                    </View>
                   </View>
                   {/* Interrupteur ON/OFF */}
                   <View style={[styles.switch, on && styles.switchOn]}>
@@ -366,6 +369,7 @@ const styles = StyleSheet.create({
   prodThumb: { width: 44, height: 44, borderRadius: 8, backgroundColor: Afryko.surfaceAlt },
   prodTitle: { color: Afryko.text, fontSize: 14, fontWeight: '700' },
   prodPrice: { color: Afryko.gold, fontSize: 13, fontWeight: '800', marginTop: 1 },
+  prodPriceOld: { color: Afryko.textFaint, fontSize: 11, fontWeight: '600', textDecorationLine: 'line-through' },
   switch: { width: 46, height: 28, borderRadius: 14, backgroundColor: Afryko.surfaceAlt, borderWidth: 1, borderColor: Afryko.border, padding: 3, justifyContent: 'center' },
   switchOn: { backgroundColor: Afryko.violet, borderColor: Afryko.violet },
   knob: { width: 20, height: 20, borderRadius: 10, backgroundColor: '#fff', alignSelf: 'flex-start' },
