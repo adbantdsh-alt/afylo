@@ -8,7 +8,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Avatar } from '@/components/ui-kit';
 import { VerifiedBadge } from '@/components/verified';
 import { Afryko, Font, Radius } from '@/constants/brand';
-import { getPost, listPostsByAuthor } from '@/lib/db';
+import { getPost, likePost, listMyLikedPostIds, listPostsByAuthor, unlikePost } from '@/lib/db';
 import { mapFeedPost } from '@/lib/feed-map';
 import type { Post } from '@/lib/mock';
 
@@ -19,6 +19,12 @@ export default function PostViewer() {
   const { id, author } = useLocalSearchParams<{ id: string; author?: string }>();
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
+  const [likedIds, setLikedIds] = useState<Set<string>>(new Set());
+
+  const onLike = (pid: string, liked: boolean) => {
+    setLikedIds((prev) => { const n = new Set(prev); if (liked) n.add(pid); else n.delete(pid); return n; });
+    (liked ? likePost(pid) : unlikePost(pid)).catch(() => {});
+  };
 
   const scrollRef = useRef<ScrollView>(null);
   const positions = useRef<Record<string, number>>({});
@@ -30,7 +36,8 @@ export default function PostViewer() {
       let authorId = author;
       if (!authorId && id) authorId = (await getPost(id))?.author_id;
       const rows = authorId ? await listPostsByAuthor(authorId) : [];
-      if (alive) { setPosts(rows.map(mapFeedPost)); setLoading(false); }
+      const liked = await listMyLikedPostIds();
+      if (alive) { setPosts(rows.map(mapFeedPost)); setLikedIds(liked); setLoading(false); }
     })();
     return () => { alive = false; };
   }, [id, author]);
@@ -65,7 +72,7 @@ export default function PostViewer() {
         <ScrollView ref={scrollRef} showsVerticalScrollIndicator={false}>
           {posts.map((p) => (
             <View key={p.id} onLayout={(e) => { positions.current[p.id] = e.nativeEvent.layout.y; tryScroll(); }}>
-              <PostView post={p} onOpenComments={() => router.push({ pathname: '/comments/[id]', params: { id: p.id, image: p.image, name: p.name } })} />
+              <PostView post={p} liked={likedIds.has(p.id)} onLike={onLike} onOpenComments={() => router.push({ pathname: '/comments/[id]', params: { id: p.id, image: p.image, name: p.name } })} />
             </View>
           ))}
           <View style={{ height: 30 }} />
@@ -75,8 +82,11 @@ export default function PostViewer() {
   );
 }
 
-function PostView({ post, onOpenComments }: { post: Post; onOpenComments: () => void }) {
+function PostView({ post, liked, onLike, onOpenComments }: { post: Post; liked: boolean; onLike: (id: string, liked: boolean) => void; onOpenComments: () => void }) {
   const [idx, setIdx] = useState(0);
+  const [isLiked, setIsLiked] = useState(liked);
+  useEffect(() => setIsLiked(liked), [liked]);
+  const toggleLike = () => { const nv = !isLiked; setIsLiked(nv); onLike(post.id, nv); };
   const openLink = (url?: string) => url && Linking.openURL(url.startsWith('http') ? url : `https://${url}`).catch(() => {});
   const images = post.images && post.images.length > 1 ? post.images : post.image ? [post.image] : [];
   const mediaH = post.ratio ? Math.round(W / post.ratio) : W; // vraie proportion → pas de zoom abusif
@@ -142,7 +152,7 @@ function PostView({ post, onOpenComments }: { post: Post; onOpenComments: () => 
 
       {/* Stats + commentaires */}
       <View style={styles.stats}>
-        <View style={styles.stat}><Ionicons name="star-outline" size={20} color={Afryko.textDim} /><Text style={styles.statN}>{post.likes}</Text></View>
+        <Pressable style={styles.stat} onPress={toggleLike}><Ionicons name={isLiked ? 'star' : 'star-outline'} size={20} color={isLiked ? Afryko.gold : Afryko.textDim} /><Text style={[styles.statN, isLiked && { color: Afryko.gold }]}>{post.likes}</Text></Pressable>
         <Pressable style={styles.stat} onPress={onOpenComments}><Ionicons name="chatbubble-outline" size={19} color={Afryko.textDim} /><Text style={styles.statN}>{post.comments}</Text></Pressable>
         <View style={styles.stat}><Ionicons name="eye-outline" size={20} color={Afryko.textDim} /><Text style={styles.statN}>{post.views}</Text></View>
       </View>

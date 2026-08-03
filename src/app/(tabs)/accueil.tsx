@@ -19,7 +19,7 @@ import { useIsBuzz } from '@/lib/buzz';
 import { VerifiedBadge } from '@/components/verified';
 import { Afryko, Font, Radius, Type } from '@/constants/brand';
 import { useAuthGate } from '@/lib/auth-gate';
-import { createTextPost, deletePost, followUser, listConversations, listFeed, unfollowUser, unreadNotifCount, updatePostCaption } from '@/lib/db';
+import { createTextPost, deletePost, followUser, likePost, listConversations, listFeed, listMyLikedPostIds, unfollowUser, unlikePost, unreadNotifCount, updatePostCaption } from '@/lib/db';
 import { mapFeed } from '@/lib/feed-map';
 import { usePendingUpload } from '@/lib/pending-upload';
 import { useMe } from '@/lib/me';
@@ -38,7 +38,13 @@ export default function Feed() {
   const showTabBar = useAlwaysShowTabBar();
   const { avatar: myAvatar, name: myName, handle: myHandle, isPro } = useMe(); // profil connecté, partagé
   const [feed, setFeed] = useState<Post[]>([]); // réseau réel (Supabase) — plus de données fictives
+  const [likedIds, setLikedIds] = useState<Set<string>>(new Set()); // posts aimés (persistant)
   const [loading, setLoading] = useState(true);
+
+  const onLike = (id: string, liked: boolean) => {
+    setLikedIds((prev) => { const n = new Set(prev); if (liked) n.add(id); else n.delete(id); return n; });
+    (liked ? likePost(id) : unlikePost(id)).catch(() => {});
+  };
   const [composeOpen, setComposeOpen] = useState(false);
   const [composeText, setComposeText] = useState('');
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -81,6 +87,7 @@ export default function Feed() {
     // Vrai réseau : uniquement les posts de Supabase (aucune donnée fictive).
     // Se recharge aussi quand une publication en tâche de fond se termine (feedVersion).
     listFeed().then((rows) => setFeed(mapFeed(rows ?? []))).catch(() => {}).finally(() => setLoading(false));
+    listMyLikedPostIds().then(setLikedIds).catch(() => {});
   }, [feedVersion]);
 
   return (
@@ -186,7 +193,7 @@ export default function Feed() {
           </View>
         ) : (
           feed.map((p) => (
-            <PostCard key={p.id} post={p} isPro={isPro} myHandle={myHandle} onDeletePost={removePost} onEditPost={editPost} />
+            <PostCard key={p.id} post={p} isPro={isPro} myHandle={myHandle} initialLiked={likedIds.has(p.id)} onLike={onLike} onDeletePost={removePost} onEditPost={editPost} />
           ))
         )}
       </ScrollView>
@@ -220,12 +227,13 @@ export default function Feed() {
   );
 }
 
-function PostCard({ post, isPro, myHandle, onDeletePost, onEditPost }: { post: Post; isPro: boolean; myHandle: string; onDeletePost: (id: string) => void; onEditPost: (p: Post) => void }) {
+function PostCard({ post, isPro, myHandle, initialLiked, onLike, onDeletePost, onEditPost }: { post: Post; isPro: boolean; myHandle: string; initialLiked?: boolean; onLike?: (id: string, liked: boolean) => void; onDeletePost: (id: string) => void; onEditPost: (p: Post) => void }) {
   const router = useRouter();
   const gate = useAuthGate();
   const { addRepost, hasReposted } = useReposts();
   const [followed, setFollowed] = useState(false);
-  const [liked, setLiked] = useState(false);
+  const [liked, setLiked] = useState(!!initialLiked);
+  useEffect(() => { setLiked(!!initialLiked); }, [initialLiked]);
   const [bought, setBought] = useState(false);
   const [rating, setRating] = useState(0);
   const [reaction, setReaction] = useState<string | null>(null);
@@ -252,7 +260,7 @@ function PostCard({ post, isPro, myHandle, onDeletePost, onEditPost }: { post: P
       (next ? followUser(post.authorId) : unfollowUser(post.authorId)).catch(() => setFollowed(!next));
     }
   };
-  const toggleLike = () => { if (gate('aimer')) setLiked((v) => !v); };
+  const toggleLike = () => { if (gate('aimer')) { const nv = !liked; setLiked(nv); onLike?.(post.id, nv); } };
   const buy = () => { if (gate('acheter')) setPayOpen(true); };
   const repost = () => { if (gate('republier')) setRepostOpen(true); };
   const owns = post.handle === `@${myHandle}` || post.handle === myHandle;
@@ -269,7 +277,7 @@ function PostCard({ post, isPro, myHandle, onDeletePost, onEditPost }: { post: P
   };
   const onMediaTap = () => {
     const now = Date.now();
-    if (now - lastTap.current < 300) { if (gate('aimer')) { setLiked(true); heartPop(); } }
+    if (now - lastTap.current < 300) { if (gate('aimer')) { if (!liked) onLike?.(post.id, true); setLiked(true); heartPop(); } }
     lastTap.current = now;
   };
   const share = async () => { try { await Share.share({ message: `${post.name} sur Afryko : ${post.caption}` }); } catch {} };

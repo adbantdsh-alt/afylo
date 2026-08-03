@@ -735,6 +735,29 @@ export async function getPost(id: string): Promise<FeedPost | null> {
   return data as FeedPost;
 }
 
+// ---- Likes (persistants) ----
+export async function likePost(postId: string): Promise<void> {
+  const user_id = await requireUserId();
+  await supabase.from('likes').insert({ user_id, post_id: postId });
+}
+export async function unlikePost(postId: string): Promise<void> {
+  const user_id = await requireUserId();
+  await supabase.from('likes').delete().eq('user_id', user_id).eq('post_id', postId);
+}
+/** Ids des posts déjà aimés par l'utilisateur (pour afficher l'état du cœur/étoile). */
+export async function listMyLikedPostIds(): Promise<Set<string>> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return new Set();
+  const { data } = await supabase.from('likes').select('post_id').eq('user_id', user.id);
+  return new Set((data ?? []).map((r: any) => r.post_id as string));
+}
+export async function hasLikedPost(postId: string): Promise<boolean> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return false;
+  const { data } = await supabase.from('likes').select('post_id').eq('user_id', user.id).eq('post_id', postId).maybeSingle();
+  return !!data;
+}
+
 /** Toutes les publications d'un compte (lecteur façon Instagram : flux scrollable). */
 export async function listPostsByAuthor(authorId: string): Promise<FeedPost[]> {
   const { data, error } = await supabase
