@@ -60,10 +60,20 @@ export default function Live() {
   const [productPicker, setProductPicker] = useState(false);
   const [prodFilter, setProdFilter] = useState<'all' | 'own' | 'affil'>('all'); // filtre créés / affiliés
   const [prodQuery, setProdQuery] = useState('');
+  const [buyListOpen, setBuyListOpen] = useState(false); // viewer : liste des produits en vente avant le formulaire
   const isAffil = (p: SellProduct) => p.tag.startsWith('Affiliation');
   const filteredAvailable = available
     .filter((p) => (prodFilter === 'all' ? true : prodFilter === 'affil' ? isAffil(p) : !isAffil(p)))
     .filter((p) => (prodQuery.trim() ? p.title.toLowerCase().includes(prodQuery.trim().toLowerCase()) : true));
+
+  // Viewer : les produits en vente dans le live (vrais produits — en attendant le realtime
+  // qui synchronisera exactement la sélection de l'hôte).
+  useEffect(() => {
+    if (isHost) return;
+    listFeedProducts()
+      .then((feed) => setSell(feed.slice(0, 6).map((p) => ({ id: p.id, title: p.title, price: fmtF(p.promo_cfa ?? p.price_cfa), image: p.image_url || photo(`p-${p.id}`, 200, 200), tag: 'En vente' }))))
+      .catch(() => {});
+  }, [isHost]);
 
   // Produits vendables en live : SES produits + les produits en AFFILIATION (ceux des autres
   // avec une commission) → on peut promouvoir/vendre l'article d'autrui et toucher sa commission.
@@ -506,7 +516,7 @@ export default function Live() {
               <Text style={styles.sellText}>Ventes ({sales.length})</Text>
             </Pressable>
           ) : (
-            <Pressable onPress={openBuyAll} style={styles.sellBtn}>
+            <Pressable onPress={() => setBuyListOpen(true)} style={styles.sellBtn}>
               <Ionicons name="bag-handle" size={18} color="#fff" />
               <Text style={styles.sellText}>Acheter ({sell.length})</Text>
             </Pressable>
@@ -727,6 +737,42 @@ export default function Live() {
         </View>
       </Modal>
 
+      {/* Viewer : liste des produits en vente → bouton Acheter par produit → formulaire */}
+      <Modal visible={buyListOpen} transparent animationType="slide" onRequestClose={() => setBuyListOpen(false)}>
+        <Pressable style={styles.mOverlay} onPress={() => setBuyListOpen(false)}>
+          <Pressable style={[styles.mSheet, { maxHeight: height * 0.7 }]} onPress={(e) => e.stopPropagation?.()}>
+            <View style={styles.mHandle} />
+            <Text style={styles.mTitle}>Produits en vente</Text>
+            {sell.length === 0 ? (
+              <Text style={{ color: '#ffffff99', paddingVertical: 16 }}>Aucun produit en vente pour le moment.</Text>
+            ) : (
+              <>
+                <ScrollView style={{ maxHeight: height * 0.5 }}>
+                  {sell.map((p) => (
+                    <View key={p.id} style={styles.pRow}>
+                      <Image source={{ uri: p.image }} style={styles.pImg} contentFit="cover" />
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.pName} numberOfLines={1}>{p.title}</Text>
+                        <Text style={styles.pMeta}>{p.price}</Text>
+                      </View>
+                      <Pressable onPress={() => { setBuyListOpen(false); openBuyOne({ title: p.title, price: p.price }); }} style={styles.buyOneBtn}>
+                        <Text style={styles.buyOneText}>Acheter</Text>
+                      </Pressable>
+                    </View>
+                  ))}
+                </ScrollView>
+                {sell.length > 1 && (
+                  <Pressable onPress={() => { setBuyListOpen(false); openBuyAll(); }} style={styles.buyAllBtn}>
+                    <Ionicons name="bag-handle" size={18} color="#fff" />
+                    <Text style={styles.buyAllText}>Tout acheter ({sell.length})</Text>
+                  </Pressable>
+                )}
+              </>
+            )}
+          </Pressable>
+        </Pressable>
+      </Modal>
+
       <PaymentSheet visible={payOpen} items={payProducts} onClose={() => setPayOpen(false)} />
       <GiftSheet visible={giftOpen} host={name} onClose={() => setGiftOpen(false)} onSent={onGiftSent} />
     </View>
@@ -897,6 +943,10 @@ const styles = StyleSheet.create({
   guestPip: { width: 86, height: 116, borderRadius: 16, overflow: 'hidden', backgroundColor: '#111', borderWidth: 2, borderColor: Afylo.violet },
   guestAudio: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#1a1a22' },
   audioRing: { position: 'absolute', width: 54, height: 54, borderRadius: 27, backgroundColor: Afylo.violet2 },
+  buyOneBtn: { backgroundColor: Afylo.violet, borderRadius: 999, paddingHorizontal: 16, paddingVertical: 9 },
+  buyOneText: { color: '#fff', fontFamily: Font.bold, fontSize: 13 },
+  buyAllBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: 10, height: 48, borderRadius: 999, backgroundColor: Afylo.live },
+  buyAllText: { color: '#fff', fontFamily: Font.bold, fontSize: 15 },
   filterRow: { flexDirection: 'row', gap: 8, marginBottom: 8 },
   filterChip: { paddingHorizontal: 14, paddingVertical: 7, borderRadius: 999, backgroundColor: '#ffffff14' },
   filterChipOn: { backgroundColor: Afylo.violet },

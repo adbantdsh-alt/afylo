@@ -786,6 +786,47 @@ export async function listSavedPosts(): Promise<FeedPost[]> {
   return ((data ?? []).map((r: any) => r.post).filter(Boolean)) as FeedPost[];
 }
 
+// ---- Affiliation (produits d'autres vendeurs ajoutés à ma boutique) ----
+export async function addAffiliation(productId: string): Promise<void> {
+  const reseller_id = await requireUserId();
+  await supabase.from('affiliations').insert({ reseller_id, product_id: productId });
+}
+export async function removeAffiliation(productId: string): Promise<void> {
+  const reseller_id = await requireUserId();
+  await supabase.from('affiliations').delete().eq('reseller_id', reseller_id).eq('product_id', productId);
+}
+export async function listMyAffiliatedProductIds(): Promise<Set<string>> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return new Set();
+  const { data } = await supabase.from('affiliations').select('product_id').eq('reseller_id', user.id);
+  return new Set((data ?? []).map((r: any) => r.product_id as string));
+}
+/** Produits que J'AI ajoutés en affiliation (pour ma boutique). */
+export async function listMyAffiliatedProducts(): Promise<FeedProduct[]> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return [];
+  const { data, error } = await supabase
+    .from('affiliations')
+    .select('created_at, product:products(*, owner:profiles!products_owner_id_fkey(id,display_name,handle,avatar_url,is_verified,account_type))')
+    .eq('reseller_id', user.id)
+    .order('created_at', { ascending: false });
+  if (error) return [];
+  return ((data ?? []).map((r: any) => r.product).filter(Boolean)) as FeedProduct[];
+}
+/** Catalogue affiliable : produits actifs d'AUTRES vendeurs avec une commission. */
+export async function listAffiliatableProducts(): Promise<FeedProduct[]> {
+  const { data: { user } } = await supabase.auth.getUser();
+  const { data, error } = await supabase
+    .from('products')
+    .select('*, owner:profiles!products_owner_id_fkey(id,display_name,handle,avatar_url,is_verified,account_type)')
+    .eq('is_active', true)
+    .gt('commission_pct', 0)
+    .order('commission_pct', { ascending: false })
+    .limit(80);
+  if (error) return [];
+  return ((data as FeedProduct[]) ?? []).filter((p) => p.owner?.id !== user?.id);
+}
+
 // ---- Blocages ----
 export async function blockUser(userId: string): Promise<void> {
   const blocker_id = await requireUserId();
