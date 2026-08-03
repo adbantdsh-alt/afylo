@@ -227,7 +227,9 @@ export default function Creer() {
       {/* Caméra en PLEIN ÉCRAN */}
       {permission?.granted ? (
         <>
-          <CameraView key={facing} ref={camRef} style={StyleSheet.absoluteFill} facing={facing} mode="video" mirror={false} />
+          {/* Pas de key={facing} : changer la key démonte/remonte la caméra (écran noir ~1s).
+              On laisse expo-camera changer 'facing' à chaud → bascule instantanée. */}
+          <CameraView ref={camRef} style={StyleSheet.absoluteFill} facing={facing} mode="video" mirror={false} />
           {/* Double-tap n'importe où = retourner la caméra */}
           <Pressable style={StyleSheet.absoluteFill} onPress={onCameraTap} />
         </>
