@@ -64,31 +64,27 @@ export function captureWebFrameDataUrl(): string | null {
   }
 }
 
-let mirrorObserver: MutationObserver | null = null;
+const UNMIRROR_STYLE_ID = 'afryko-unmirror-cam';
 
 /**
- * Maintient l'aperçu caméra web SANS miroir, en continu.
- * expo-camera ré-applique un `transform: scaleX(-1)` sur le frontal ~1s après
- * le montage : un simple set une fois est écrasé. On observe donc l'attribut
- * `style` du <video> et on remet `transform:none !important` à chaque tentative.
+ * Force l'aperçu caméra web SANS miroir, de façon DÉFINITIVE.
+ * expo-camera met un `transform: scaleX(-1)` inline (frontal) et le ré-applique
+ * ~1s après le montage. Une feuille de style `!important` bat toujours l'inline,
+ * sans course : `transform:none !important` sur le <video> reste imposé en continu.
+ * (N'affecte que l'écran caméra : la règle est retirée en quittant.)
  */
 export function keepCameraUnmirrored() {
-  if (typeof MutationObserver === 'undefined') return;
-  const v = getCameraVideoEl();
-  if (!v) return;
-  const fix = () => {
-    const t = v.style.transform;
-    if (t && t !== 'none') v.style.setProperty('transform', 'none', 'important');
-  };
-  fix();
-  mirrorObserver?.disconnect();
-  mirrorObserver = new MutationObserver(fix);
-  mirrorObserver.observe(v, { attributes: true, attributeFilter: ['style'] });
+  if (typeof document === 'undefined') return;
+  if (document.getElementById(UNMIRROR_STYLE_ID)) return;
+  const el = document.createElement('style');
+  el.id = UNMIRROR_STYLE_ID;
+  el.textContent = 'video{transform:none !important;-webkit-transform:none !important;}';
+  document.head.appendChild(el);
 }
 
 export function stopKeepUnmirrored() {
-  mirrorObserver?.disconnect();
-  mirrorObserver = null;
+  if (typeof document === 'undefined') return;
+  document.getElementById(UNMIRROR_STYLE_ID)?.remove();
 }
 
 export function canWebRecord(): boolean {

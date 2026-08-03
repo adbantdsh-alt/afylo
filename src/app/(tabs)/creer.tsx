@@ -63,6 +63,7 @@ export default function Creer() {
     useCallback(() => {
       hidden.value = withTiming(1, { duration: 150 });
       setMedia(null);
+      if (Platform.OS === 'web') keepCameraUnmirrored(); // impose l'aperçu non-miroir dès l'entrée
       return () => {
         hidden.value = withTiming(0, { duration: 150 });
         stopKeepUnmirrored();
