@@ -17,6 +17,7 @@ import { useMe } from '@/lib/me';
 import { myProducts } from '@/lib/mock';
 import { useStories, type StoryProduct } from '@/lib/stories';
 import { useTabBar } from '@/lib/tabbar';
+import { startWebRecording, stopWebRecording } from '@/lib/web-recorder';
 
 type Mode = 'Publication' | 'Story' | 'Reel' | 'Live';
 const MODES: Mode[] = ['Publication', 'Story', 'Reel', 'Live'];
@@ -116,9 +117,16 @@ export default function Creer() {
   };
 
   const beginRecord = async () => {
-    // Le navigateur ne sait pas filmer via la caméra expo — l'appui long ouvre alors la galerie vidéo.
-    if (Platform.OS === 'web') { pick('video'); return; }
-    if (!camRef.current || recordingRef.current) return;
+    if (recordingRef.current) return;
+    // WEB : on filme réellement le flux caméra via MediaRecorder (recordAsync n'existe pas sur navigateur).
+    if (Platform.OS === 'web') {
+      const started = startWebRecording();
+      if (!started) { pick('video'); return; } // pas de flux (caméra refusée) → repli galerie
+      recordingRef.current = true;
+      setRecording(true);
+      return;
+    }
+    if (!camRef.current) return;
     // Le micro est requis pour recordAsync — on le demande si besoin
     if (!micPerm?.granted) { const r = await requestMic(); if (!r?.granted) { /* on enregistre sans son si refusé */ } }
     recordingRef.current = true;
@@ -132,7 +140,20 @@ export default function Creer() {
     setRecording(false);
     setLocked(false);
   };
-  const endRecord = () => { if (recordingRef.current) camRef.current?.stopRecording(); };
+
+  const endRecord = async () => {
+    if (!recordingRef.current) return;
+    if (Platform.OS === 'web') {
+      const uri = await stopWebRecording();
+      recordingRef.current = false;
+      lockedRef.current = false;
+      setRecording(false);
+      setLocked(false);
+      if (uri) setMedia({ uri, type: 'video' });
+      return;
+    }
+    camRef.current?.stopRecording();
+  };
 
   const goLive = async () => {
     if (!gate('passer en live')) return;
