@@ -1,7 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { CameraView, useCameraPermissions, useMicrophonePermissions } from 'expo-camera';
 import { Image } from 'expo-image';
-import { FlipType, manipulateAsync } from 'expo-image-manipulator';
 import * as ImagePicker from 'expo-image-picker';
 import { useVideoPlayer, VideoView } from 'expo-video';
 import { useFocusEffect, useRouter } from 'expo-router';
@@ -17,7 +16,7 @@ import { useMe } from '@/lib/me';
 import { myProducts } from '@/lib/mock';
 import { useStories, type StoryProduct } from '@/lib/stories';
 import { useTabBar } from '@/lib/tabbar';
-import { startWebRecording, stopWebRecording } from '@/lib/web-recorder';
+import { captureWebPhoto, startWebRecording, stopWebRecording } from '@/lib/web-recorder';
 
 type Mode = 'Publication' | 'Story' | 'Reel' | 'Live';
 const MODES: Mode[] = ['Publication', 'Story', 'Reel', 'Live'];
@@ -97,22 +96,17 @@ export default function Creer() {
     setMedia({ uri: res.assets[0].uri, type: kind });
   };
 
-  // La caméra frontale rend un aperçu « miroir » (naturel comme un miroir), mais la photo
-  // enregistrée doit rester à l'endroit. On dé-miroite donc la capture frontale sur le web
-  // (où le rendu getUserMedia est capturé en miroir). Le natif enregistre déjà à l'endroit.
-  const unmirrorIfNeeded = async (uri: string) => {
-    if (facing !== 'front' || Platform.OS !== 'web') return uri;
-    try {
-      const r = await manipulateAsync(uri, [{ flip: FlipType.Horizontal }], { compress: 0.9 });
-      return r.uri;
-    } catch { return uri; }
-  };
-
   const takePhoto = async () => {
+    // WEB : on capture la frame BRUTE du flux (image telle quelle, jamais en miroir),
+    // exactement comme la caméra arrière. Repli sur expo si le flux n'est pas dispo.
+    if (Platform.OS === 'web') {
+      const shot = await captureWebPhoto();
+      if (shot) { setMedia({ uri: shot, type: 'image' }); return; }
+    }
     if (!camRef.current) return;
     try {
       const p = await camRef.current.takePictureAsync({ quality: 0.9 });
-      if (p?.uri) setMedia({ uri: await unmirrorIfNeeded(p.uri), type: 'image' });
+      if (p?.uri) setMedia({ uri: p.uri, type: 'image' });
     } catch {}
   };
 
@@ -208,7 +202,7 @@ export default function Creer() {
         <PreviewMedia media={media} />
       ) : permission?.granted ? (
         <>
-          <CameraView key={facing} ref={camRef} style={StyleSheet.absoluteFill} facing={facing} mode="video" mirror={facing === 'front'} />
+          <CameraView key={facing} ref={camRef} style={StyleSheet.absoluteFill} facing={facing} mode="video" mirror={false} />
           {/* Double-tap n'importe où = retourner la caméra */}
           <Pressable style={StyleSheet.absoluteFill} onPress={onCameraTap} />
         </>
@@ -357,7 +351,8 @@ function PreviewMedia({ media }: { media: { uri: string; type: 'image' | 'video'
   return <Image source={{ uri: media.uri }} style={StyleSheet.absoluteFill} contentFit="cover" />;
 }
 function PreviewVideo({ uri }: { uri: string }) {
-  const player = useVideoPlayer(uri, (p) => { p.loop = true; p.play(); });
+  // muted = requis pour que le navigateur autorise la lecture auto (sinon la vidéo reste figée sur la 1re image).
+  const player = useVideoPlayer(uri, (p) => { p.loop = true; p.muted = true; p.play(); });
   return <VideoView player={player} style={StyleSheet.absoluteFill} contentFit="cover" nativeControls={false} />;
 }
 
