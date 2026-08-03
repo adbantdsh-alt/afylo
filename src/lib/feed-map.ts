@@ -96,8 +96,20 @@ export function mapExploreItem(fp: FeedPost): ExploreItem {
   };
 }
 
-/** Feed accueil mappé + trié (variété, même ordre partout). */
-export const mapFeed = (rows: FeedPost[]): Post[] => rows.map(mapFeedPost).sort(byHash);
+/**
+ * Score algorithmique du feed : récence + engagement (commentaires > j'aime > vues).
+ * Un post récent remonte tout de suite (tu vois ta publi en haut), et l'engagement
+ * fait durer les bons posts. Inspiré du ranking « gravity » (HN).
+ */
+function feedScore(fp: FeedPost): number {
+  const eng = (fp.like_count || 0) * 3 + (fp.comment_count || 0) * 5 + (fp.view_count || 0) * 0.1;
+  const ageH = Math.max(0, (Date.now() - new Date(fp.created_at).getTime()) / 3_600_000);
+  return (eng + 1) / Math.pow(ageH + 2, 1.5);
+}
+const byScore = (a: FeedPost, b: FeedPost) => feedScore(b) - feedScore(a);
+
+/** Feed accueil : classé par l'algorithme (récence + engagement) — les posts récents remontent. */
+export const mapFeed = (rows: FeedPost[]): Post[] => [...rows].sort(byScore).map(mapFeedPost);
 /** Grille explore mappée + triée (média uniquement — pas les posts texte). */
 export const mapExplore = (rows: FeedPost[]): ExploreItem[] =>
   rows.filter((fp) => fp.kind !== 'text' && (fp.media_url || fp.thumbnail_url)).map(mapExploreItem).sort(byHash);

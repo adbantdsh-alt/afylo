@@ -724,6 +724,17 @@ export async function listFeed(): Promise<FeedPost[]> {
   return (data as FeedPost[]) ?? [];
 }
 
+/** Un seul post (pour le lecteur de publication). */
+export async function getPost(id: string): Promise<FeedPost | null> {
+  const { data, error } = await supabase
+    .from('posts')
+    .select('*, author:profiles!posts_author_id_fkey(*), post_products(product:products(*))')
+    .eq('id', id)
+    .single();
+  if (error) return null;
+  return data as FeedPost;
+}
+
 export type PostOverlay = { id: string; kind: 'text' | 'link'; text: string; x: number; y: number; color: string; url?: string };
 
 export type CreatePostInput = {

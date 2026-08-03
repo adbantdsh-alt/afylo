@@ -67,6 +67,7 @@ function RootNavigator() {
       <Stack.Screen name="post-new" options={{ presentation: 'modal' }} />
       <Stack.Screen name="edit-profile" options={{ presentation: 'modal' }} />
       <Stack.Screen name="creator/[id]" />
+      <Stack.Screen name="post/[id]" />
       <Stack.Screen name="affiliation" />
       <Stack.Screen name="settings" />
       <Stack.Screen name="connections" />

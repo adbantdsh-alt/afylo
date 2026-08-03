@@ -95,6 +95,8 @@ export default function CreatorProfile() {
   const posts = data?.posts ?? [];
   const mediaPosts = posts.filter((x) => x.kind !== 'text' && (x.media_url || x.thumbnail_url));
   const textPosts = posts.filter((x) => x.kind === 'text' || (!x.media_url && !x.thumbnail_url));
+  // Taper une publication l'ouvre (compte visité → lecture seule, pas d'options).
+  const openPost = (x: { id: string }) => router.push({ pathname: '/post/[id]', params: { id: x.id } });
   const creatorPro = isProAccount(p?.account_type); // Pro (vendeur) → onglet Boutique en plus
 
   // Mêmes onglets que ton profil : Simple = 4 (sans Boutique), Pro = 5
@@ -259,7 +261,7 @@ export default function CreatorProfile() {
           ) : (
             <View>
               {textPosts.map((x) => (
-                <View key={x.id} style={styles.tweet}>
+                <Pressable key={x.id} style={styles.tweet} onPress={() => openPost(x)}>
                   <Image source={{ uri: avatarUri }} style={styles.tweetAvatar} contentFit="cover" />
                   <View style={{ flex: 1 }}>
                     <View style={styles.tweetHead}>
@@ -274,7 +276,7 @@ export default function CreatorProfile() {
                       <View style={styles.tweetStat}><Ionicons name="bar-chart-outline" size={15} color={Afryko.textFaint} /><Text style={styles.tweetStatN}>{x.view_count || 0}</Text></View>
                     </View>
                   </View>
-                </View>
+                </Pressable>
               ))}
             </View>
           )
@@ -300,7 +302,7 @@ export default function CreatorProfile() {
         ) : (
           <View style={styles.grid}>
             {mediaPosts.map((x) => (
-              <View key={x.id} style={styles.cell}>
+              <Pressable key={x.id} style={styles.cell} onPress={() => openPost(x)}>
                 <Image source={{ uri: x.thumbnail_url || x.media_url || photo(x.id, 300, 380) }} style={StyleSheet.absoluteFill} contentFit="cover" transition={200} />
                 {x.kind === 'video' && (
                   <View style={styles.cellTag}>
@@ -308,7 +310,7 @@ export default function CreatorProfile() {
                     <Text style={styles.cellTagText}>{fmtCount(x.view_count)}</Text>
                   </View>
                 )}
-              </View>
+              </Pressable>
             ))}
           </View>
         )}

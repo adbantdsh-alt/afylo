@@ -66,7 +66,7 @@ export default function Profil() {
   // --- Gestion des posts (propriétaire) : afficher / modifier / supprimer / partager ---
   const viewPost = (p: MyPost) => {
     setManage(null);
-    router.push({ pathname: '/comments/[id]', params: { id: p.id, owner: '1', image: p.thumbnail_url || p.media_url || '' } });
+    router.push({ pathname: '/post/[id]', params: { id: p.id } });
   };
   const startEdit = (p: MyPost) => { setEditText(p.caption || ''); setEditing(p); setManage(null); };
   const saveEdit = () => {
@@ -233,8 +233,8 @@ export default function Profil() {
           <SectionTab icon="repeat" active={section === 'reposts'} onPress={() => setSection('reposts')} />
         </View>
 
-        {section === 'posts' && <PostsGrid posts={mediaPosts} onManage={setManage} />}
-        {section === 'texte' && <TextPostsList posts={textPosts} name={name} handle={handle} avatar={avatarUri} vkind={vkind} onCompose={() => router.push('/accueil')} onManage={setManage} />}
+        {section === 'posts' && <PostsGrid posts={mediaPosts} onView={viewPost} onManage={setManage} />}
+        {section === 'texte' && <TextPostsList posts={textPosts} name={name} handle={handle} avatar={avatarUri} vkind={vkind} onCompose={() => router.push('/accueil')} onView={viewPost} onManage={setManage} />}
         {section === 'boutique' && (isPro || !isOwner ? <BoutiqueList isOwner={isOwner} /> : <ProUpsell onPress={() => router.push('/upgrade-pro')} what="vendre tes produits" />)}
         {section === 'achats' && <PurchasesList />}
         {section === 'reposts' && <RepostsGrid />}
@@ -366,7 +366,7 @@ function BadgeVerified({ size = 19 }: { size?: number }) {
 }
 
 /** Onglet Texte : les publications 100% texte façon X (avec accès propriétaire). */
-function TextPostsList({ posts, name, handle, avatar, vkind, onCompose, onManage }: { posts: MyPost[]; name: string; handle: string; avatar: string; vkind: 'blue' | 'gold' | null; onCompose: () => void; onManage: (p: MyPost) => void }) {
+function TextPostsList({ posts, name, handle, avatar, vkind, onCompose, onView, onManage }: { posts: MyPost[]; name: string; handle: string; avatar: string; vkind: 'blue' | 'gold' | null; onCompose: () => void; onView: (p: MyPost) => void; onManage: (p: MyPost) => void }) {
   if (posts.length === 0) {
     return (
       <View style={styles.gridEmpty}>
@@ -383,7 +383,7 @@ function TextPostsList({ posts, name, handle, avatar, vkind, onCompose, onManage
   return (
     <View>
       {posts.map((p) => (
-        <Pressable key={p.id} style={styles.tweet} onPress={() => onManage(p)}>
+        <Pressable key={p.id} style={styles.tweet} onPress={() => onView(p)}>
           <Image source={{ uri: avatar }} style={styles.tweetAvatar} contentFit="cover" />
           <View style={{ flex: 1 }}>
             <View style={styles.tweetHead}>
@@ -408,7 +408,7 @@ function TextPostsList({ posts, name, handle, avatar, vkind, onCompose, onManage
   );
 }
 
-function PostsGrid({ posts, onManage }: { posts: MyPost[]; onManage: (p: MyPost) => void }) {
+function PostsGrid({ posts, onView, onManage }: { posts: MyPost[]; onView: (p: MyPost) => void; onManage: (p: MyPost) => void }) {
   if (posts.length === 0) {
     return (
       <View style={styles.gridEmpty}>
@@ -421,9 +421,10 @@ function PostsGrid({ posts, onManage }: { posts: MyPost[]; onManage: (p: MyPost)
   return (
     <View style={styles.mediaGrid}>
       {posts.map((p) => (
-        <Pressable key={p.id} style={styles.cell} onPress={() => onManage(p)}>
+        <Pressable key={p.id} style={styles.cell} onPress={() => onView(p)}>
           <Image source={{ uri: p.thumbnail_url || p.media_url || undefined }} style={StyleSheet.absoluteFill} contentFit="cover" transition={200} />
-          <View style={styles.cellMenu}><Ionicons name="ellipsis-horizontal" size={15} color="#fff" /></View>
+          {/* 3 points = options (le tap sur la cellule ouvre le post) */}
+          <Pressable hitSlop={8} onPress={() => onManage(p)} style={styles.cellMenu}><Ionicons name="ellipsis-horizontal" size={15} color="#fff" /></Pressable>
           {p.kind === 'video' && (
             <View style={styles.cellTag}>
               <Ionicons name="play" size={11} color="#fff" />
