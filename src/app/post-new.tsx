@@ -10,7 +10,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { CropModal } from '@/components/crop-modal';
 import { SoundPicker } from '@/components/sound-picker';
 import { Avatar, PillButton } from '@/components/ui-kit';
-import { Afryko, Font, Radius } from '@/constants/brand';
+import { Afylo, Font, Radius } from '@/constants/brand';
 import { useAuth } from '@/lib/auth';
 import { listMyProducts, searchProfiles } from '@/lib/db';
 import { clampRatio } from '@/lib/feed-map';
@@ -157,10 +157,10 @@ export default function PostNew() {
 
   return (
     <View style={styles.root}>
-      <SafeAreaView edges={['top']} style={{ backgroundColor: Afryko.bg }}>
+      <SafeAreaView edges={['top']} style={{ backgroundColor: Afylo.bg }}>
         <View style={styles.header}>
           <Pressable onPress={() => (router.canGoBack() ? router.back() : router.replace('/accueil'))} style={styles.hbtn}>
-            <Ionicons name="close" size={26} color={Afryko.text} />
+            <Ionicons name="close" size={26} color={Afylo.text} />
           </Pressable>
           <Text style={styles.title}>Nouvelle publication</Text>
           <View style={{ width: 40 }} />
@@ -196,7 +196,7 @@ export default function PostNew() {
             </View>
           ) : (
             <View style={styles.empty}>
-              <Ionicons name="images-outline" size={34} color={Afryko.textFaint} />
+              <Ionicons name="images-outline" size={34} color={Afylo.textFaint} />
               <Text style={styles.emptyHint}>Ajoute des photos ou une vidéo</Text>
             </View>
           )}
@@ -214,13 +214,13 @@ export default function PostNew() {
             ))}
             {media.length < MAX_MEDIA && (
               <Pressable onPress={addImages} style={styles.addTile}>
-                <Ionicons name="add" size={26} color={Afryko.violet} />
+                <Ionicons name="add" size={26} color={Afylo.violet} />
                 <Text style={styles.addTileText}>Photos</Text>
               </Pressable>
             )}
             {media.length < MAX_MEDIA && (
               <Pressable onPress={addVideo} style={styles.addTile}>
-                <Ionicons name="videocam" size={22} color={Afryko.violet} />
+                <Ionicons name="videocam" size={22} color={Afylo.violet} />
                 <Text style={styles.addTileText}>Vidéo</Text>
               </Pressable>
             )}
@@ -228,14 +228,14 @@ export default function PostNew() {
 
           {/* ---- Son (écoutable) ---- */}
           <Pressable onPress={() => setSoundOpen(true)} style={styles.soundBtn}>
-            <Ionicons name="musical-notes" size={20} color={sound ? Afryko.violet : Afryko.textDim} />
-            <Text style={[styles.soundBtnText, sound && { color: Afryko.text, fontFamily: Font.semibold }]} numberOfLines={1}>
+            <Ionicons name="musical-notes" size={20} color={sound ? Afylo.violet : Afylo.textDim} />
+            <Text style={[styles.soundBtnText, sound && { color: Afylo.text, fontFamily: Font.semibold }]} numberOfLines={1}>
               {sound ? `${sound.title} · ${sound.artist}` : 'Ajouter un son (écoute avant)'}
             </Text>
             {sound ? (
-              <Ionicons name="close-circle" size={20} color={Afryko.textFaint} onPress={() => setSound(null)} />
+              <Ionicons name="close-circle" size={20} color={Afylo.textFaint} onPress={() => setSound(null)} />
             ) : (
-              <Ionicons name="chevron-forward" size={18} color={Afryko.textFaint} />
+              <Ionicons name="chevron-forward" size={18} color={Afylo.textFaint} />
             )}
           </Pressable>
 
@@ -245,7 +245,7 @@ export default function PostNew() {
             value={caption}
             onChangeText={onCaptionChange}
             placeholder="Écris une légende…  @ pour mentionner"
-            placeholderTextColor={Afryko.textFaint}
+            placeholderTextColor={Afylo.textFaint}
             multiline
           />
           {mentionResults.length > 0 && (
@@ -257,7 +257,7 @@ export default function PostNew() {
                     <Text style={styles.mentionName} numberOfLines={1}>{p.display_name || p.handle}</Text>
                     <Text style={styles.mentionHandle} numberOfLines={1}>@{p.handle}</Text>
                   </View>
-                  <Ionicons name="at" size={18} color={Afryko.violet} />
+                  <Ionicons name="at" size={18} color={Afylo.violet} />
                 </Pressable>
               ))}
             </View>
@@ -265,17 +265,17 @@ export default function PostNew() {
 
           {/* ---- Produits (interrupteurs) ---- */}
           <View style={styles.sectionRow}>
-            <Ionicons name="pricetags" size={18} color={Afryko.violet} />
+            <Ionicons name="pricetags" size={18} color={Afylo.violet} />
             <Text style={styles.section}>Attacher des produits</Text>
             <Text style={styles.count}>{selected.size}/{MAX_PRODUCTS}</Text>
           </View>
           <Text style={styles.sectionHint}>Les produits liés affichent un bouton « Acheter » sur ta publication.</Text>
 
-          {loadingProducts && <ActivityIndicator color={Afryko.violet} style={{ marginTop: 16 }} />}
+          {loadingProducts && <ActivityIndicator color={Afylo.violet} style={{ marginTop: 16 }} />}
 
           {session && !loadingProducts && products.length === 0 && (
             <Pressable onPress={() => router.push('/product-new')} style={styles.emptyProducts}>
-              <Ionicons name="add-circle-outline" size={20} color={Afryko.violet} />
+              <Ionicons name="add-circle-outline" size={20} color={Afylo.violet} />
               <Text style={styles.emptyProductsText}>Aucun produit — crée-en un d'abord</Text>
             </Pressable>
           )}
@@ -320,10 +320,10 @@ function StageVideo({ uri }: { uri: string }) {
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: Afryko.bg },
+  root: { flex: 1, backgroundColor: Afylo.bg },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 12, paddingVertical: 8 },
   hbtn: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
-  title: { color: Afryko.text, fontSize: 18, fontFamily: Font.bold },
+  title: { color: Afylo.text, fontSize: 18, fontFamily: Font.bold },
 
   stage: { aspectRatio: 4 / 5, borderRadius: Radius.lg, backgroundColor: '#000', overflow: 'hidden' },
   counter: { position: 'absolute', top: 10, right: 10, backgroundColor: '#000000AA', borderRadius: Radius.pill, paddingHorizontal: 10, paddingVertical: 4 },
@@ -332,48 +332,48 @@ const styles = StyleSheet.create({
   stageBtn: { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: '#000000AA', borderRadius: Radius.pill, paddingHorizontal: 12, height: 34 },
   stageBtnText: { color: '#fff', fontSize: 13, fontFamily: Font.semibold },
 
-  empty: { aspectRatio: 4 / 5, borderRadius: Radius.lg, borderWidth: 1.5, borderStyle: 'dashed', borderColor: Afryko.border, backgroundColor: Afryko.surface, alignItems: 'center', justifyContent: 'center', gap: 8 },
-  emptyHint: { color: Afryko.textDim, fontSize: 14 },
+  empty: { aspectRatio: 4 / 5, borderRadius: Radius.lg, borderWidth: 1.5, borderStyle: 'dashed', borderColor: Afylo.border, backgroundColor: Afylo.surface, alignItems: 'center', justifyContent: 'center', gap: 8 },
+  emptyHint: { color: Afylo.textDim, fontSize: 14 },
 
   film: { gap: 10, paddingVertical: 12 },
-  thumb: { width: 62, height: 62, borderRadius: 12, overflow: 'hidden', borderWidth: 2, borderColor: 'transparent', backgroundColor: Afryko.surfaceAlt },
-  thumbOn: { borderColor: Afryko.violet },
+  thumb: { width: 62, height: 62, borderRadius: 12, overflow: 'hidden', borderWidth: 2, borderColor: 'transparent', backgroundColor: Afylo.surfaceAlt },
+  thumbOn: { borderColor: Afylo.violet },
   thumbImg: { width: '100%', height: '100%' },
   thumbVideo: { position: 'absolute', left: 4, bottom: 4, width: 18, height: 18, borderRadius: 9, backgroundColor: '#000000AA', alignItems: 'center', justifyContent: 'center' },
   thumbX: { position: 'absolute', top: 2, right: 2, width: 18, height: 18, borderRadius: 9, backgroundColor: '#000000AA', alignItems: 'center', justifyContent: 'center' },
-  addTile: { width: 62, height: 62, borderRadius: 12, borderWidth: 1.5, borderStyle: 'dashed', borderColor: Afryko.violet, alignItems: 'center', justifyContent: 'center', gap: 2 },
-  addTileText: { color: Afryko.violet, fontSize: 11, fontFamily: Font.semibold },
+  addTile: { width: 62, height: 62, borderRadius: 12, borderWidth: 1.5, borderStyle: 'dashed', borderColor: Afylo.violet, alignItems: 'center', justifyContent: 'center', gap: 2 },
+  addTileText: { color: Afylo.violet, fontSize: 11, fontFamily: Font.semibold },
 
-  soundBtn: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: Afryko.surface, borderWidth: 1, borderColor: Afryko.border, borderRadius: Radius.md, paddingHorizontal: 14, height: 50, marginTop: 4 },
-  soundBtnText: { flex: 1, color: Afryko.textDim, fontSize: 15, fontFamily: Font.regular },
+  soundBtn: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: Afylo.surface, borderWidth: 1, borderColor: Afylo.border, borderRadius: Radius.md, paddingHorizontal: 14, height: 50, marginTop: 4 },
+  soundBtnText: { flex: 1, color: Afylo.textDim, fontSize: 15, fontFamily: Font.regular },
 
-  input: { backgroundColor: Afryko.surface, borderRadius: Radius.md, borderWidth: 1, borderColor: Afryko.border, color: Afryko.text, fontSize: 15, paddingHorizontal: 14, marginTop: 12 },
+  input: { backgroundColor: Afylo.surface, borderRadius: Radius.md, borderWidth: 1, borderColor: Afylo.border, color: Afylo.text, fontSize: 15, paddingHorizontal: 14, marginTop: 12 },
   caption: { minHeight: 90, textAlignVertical: 'top', paddingTop: 12, paddingBottom: 12 },
 
-  mentionBox: { backgroundColor: Afryko.surface, borderWidth: 1, borderColor: Afryko.border, borderRadius: Radius.md, marginTop: 6, overflow: 'hidden' },
-  mentionRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 12, paddingVertical: 8, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: Afryko.border },
-  mentionName: { color: Afryko.text, fontSize: 14, fontFamily: Font.semibold },
-  mentionHandle: { color: Afryko.textDim, fontSize: 12 },
+  mentionBox: { backgroundColor: Afylo.surface, borderWidth: 1, borderColor: Afylo.border, borderRadius: Radius.md, marginTop: 6, overflow: 'hidden' },
+  mentionRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 12, paddingVertical: 8, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: Afylo.border },
+  mentionName: { color: Afylo.text, fontSize: 14, fontFamily: Font.semibold },
+  mentionHandle: { color: Afylo.textDim, fontSize: 12 },
 
   sectionRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 24 },
-  section: { color: Afryko.text, fontSize: 16, fontFamily: Font.bold },
-  count: { color: Afryko.violet, fontSize: 13, fontWeight: '700', marginLeft: 'auto' },
-  sectionHint: { color: Afryko.textDim, fontSize: 13, marginTop: 4, lineHeight: 19 },
+  section: { color: Afylo.text, fontSize: 16, fontFamily: Font.bold },
+  count: { color: Afylo.violet, fontSize: 13, fontWeight: '700', marginLeft: 'auto' },
+  sectionHint: { color: Afylo.textDim, fontSize: 13, marginTop: 4, lineHeight: 19 },
 
-  emptyProducts: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: Afryko.surface, borderRadius: Radius.md, padding: 14, marginTop: 12, borderWidth: 1, borderColor: Afryko.border },
-  emptyProductsText: { color: Afryko.violet, fontWeight: '700', fontSize: 14 },
+  emptyProducts: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: Afylo.surface, borderRadius: Radius.md, padding: 14, marginTop: 12, borderWidth: 1, borderColor: Afylo.border },
+  emptyProductsText: { color: Afylo.violet, fontWeight: '700', fontSize: 14 },
 
   prodList: { gap: 10, marginTop: 12 },
-  prodChip: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: Afryko.surface, borderRadius: Radius.md, padding: 8, borderWidth: 1.5, borderColor: Afryko.border },
-  prodChipOn: { borderColor: Afryko.violet, backgroundColor: '#FBEBE0' },
-  prodThumb: { width: 44, height: 44, borderRadius: 8, backgroundColor: Afryko.surfaceAlt },
-  prodTitle: { color: Afryko.text, fontSize: 14, fontWeight: '700' },
-  prodPrice: { color: Afryko.gold, fontSize: 13, fontWeight: '800', marginTop: 1 },
-  prodPriceOld: { color: Afryko.textFaint, fontSize: 11, fontWeight: '600', textDecorationLine: 'line-through' },
-  switch: { width: 46, height: 28, borderRadius: 14, backgroundColor: Afryko.surfaceAlt, borderWidth: 1, borderColor: Afryko.border, padding: 3, justifyContent: 'center' },
-  switchOn: { backgroundColor: Afryko.violet, borderColor: Afryko.violet },
+  prodChip: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: Afylo.surface, borderRadius: Radius.md, padding: 8, borderWidth: 1.5, borderColor: Afylo.border },
+  prodChipOn: { borderColor: Afylo.violet, backgroundColor: '#FBEBE0' },
+  prodThumb: { width: 44, height: 44, borderRadius: 8, backgroundColor: Afylo.surfaceAlt },
+  prodTitle: { color: Afylo.text, fontSize: 14, fontWeight: '700' },
+  prodPrice: { color: Afylo.gold, fontSize: 13, fontWeight: '800', marginTop: 1 },
+  prodPriceOld: { color: Afylo.textFaint, fontSize: 11, fontWeight: '600', textDecorationLine: 'line-through' },
+  switch: { width: 46, height: 28, borderRadius: 14, backgroundColor: Afylo.surfaceAlt, borderWidth: 1, borderColor: Afylo.border, padding: 3, justifyContent: 'center' },
+  switchOn: { backgroundColor: Afylo.violet, borderColor: Afylo.violet },
   knob: { width: 20, height: 20, borderRadius: 10, backgroundColor: '#fff', alignSelf: 'flex-start' },
   knobOn: { alignSelf: 'flex-end' },
 
-  error: { color: Afryko.live, fontSize: 14, marginTop: 16, fontWeight: '600' },
+  error: { color: Afylo.live, fontSize: 14, marginTop: 16, fontWeight: '600' },
 });

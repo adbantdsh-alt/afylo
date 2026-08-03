@@ -6,20 +6,20 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Avatar } from '@/components/ui-kit';
 import { VerifiedBadge, verifiedKind } from '@/components/verified';
-import { Afryko, Font, Radius, Type } from '@/constants/brand';
+import { Afylo, Font, Radius, Type } from '@/constants/brand';
 import { listConversations, listNotifications, markNotifsRead, type Conversation, type Notif } from '@/lib/db';
 import { timeAgo } from '@/lib/feed-map';
 import { face } from '@/lib/mock';
 
 const ICON: Record<Notif['kind'], { name: keyof typeof Ionicons.glyphMap; color: string }> = {
-  follow: { name: 'person-add', color: Afryko.violet },
-  live: { name: 'radio', color: Afryko.live },
-  sale: { name: 'bag-check', color: Afryko.green },
-  commission: { name: 'cash', color: Afryko.gold },
-  like: { name: 'heart', color: Afryko.live },
-  comment: { name: 'chatbubble', color: Afryko.violet2 },
-  mention: { name: 'at', color: Afryko.violet },
-  repost: { name: 'repeat', color: Afryko.green },
+  follow: { name: 'person-add', color: Afylo.violet },
+  live: { name: 'radio', color: Afylo.live },
+  sale: { name: 'bag-check', color: Afylo.green },
+  commission: { name: 'cash', color: Afylo.gold },
+  like: { name: 'heart', color: Afylo.live },
+  comment: { name: 'chatbubble', color: Afylo.violet2 },
+  mention: { name: 'at', color: Afylo.violet },
+  repost: { name: 'repeat', color: Afylo.green },
 };
 
 function notifText(n: Notif): string {
@@ -77,14 +77,14 @@ export default function Notifications() {
 
   return (
     <View style={styles.root}>
-      <SafeAreaView edges={['top']} style={{ backgroundColor: Afryko.bg }}>
+      <SafeAreaView edges={['top']} style={{ backgroundColor: Afylo.bg }}>
         <View style={styles.header}>
           <Pressable onPress={() => (router.canGoBack() ? router.back() : router.replace('/accueil'))} style={styles.back}>
-            <Ionicons name="chevron-back" size={26} color={Afryko.text} />
+            <Ionicons name="chevron-back" size={26} color={Afylo.text} />
           </Pressable>
           <Text style={styles.title}>Notifications</Text>
           <Pressable onPress={() => router.push('/messages')} style={styles.back}>
-            <Ionicons name="mail-outline" size={22} color={Afryko.text} />
+            <Ionicons name="mail-outline" size={22} color={Afylo.text} />
           </Pressable>
         </View>
 
@@ -104,10 +104,10 @@ export default function Notifications() {
 
       <ScrollView contentContainerStyle={{ paddingVertical: 6, paddingBottom: 40 }} showsVerticalScrollIndicator={false}>
         {loading ? (
-          <ActivityIndicator color={Afryko.violet} style={{ marginTop: 34 }} />
+          <ActivityIndicator color={Afylo.violet} style={{ marginTop: 34 }} />
         ) : tab === 'messages' ? (
           convos.length === 0 ? (
-            <View style={styles.empty}><Ionicons name="chatbubbles-outline" size={40} color={Afryko.textFaint} /><Text style={styles.emptyText}>Aucun message.</Text></View>
+            <View style={styles.empty}><Ionicons name="chatbubbles-outline" size={40} color={Afylo.textFaint} /><Text style={styles.emptyText}>Aucun message.</Text></View>
           ) : (
             convos.map((c) => (
               <Pressable key={c.otherId} style={[styles.row, c.unread > 0 && styles.rowUnread]} onPress={() => router.push({ pathname: '/chat/[id]', params: { id: c.otherId, name: c.other?.display_name ?? '', avatar: c.other?.avatar_url ?? '' } })}>
@@ -124,7 +124,7 @@ export default function Notifications() {
             ))
           )
         ) : list.length === 0 ? (
-          <View style={styles.empty}><Ionicons name="notifications-off-outline" size={40} color={Afryko.textFaint} /><Text style={styles.emptyText}>{tab === 'all' ? 'Aucune notification pour l’instant.' : 'Rien dans cette catégorie.'}</Text></View>
+          <View style={styles.empty}><Ionicons name="notifications-off-outline" size={40} color={Afylo.textFaint} /><Text style={styles.emptyText}>{tab === 'all' ? 'Aucune notification pour l’instant.' : 'Rien dans cette catégorie.'}</Text></View>
         ) : (
           list.map((n) => (
             <Pressable key={n.id} style={[styles.row, !n.read_at && styles.rowUnread]} onPress={() => openNotif(n)}>
@@ -150,31 +150,31 @@ export default function Notifications() {
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: Afryko.bg },
+  root: { flex: 1, backgroundColor: Afylo.bg },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 12, paddingVertical: 8 },
   back: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
-  title: { ...Type.subtitle, color: Afryko.text },
+  title: { ...Type.subtitle, color: Afylo.text },
 
   tabs: { paddingHorizontal: 12, paddingBottom: 10, gap: 8 },
-  chip: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 14, paddingVertical: 8, borderRadius: Radius.pill, backgroundColor: Afryko.surface, borderWidth: 1, borderColor: Afryko.border },
-  chipOn: { backgroundColor: Afryko.violet, borderColor: Afryko.violet },
-  chipText: { color: Afryko.textDim, fontFamily: Font.semibold, fontSize: 13 },
+  chip: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 14, paddingVertical: 8, borderRadius: Radius.pill, backgroundColor: Afylo.surface, borderWidth: 1, borderColor: Afylo.border },
+  chipOn: { backgroundColor: Afylo.violet, borderColor: Afylo.violet },
+  chipText: { color: Afylo.textDim, fontFamily: Font.semibold, fontSize: 13 },
   chipTextOn: { color: '#fff' },
-  chipDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: Afryko.live },
+  chipDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: Afylo.live },
 
   row: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, paddingVertical: 12 },
-  rowUnread: { backgroundColor: Afryko.violet + '0F' },
-  badge: { position: 'absolute', bottom: -2, right: -2, width: 20, height: 20, borderRadius: 10, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: Afryko.bg },
+  rowUnread: { backgroundColor: Afylo.violet + '0F' },
+  badge: { position: 'absolute', bottom: -2, right: -2, width: 20, height: 20, borderRadius: 10, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: Afylo.bg },
   textWrap: { flex: 1 },
   nameLine: { flexDirection: 'row', alignItems: 'center', gap: 5 },
-  text: { ...Type.small, color: Afryko.text, flexShrink: 1, lineHeight: 19 },
-  time: { ...Type.caption, color: Afryko.textFaint, marginTop: 2 },
+  text: { ...Type.small, color: Afylo.text, flexShrink: 1, lineHeight: 19 },
+  time: { ...Type.caption, color: Afylo.textFaint, marginTop: 2 },
 
-  mName: { ...Type.body, fontFamily: Font.semibold, color: Afryko.text },
-  mLast: { ...Type.small, color: Afryko.textDim, marginTop: 2 },
-  unreadPill: { minWidth: 20, height: 20, paddingHorizontal: 6, borderRadius: 10, backgroundColor: Afryko.violet, alignItems: 'center', justifyContent: 'center' },
+  mName: { ...Type.body, fontFamily: Font.semibold, color: Afylo.text },
+  mLast: { ...Type.small, color: Afylo.textDim, marginTop: 2 },
+  unreadPill: { minWidth: 20, height: 20, paddingHorizontal: 6, borderRadius: 10, backgroundColor: Afylo.violet, alignItems: 'center', justifyContent: 'center' },
   unreadPillText: { color: '#fff', fontFamily: Font.bold, fontSize: 11 },
 
   empty: { alignItems: 'center', paddingVertical: 60, gap: 10 },
-  emptyText: { ...Type.body, color: Afryko.textDim },
+  emptyText: { ...Type.body, color: Afylo.textDim },
 });

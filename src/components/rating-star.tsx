@@ -2,7 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useEffect, useRef } from 'react';
 import { Animated, StyleSheet, View } from 'react-native';
 
-import { Afryko } from '@/constants/brand';
+import { Afylo } from '@/constants/brand';
 
 /**
  * Étoile remplie proportionnellement (0 → 1) avec un pop d'animation à chaque changement.
@@ -11,8 +11,8 @@ import { Afryko } from '@/constants/brand';
 export function RatingStar({
   fill,
   size = 19,
-  color = Afryko.violet,
-  empty = Afryko.inkDim,
+  color = Afylo.violet,
+  empty = Afylo.inkDim,
 }: {
   fill: number;
   size?: number;

@@ -1,5 +1,5 @@
 /**
- * Afryko — moteur de recommandation vidéo (façon TikTok, adapté).
+ * Afylo — moteur de recommandation vidéo (façon TikTok, adapté).
  *
  * Un bon algo garde l'utilisateur : il mélange VIRALITÉ (taux d'engagement),
  * ABONNEMENTS (créateurs suivis), AFFINITÉ DE NICHE (ce que tu choisis / regardes),
@@ -62,7 +62,7 @@ export function rankPosts(posts: Post[], ctx: FeedCtx = {}): Post[] {
 }
 
 /* ------------------------------------------------------------------ *
- *  Afryko Creator Rewards — rémunération des créateurs à la vue
+ *  Afylo Creator Rewards — rémunération des créateurs à la vue
  * ------------------------------------------------------------------ */
 
 /** Barème officiel : 100 FCFA pour 1 000 vues qualifiées. */

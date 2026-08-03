@@ -8,7 +8,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Avatar, PillButton } from '@/components/ui-kit';
 import { Skeleton, SkeletonCircle } from '@/components/skeleton';
-import { Afryko, Font, Radius } from '@/constants/brand';
+import { Afylo, Font, Radius } from '@/constants/brand';
 import { useAuth } from '@/lib/auth';
 import { getMyProfile, updateMyProfile, uploadImage } from '@/lib/db';
 import { useMe } from '@/lib/me';
@@ -144,10 +144,10 @@ export default function EditProfile() {
 
   return (
     <View style={styles.root}>
-      <SafeAreaView edges={['top']} style={{ backgroundColor: Afryko.bg }}>
+      <SafeAreaView edges={['top']} style={{ backgroundColor: Afylo.bg }}>
         <View style={styles.header}>
           <Pressable onPress={() => (router.canGoBack() ? router.back() : router.replace('/accueil'))} style={styles.hbtn}>
-            <Ionicons name="close" size={26} color={Afryko.text} />
+            <Ionicons name="close" size={26} color={Afylo.text} />
           </Pressable>
           <Text style={styles.title}>Modifier le profil</Text>
           <View style={{ width: 40 }} />
@@ -242,7 +242,7 @@ function Field({
         value={value}
         onChangeText={onChange}
         placeholder={placeholder}
-        placeholderTextColor={Afryko.textFaint}
+        placeholderTextColor={Afylo.textFaint}
         multiline={multiline}
         autoCapitalize={multiline ? 'sentences' : 'none'}
         autoCorrect={false}
@@ -252,22 +252,22 @@ function Field({
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: Afryko.bg },
+  root: { flex: 1, backgroundColor: Afylo.bg },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 12, paddingVertical: 8 },
   hbtn: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
-  title: { color: Afryko.text, fontSize: 18, fontFamily: Font.bold },
+  title: { color: Afylo.text, fontSize: 18, fontFamily: Font.bold },
 
-  bannerEdit: { height: 150, backgroundColor: Afryko.surfaceAlt, overflow: 'hidden' },
+  bannerEdit: { height: 150, backgroundColor: Afylo.surfaceAlt, overflow: 'hidden' },
   bannerScrim: { ...StyleSheet.absoluteFillObject, alignItems: 'center', justifyContent: 'center', gap: 8 },
   bannerCam: { width: 42, height: 42, borderRadius: 21, backgroundColor: '#00000088', alignItems: 'center', justifyContent: 'center' },
   bannerHint: { color: '#fff', fontSize: 12, fontFamily: Font.semibold, backgroundColor: '#00000077', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 10, overflow: 'hidden' },
   avatarWrap: { alignItems: 'center', marginTop: -46, gap: 10 },
-  avatarEdit: { borderRadius: 50, borderWidth: 4, borderColor: Afryko.bg, backgroundColor: Afryko.bg },
-  cameraBadge: { position: 'absolute', bottom: 0, right: 0, width: 34, height: 34, borderRadius: 17, backgroundColor: Afryko.violet, alignItems: 'center', justifyContent: 'center', borderWidth: 3, borderColor: Afryko.bg },
-  changePhoto: { color: Afryko.violet, fontSize: 14, fontFamily: Font.semibold },
-  demoNote: { color: Afryko.textFaint, fontSize: 12, textAlign: 'center', marginTop: 16 },
+  avatarEdit: { borderRadius: 50, borderWidth: 4, borderColor: Afylo.bg, backgroundColor: Afylo.bg },
+  cameraBadge: { position: 'absolute', bottom: 0, right: 0, width: 34, height: 34, borderRadius: 17, backgroundColor: Afylo.violet, alignItems: 'center', justifyContent: 'center', borderWidth: 3, borderColor: Afylo.bg },
+  changePhoto: { color: Afylo.violet, fontSize: 14, fontFamily: Font.semibold },
+  demoNote: { color: Afylo.textFaint, fontSize: 12, textAlign: 'center', marginTop: 16 },
 
-  label: { color: Afryko.text, fontSize: 14, fontWeight: '700', marginBottom: 8 },
-  input: { backgroundColor: Afryko.surface, borderRadius: Radius.md, borderWidth: 1, borderColor: Afryko.border, color: Afryko.text, fontSize: 15, paddingHorizontal: 14, height: 50 },
-  error: { color: Afryko.live, fontSize: 14, marginTop: 16, fontWeight: '600' },
+  label: { color: Afylo.text, fontSize: 14, fontWeight: '700', marginBottom: 8 },
+  input: { backgroundColor: Afylo.surface, borderRadius: Radius.md, borderWidth: 1, borderColor: Afylo.border, color: Afylo.text, fontSize: 15, paddingHorizontal: 14, height: 50 },
+  error: { color: Afylo.live, fontSize: 14, marginTop: 16, fontWeight: '600' },
 });

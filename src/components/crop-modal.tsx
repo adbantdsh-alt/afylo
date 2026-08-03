@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react';
 import { ActivityIndicator, Image as RNImage, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { Afryko, Font, Radius } from '@/constants/brand';
+import { Afylo, Font, Radius } from '@/constants/brand';
 
 type Preset = { key: string; label: string; ratio: number | null }; // null = Original
 const PRESETS: Preset[] = [
@@ -77,7 +77,7 @@ export function CropModal({
             <Pressable onPress={onClose} hitSlop={10}><Ionicons name="close" size={26} color="#fff" /></Pressable>
             <Text style={styles.title}>Recadrer</Text>
             <Pressable onPress={apply} hitSlop={10} disabled={busy}>
-              {busy ? <ActivityIndicator color={Afryko.violet2} /> : <Text style={styles.done}>Terminé</Text>}
+              {busy ? <ActivityIndicator color={Afylo.violet2} /> : <Text style={styles.done}>Terminé</Text>}
             </Pressable>
           </View>
         </SafeAreaView>
@@ -124,12 +124,12 @@ const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: '#000' },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, height: 52 },
   title: { color: '#fff', fontSize: 17, fontFamily: Font.bold },
-  done: { color: Afryko.violet2, fontSize: 16, fontFamily: Font.bold },
+  done: { color: Afylo.violet2, fontSize: 16, fontFamily: Font.bold },
   stageWrap: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 16 },
   frame: { width: '100%', maxHeight: '100%', backgroundColor: '#111', borderRadius: 8, overflow: 'hidden' },
   presets: { flexDirection: 'row', justifyContent: 'center', gap: 10, paddingVertical: 14 },
   preset: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: Radius.pill, backgroundColor: '#ffffff1A' },
-  presetOn: { backgroundColor: Afryko.violet },
+  presetOn: { backgroundColor: Afylo.violet },
   presetText: { color: '#ffffffcc', fontFamily: Font.semibold, fontSize: 14 },
   tools: { flexDirection: 'row', justifyContent: 'center', gap: 28, paddingBottom: 28, paddingTop: 4 },
   tool: { alignItems: 'center', gap: 4 },

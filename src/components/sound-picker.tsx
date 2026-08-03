@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { Afryko, Font, Radius, Type } from '@/constants/brand';
+import { Afylo, Font, Radius, Type } from '@/constants/brand';
 import { searchSounds, type Sound } from '@/lib/sounds';
 
 export function SoundPicker({ visible, onSelect, onClose }: { visible: boolean; onSelect: (s: Sound) => void; onClose: () => void }) {
@@ -33,15 +33,15 @@ export function SoundPicker({ visible, onSelect, onClose }: { visible: boolean; 
   return (
     <Modal visible={visible} animationType="slide" onRequestClose={close}>
       <View style={styles.root}>
-        <SafeAreaView edges={['top']} style={{ backgroundColor: Afryko.bg }}>
+        <SafeAreaView edges={['top']} style={{ backgroundColor: Afylo.bg }}>
           <View style={styles.header}>
-            <Ionicons name="close" size={26} color={Afryko.text} onPress={close} />
+            <Ionicons name="close" size={26} color={Afylo.text} onPress={close} />
             <Text style={styles.title}>Ajouter un son</Text>
             <View style={{ width: 26 }} />
           </View>
           <View style={styles.searchBox}>
-            <Ionicons name="search" size={18} color={Afryko.textDim} />
-            <TextInput style={styles.searchInput} value={q} onChangeText={setQ} placeholder="Rechercher un son, un artiste" placeholderTextColor={Afryko.textFaint} autoFocus />
+            <Ionicons name="search" size={18} color={Afylo.textDim} />
+            <TextInput style={styles.searchInput} value={q} onChangeText={setQ} placeholder="Rechercher un son, un artiste" placeholderTextColor={Afylo.textFaint} autoFocus />
           </View>
         </SafeAreaView>
 
@@ -74,20 +74,20 @@ export function SoundPicker({ visible, onSelect, onClose }: { visible: boolean; 
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: Afryko.bg },
+  root: { flex: 1, backgroundColor: Afylo.bg },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 14, paddingVertical: 8 },
-  title: { ...Type.subtitle, color: Afryko.text },
-  searchBox: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: Afryko.surfaceAlt, borderRadius: Radius.pill, paddingHorizontal: 14, height: 44, marginHorizontal: 12, marginBottom: 6 },
-  searchInput: { flex: 1, ...Type.body, fontSize: 15, color: Afryko.text, height: '100%' },
-  section: { ...Type.small, fontFamily: Font.semibold, color: Afryko.textDim, marginBottom: 8, marginLeft: 4 },
+  title: { ...Type.subtitle, color: Afylo.text },
+  searchBox: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: Afylo.surfaceAlt, borderRadius: Radius.pill, paddingHorizontal: 14, height: 44, marginHorizontal: 12, marginBottom: 6 },
+  searchInput: { flex: 1, ...Type.body, fontSize: 15, color: Afylo.text, height: '100%' },
+  section: { ...Type.small, fontFamily: Font.semibold, color: Afylo.textDim, marginBottom: 8, marginLeft: 4 },
   row: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 8 },
   coverWrap: { width: 52, height: 52, borderRadius: 10, overflow: 'hidden' },
-  cover: { width: 52, height: 52, backgroundColor: Afryko.surfaceAlt },
+  cover: { width: 52, height: 52, backgroundColor: Afylo.surfaceAlt },
   playOverlay: { ...StyleSheet.absoluteFillObject, alignItems: 'center', justifyContent: 'center', backgroundColor: '#00000055' },
-  name: { ...Type.body, fontFamily: Font.semibold, color: Afryko.text },
-  meta: { ...Type.caption, color: Afryko.textDim, marginTop: 2 },
-  bar: { height: 3, borderRadius: 2, backgroundColor: Afryko.surfaceAlt, marginTop: 6, overflow: 'hidden' },
-  barFill: { height: 3, borderRadius: 2, backgroundColor: Afryko.violet },
-  useBtn: { backgroundColor: Afryko.violet, paddingHorizontal: 14, paddingVertical: 8, borderRadius: Radius.pill },
+  name: { ...Type.body, fontFamily: Font.semibold, color: Afylo.text },
+  meta: { ...Type.caption, color: Afylo.textDim, marginTop: 2 },
+  bar: { height: 3, borderRadius: 2, backgroundColor: Afylo.surfaceAlt, marginTop: 6, overflow: 'hidden' },
+  barFill: { height: 3, borderRadius: 2, backgroundColor: Afylo.violet },
+  useBtn: { backgroundColor: Afylo.violet, paddingHorizontal: 14, paddingVertical: 8, borderRadius: Radius.pill },
   useText: { color: '#fff', fontFamily: Font.semibold, fontSize: 13 },
 });

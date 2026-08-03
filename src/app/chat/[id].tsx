@@ -9,7 +9,7 @@ import { ActivityIndicator, KeyboardAvoidingView, Linking, Platform, Pressable, 
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Avatar } from '@/components/ui-kit';
-import { Afryko, Font, Radius, Type } from '@/constants/brand';
+import { Afylo, Font, Radius, Type } from '@/constants/brand';
 import { canMessage, getProfileByHandle, getThread, listMyProducts, markThreadRead, sendMessage, uploadFile, uploadImage, type Message } from '@/lib/db';
 import { useMe } from '@/lib/me';
 import { face } from '@/lib/mock';
@@ -25,7 +25,7 @@ export default function Chat() {
   const params = useLocalSearchParams<{ id: string; name?: string; avatar?: string }>();
   const rawId = params.id;
   const name = params.name || 'Discussion';
-  const avatar = params.avatar || face(rawId ?? 'afryko');
+  const avatar = params.avatar || face(rawId ?? 'afylo');
 
   const [rid, setRid] = useState<string | null>(null); // id profil résolu (UUID)
   const [messages, setMessages] = useState<Message[]>([]);
@@ -145,10 +145,10 @@ export default function Chat() {
 
   return (
     <View style={styles.root}>
-      <SafeAreaView edges={['top']} style={{ backgroundColor: Afryko.surface }}>
+      <SafeAreaView edges={['top']} style={{ backgroundColor: Afylo.surface }}>
         <View style={styles.header}>
           <Pressable onPress={() => (router.canGoBack() ? router.back() : router.replace('/messages'))} style={styles.back}>
-            <Ionicons name="chevron-back" size={26} color={Afryko.text} />
+            <Ionicons name="chevron-back" size={26} color={Afylo.text} />
           </Pressable>
           <Pressable onPress={() => router.push({ pathname: '/creator/[id]', params: { id: rid ?? rawId, name, avatar } })} style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
             <Avatar uri={avatar} size={38} />
@@ -162,7 +162,7 @@ export default function Chat() {
 
       <ScrollView ref={scrollRef} contentContainerStyle={styles.list} showsVerticalScrollIndicator={false}>
         {loading ? (
-          <ActivityIndicator color={Afryko.violet} style={{ marginTop: 30 }} />
+          <ActivityIndicator color={Afylo.violet} style={{ marginTop: 30 }} />
         ) : messages.length === 0 ? (
           <Text style={styles.hint}>Envoie le premier message à {name}.</Text>
         ) : (
@@ -187,7 +187,7 @@ export default function Chat() {
                       <Text style={styles.pickTitle} numberOfLines={1}>{p.title}</Text>
                       <Text style={styles.pickPrice}>{p.price_cfa.toLocaleString('fr-FR')} FCFA</Text>
                     </View>
-                    <Ionicons name="send" size={18} color={Afryko.violet} />
+                    <Ionicons name="send" size={18} color={Afylo.violet} />
                   </Pressable>
                 ))}
               </ScrollView>
@@ -205,7 +205,7 @@ export default function Chat() {
               <AttachOption icon="image" color="#8B5CF6" label="Photo" onPress={() => { setAttachOpen(false); attachImage(); }} />
               <AttachOption icon="videocam" color="#EF4444" label="Vidéo" onPress={attachVideo} />
               <AttachOption icon="document" color="#3B82F6" label="Fichier" onPress={attachFile} />
-              <AttachOption icon="pricetag" color={Afryko.violet} label="Produit" onPress={() => { setAttachOpen(false); setPickerOpen(true); }} />
+              <AttachOption icon="pricetag" color={Afylo.violet} label="Produit" onPress={() => { setAttachOpen(false); setPickerOpen(true); }} />
             </View>
           </View>
         </Pressable>
@@ -213,12 +213,12 @@ export default function Chat() {
 
       {/* Barre de saisie / bandeau confidentialité */}
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <SafeAreaView edges={['bottom']} style={{ backgroundColor: Afryko.surface }}>
+        <SafeAreaView edges={['bottom']} style={{ backgroundColor: Afylo.surface }}>
           {blocked ? (
-            <View style={styles.blockedBar}><Ionicons name="lock-closed" size={15} color={Afryko.textDim} /><Text style={styles.blockedText}>{blocked}</Text></View>
+            <View style={styles.blockedBar}><Ionicons name="lock-closed" size={15} color={Afylo.textDim} /><Text style={styles.blockedText}>{blocked}</Text></View>
           ) : recording ? (
             <View style={styles.inputBar}>
-              <Pressable onPress={cancelRec} style={styles.tool}><Ionicons name="trash" size={22} color={Afryko.live} /></Pressable>
+              <Pressable onPress={cancelRec} style={styles.tool}><Ionicons name="trash" size={22} color={Afylo.live} /></Pressable>
               <View style={styles.recPill}>
                 <View style={styles.recDot} />
                 <Text style={styles.recTime}>{Math.floor(recSecs / 60)}:{String(recSecs % 60).padStart(2, '0')}</Text>
@@ -228,8 +228,8 @@ export default function Chat() {
             </View>
           ) : (
             <View style={styles.inputBar}>
-              <Pressable onPress={() => setAttachOpen(true)} style={styles.tool}><Ionicons name="add-circle" size={28} color={Afryko.violet} /></Pressable>
-              <TextInput style={styles.input} value={text} onChangeText={setText} placeholder="Message" placeholderTextColor={Afryko.textFaint} onSubmitEditing={sendText} returnKeyType="send" />
+              <Pressable onPress={() => setAttachOpen(true)} style={styles.tool}><Ionicons name="add-circle" size={28} color={Afylo.violet} /></Pressable>
+              <TextInput style={styles.input} value={text} onChangeText={setText} placeholder="Message" placeholderTextColor={Afylo.textFaint} onSubmitEditing={sendText} returnKeyType="send" />
               {text.trim() ? (
                 <Pressable onPress={sendText} disabled={sending} style={[styles.send, sending && { opacity: 0.4 }]}><Ionicons name="send" size={18} color="#fff" /></Pressable>
               ) : (
@@ -290,9 +290,9 @@ function Bubble({ m, mine }: { m: Message; mine: boolean }) {
     return (
       <View style={[styles.bubbleWrap, align]}>
         <Pressable style={[styles.bubble, mine ? styles.bubbleMine : styles.bubbleTheirs, styles.fileRow]} onPress={() => Linking.openURL(m.media_url!)}>
-          <Ionicons name="document" size={26} color={mine ? '#fff' : Afryko.violet} />
+          <Ionicons name="document" size={26} color={mine ? '#fff' : Afylo.violet} />
           <Text style={[styles.fileName, mine && { color: '#fff' }]} numberOfLines={1}>{m.file_name || 'Fichier'}</Text>
-          <Ionicons name="download-outline" size={18} color={mine ? '#ffffffcc' : Afryko.textDim} />
+          <Ionicons name="download-outline" size={18} color={mine ? '#ffffffcc' : Afylo.textDim} />
         </Pressable>
       </View>
     );
@@ -319,9 +319,9 @@ function VoiceBubble({ m, mine }: { m: Message; mine: boolean }) {
   return (
     <View style={[styles.bubbleWrap, mine ? styles.right : styles.left]}>
       <View style={[styles.bubble, mine ? styles.bubbleMine : styles.bubbleTheirs, styles.voiceRow]}>
-        <Pressable onPress={toggle}><Ionicons name={playing ? 'pause' : 'play'} size={22} color={mine ? '#fff' : Afryko.violet} /></Pressable>
-        <View style={[styles.waveform, { backgroundColor: mine ? '#ffffff55' : Afryko.border }]} />
-        <Text style={[styles.voiceTime, { color: mine ? '#fff' : Afryko.textDim }]}>{Math.floor(dur / 60)}:{String(Math.round(dur) % 60).padStart(2, '0')}</Text>
+        <Pressable onPress={toggle}><Ionicons name={playing ? 'pause' : 'play'} size={22} color={mine ? '#fff' : Afylo.violet} /></Pressable>
+        <View style={[styles.waveform, { backgroundColor: mine ? '#ffffff55' : Afylo.border }]} />
+        <Text style={[styles.voiceTime, { color: mine ? '#fff' : Afylo.textDim }]}>{Math.floor(dur / 60)}:{String(Math.round(dur) % 60).padStart(2, '0')}</Text>
       </View>
     </View>
   );
@@ -337,61 +337,61 @@ function AttachOption({ icon, color, label, onPress }: { icon: keyof typeof Ioni
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: Afryko.bg },
-  header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 8, paddingVertical: 6, backgroundColor: Afryko.surface, borderBottomWidth: 1, borderBottomColor: Afryko.border },
+  root: { flex: 1, backgroundColor: Afylo.bg },
+  header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 8, paddingVertical: 6, backgroundColor: Afylo.surface, borderBottomWidth: 1, borderBottomColor: Afylo.border },
   back: { width: 36, height: 40, alignItems: 'center', justifyContent: 'center' },
-  name: { ...Type.body, fontFamily: Font.semibold, color: Afryko.text },
-  status: { ...Type.caption, color: Afryko.textDim, marginTop: 1 },
+  name: { ...Type.body, fontFamily: Font.semibold, color: Afylo.text },
+  status: { ...Type.caption, color: Afylo.textDim, marginTop: 1 },
 
   list: { padding: 14, paddingBottom: 20, gap: 8 },
-  hint: { color: Afryko.textDim, fontSize: 14, textAlign: 'center', marginTop: 24, paddingHorizontal: 20 },
+  hint: { color: Afylo.textDim, fontSize: 14, textAlign: 'center', marginTop: 24, paddingHorizontal: 20 },
   bubbleWrap: { maxWidth: '80%' },
   left: { alignSelf: 'flex-start' },
   right: { alignSelf: 'flex-end' },
   bubble: { paddingHorizontal: 14, paddingVertical: 9, borderRadius: 20 },
-  bubbleMine: { backgroundColor: Afryko.violet, borderBottomRightRadius: 6 },
-  bubbleTheirs: { backgroundColor: Afryko.surface, borderBottomLeftRadius: 6, borderWidth: 1, borderColor: Afryko.border },
-  bubbleText: { ...Type.body, fontSize: 15, color: Afryko.text },
-  bubbleTime: { ...Type.caption, fontSize: 10, color: Afryko.textFaint, alignSelf: 'flex-end', marginTop: 3 },
+  bubbleMine: { backgroundColor: Afylo.violet, borderBottomRightRadius: 6 },
+  bubbleTheirs: { backgroundColor: Afylo.surface, borderBottomLeftRadius: 6, borderWidth: 1, borderColor: Afylo.border },
+  bubbleText: { ...Type.body, fontSize: 15, color: Afylo.text },
+  bubbleTime: { ...Type.caption, fontSize: 10, color: Afylo.textFaint, alignSelf: 'flex-end', marginTop: 3 },
 
-  mediaBubble: { width: 200, height: 240, borderRadius: 20, overflow: 'hidden', backgroundColor: Afryko.surfaceAlt },
+  mediaBubble: { width: 200, height: 240, borderRadius: 20, overflow: 'hidden', backgroundColor: Afylo.surfaceAlt },
   videoBox: { ...StyleSheet.absoluteFillObject, backgroundColor: '#111', alignItems: 'center', justifyContent: 'center' },
   voiceRow: { flexDirection: 'row', alignItems: 'center', gap: 10, minWidth: 170 },
   waveform: { flex: 1, height: 4, borderRadius: 2 },
   voiceTime: { ...Type.caption, fontSize: 11 },
   fileRow: { flexDirection: 'row', alignItems: 'center', gap: 10, minWidth: 180, maxWidth: 240 },
-  fileName: { ...Type.body, fontSize: 14, color: Afryko.text, flex: 1 },
+  fileName: { ...Type.body, fontSize: 14, color: Afylo.text, flex: 1 },
 
   attachGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 18, paddingVertical: 8, justifyContent: 'space-around' },
   attachOpt: { alignItems: 'center', gap: 8, width: 72 },
   attachIcon: { width: 56, height: 56, borderRadius: 28, alignItems: 'center', justifyContent: 'center' },
-  attachLabel: { ...Type.small, color: Afryko.text },
-  recPill: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: Afryko.bg, borderRadius: Radius.pill, paddingHorizontal: 16, height: 42, marginHorizontal: 4 },
-  recDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: Afryko.live },
-  recTime: { ...Type.body, fontSize: 15, color: Afryko.text, fontFamily: Font.semibold },
-  recLabel: { ...Type.small, color: Afryko.textDim },
+  attachLabel: { ...Type.small, color: Afylo.text },
+  recPill: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: Afylo.bg, borderRadius: Radius.pill, paddingHorizontal: 16, height: 42, marginHorizontal: 4 },
+  recDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: Afylo.live },
+  recTime: { ...Type.body, fontSize: 15, color: Afylo.text, fontFamily: Font.semibold },
+  recLabel: { ...Type.small, color: Afylo.textDim },
 
-  productCard: { width: 240, backgroundColor: Afryko.surface, borderRadius: 18, overflow: 'hidden', borderWidth: 1, borderColor: Afryko.border },
-  productImg: { width: '100%', height: 150, backgroundColor: Afryko.surfaceAlt },
+  productCard: { width: 240, backgroundColor: Afylo.surface, borderRadius: 18, overflow: 'hidden', borderWidth: 1, borderColor: Afylo.border },
+  productImg: { width: '100%', height: 150, backgroundColor: Afylo.surfaceAlt },
   productBody: { padding: 12 },
-  productTitle: { ...Type.body, fontSize: 15, fontFamily: Font.semibold, color: Afryko.text },
-  productPrice: { fontFamily: Font.bold, fontSize: 17, color: Afryko.text, marginTop: 4 },
-  buyBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, backgroundColor: Afryko.violet, borderRadius: Radius.pill, paddingVertical: 11, marginTop: 10 },
+  productTitle: { ...Type.body, fontSize: 15, fontFamily: Font.semibold, color: Afylo.text },
+  productPrice: { fontFamily: Font.bold, fontSize: 17, color: Afylo.text, marginTop: 4 },
+  buyBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, backgroundColor: Afylo.violet, borderRadius: Radius.pill, paddingVertical: 11, marginTop: 10 },
   buyText: { fontFamily: Font.semibold, fontSize: 14, color: '#fff' },
 
   overlay: { ...StyleSheet.absoluteFillObject, backgroundColor: '#00000066', justifyContent: 'flex-end', zIndex: 10 },
-  sheet: { backgroundColor: Afryko.bg, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 16, maxHeight: '60%' },
-  sheetHandle: { width: 40, height: 4, borderRadius: 2, backgroundColor: Afryko.border, alignSelf: 'center', marginBottom: 12 },
-  sheetTitle: { ...Type.subtitle, color: Afryko.text, marginBottom: 12 },
+  sheet: { backgroundColor: Afylo.bg, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 16, maxHeight: '60%' },
+  sheetHandle: { width: 40, height: 4, borderRadius: 2, backgroundColor: Afylo.border, alignSelf: 'center', marginBottom: 12 },
+  sheetTitle: { ...Type.subtitle, color: Afylo.text, marginBottom: 12 },
   pickRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 8 },
-  pickImg: { width: 48, height: 48, borderRadius: 10, backgroundColor: Afryko.surfaceAlt },
-  pickTitle: { ...Type.body, fontSize: 15, color: Afryko.text },
-  pickPrice: { ...Type.small, color: Afryko.textDim, marginTop: 2 },
+  pickImg: { width: 48, height: 48, borderRadius: 10, backgroundColor: Afylo.surfaceAlt },
+  pickTitle: { ...Type.body, fontSize: 15, color: Afylo.text },
+  pickPrice: { ...Type.small, color: Afylo.textDim, marginTop: 2 },
 
-  inputBar: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 10, paddingVertical: 8, gap: 4, backgroundColor: Afryko.surface, borderTopWidth: 1, borderTopColor: Afryko.border },
+  inputBar: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 10, paddingVertical: 8, gap: 4, backgroundColor: Afylo.surface, borderTopWidth: 1, borderTopColor: Afylo.border },
   tool: { width: 38, height: 38, alignItems: 'center', justifyContent: 'center' },
-  input: { flex: 1, backgroundColor: Afryko.bg, borderRadius: Radius.pill, paddingHorizontal: 16, height: 42, ...Type.body, fontSize: 15, color: Afryko.text, marginHorizontal: 4 },
-  send: { width: 42, height: 42, borderRadius: 21, backgroundColor: Afryko.violet, alignItems: 'center', justifyContent: 'center' },
-  blockedBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingHorizontal: 20, paddingVertical: 16, backgroundColor: Afryko.surface, borderTopWidth: 1, borderTopColor: Afryko.border },
-  blockedText: { color: Afryko.textDim, fontSize: 13, textAlign: 'center', flexShrink: 1 },
+  input: { flex: 1, backgroundColor: Afylo.bg, borderRadius: Radius.pill, paddingHorizontal: 16, height: 42, ...Type.body, fontSize: 15, color: Afylo.text, marginHorizontal: 4 },
+  send: { width: 42, height: 42, borderRadius: 21, backgroundColor: Afylo.violet, alignItems: 'center', justifyContent: 'center' },
+  blockedBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingHorizontal: 20, paddingVertical: 16, backgroundColor: Afylo.surface, borderTopWidth: 1, borderTopColor: Afylo.border },
+  blockedText: { color: Afylo.textDim, fontSize: 13, textAlign: 'center', flexShrink: 1 },
 });

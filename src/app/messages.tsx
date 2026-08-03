@@ -6,7 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Avatar } from '@/components/ui-kit';
 import { VerifiedBadge, verifiedKind } from '@/components/verified';
-import { Afryko, Font, Radius, Type } from '@/constants/brand';
+import { Afylo, Font, Radius, Type } from '@/constants/brand';
 import { listConversations, type Conversation } from '@/lib/db';
 import { timeAgo } from '@/lib/feed-map';
 import { useMe } from '@/lib/me';
@@ -49,17 +49,17 @@ export default function Messages() {
 
   return (
     <View style={styles.root}>
-      <SafeAreaView edges={['top']} style={{ backgroundColor: Afryko.bg }}>
+      <SafeAreaView edges={['top']} style={{ backgroundColor: Afylo.bg }}>
         <View style={styles.header}>
           <View style={styles.backRow}>
-            <Ionicons name="chevron-back" size={26} color={Afryko.text} onPress={() => (router.canGoBack() ? router.back() : router.replace('/accueil'))} />
+            <Ionicons name="chevron-back" size={26} color={Afylo.text} onPress={() => (router.canGoBack() ? router.back() : router.replace('/accueil'))} />
             <Text style={styles.title}>Messages</Text>
           </View>
-          <Ionicons name="create-outline" size={24} color={Afryko.text} onPress={() => router.push('/search')} />
+          <Ionicons name="create-outline" size={24} color={Afylo.text} onPress={() => router.push('/search')} />
         </View>
         <View style={styles.search}>
-          <Ionicons name="search" size={18} color={Afryko.textDim} />
-          <TextInput style={styles.searchInput} value={q} onChangeText={setQ} placeholder="Rechercher" placeholderTextColor={Afryko.textFaint} />
+          <Ionicons name="search" size={18} color={Afylo.textDim} />
+          <TextInput style={styles.searchInput} value={q} onChangeText={setQ} placeholder="Rechercher" placeholderTextColor={Afylo.textFaint} />
         </View>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tabs}>
           {tabs.map((t) => {
@@ -76,10 +76,10 @@ export default function Messages() {
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingVertical: 8 }}>
         {loading ? (
-          <ActivityIndicator color={Afryko.violet} style={{ marginTop: 34 }} />
+          <ActivityIndicator color={Afylo.violet} style={{ marginTop: 34 }} />
         ) : filtered.length === 0 ? (
           <View style={styles.empty}>
-            <Ionicons name="chatbubbles-outline" size={40} color={Afryko.textFaint} />
+            <Ionicons name="chatbubbles-outline" size={40} color={Afylo.textFaint} />
             <Text style={styles.emptyTitle}>Aucun message</Text>
             <Text style={styles.emptySub}>Écris à un créateur depuis son profil pour démarrer une conversation.</Text>
           </View>
@@ -113,31 +113,31 @@ export default function Messages() {
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: Afryko.bg },
+  root: { flex: 1, backgroundColor: Afylo.bg },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 6 },
   backRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  title: { ...Type.title, color: Afryko.text },
-  search: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: Afryko.surface, marginHorizontal: 16, marginTop: 6, marginBottom: 6, paddingHorizontal: 16, height: 44, borderRadius: Radius.pill, borderWidth: 1, borderColor: Afryko.border },
-  searchInput: { flex: 1, ...Type.body, fontSize: 15, color: Afryko.text, height: '100%' },
+  title: { ...Type.title, color: Afylo.text },
+  search: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: Afylo.surface, marginHorizontal: 16, marginTop: 6, marginBottom: 6, paddingHorizontal: 16, height: 44, borderRadius: Radius.pill, borderWidth: 1, borderColor: Afylo.border },
+  searchInput: { flex: 1, ...Type.body, fontSize: 15, color: Afylo.text, height: '100%' },
   tabs: { paddingHorizontal: 16, paddingBottom: 8, gap: 8 },
-  tab: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 16, paddingVertical: 8, borderRadius: Radius.pill, backgroundColor: Afryko.surfaceAlt },
-  tabOn: { backgroundColor: Afryko.violet },
-  tabText: { ...Type.small, fontFamily: Font.semibold, color: Afryko.textDim },
+  tab: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 16, paddingVertical: 8, borderRadius: Radius.pill, backgroundColor: Afylo.surfaceAlt },
+  tabOn: { backgroundColor: Afylo.violet },
+  tabText: { ...Type.small, fontFamily: Font.semibold, color: Afylo.textDim },
   tabTextOn: { color: '#fff' },
-  tabDot: { minWidth: 18, height: 18, borderRadius: 9, backgroundColor: Afryko.live, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 5 },
+  tabDot: { minWidth: 18, height: 18, borderRadius: 9, backgroundColor: Afylo.live, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 5 },
   tabDotText: { color: '#fff', fontSize: 11, fontFamily: Font.bold },
 
   row: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 10 },
   rowTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  name: { ...Type.body, fontFamily: Font.semibold, color: Afryko.text, flex: 1, marginRight: 8 },
-  time: { ...Type.caption, color: Afryko.textFaint },
+  name: { ...Type.body, fontFamily: Font.semibold, color: Afylo.text, flex: 1, marginRight: 8 },
+  time: { ...Type.caption, color: Afylo.textFaint },
   rowBottom: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 3 },
-  last: { ...Type.small, color: Afryko.textDim, flex: 1, marginRight: 10 },
-  lastUnread: { color: Afryko.text, fontFamily: Font.semibold },
-  badge: { minWidth: 20, height: 20, borderRadius: 10, backgroundColor: Afryko.violet, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 6 },
+  last: { ...Type.small, color: Afylo.textDim, flex: 1, marginRight: 10 },
+  lastUnread: { color: Afylo.text, fontFamily: Font.semibold },
+  badge: { minWidth: 20, height: 20, borderRadius: 10, backgroundColor: Afylo.violet, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 6 },
   badgeText: { color: '#fff', fontFamily: Font.bold, fontSize: 12 },
 
   empty: { alignItems: 'center', paddingHorizontal: 40, paddingVertical: 50 },
-  emptyTitle: { color: Afryko.text, fontSize: 16, fontFamily: Font.bold, marginTop: 12 },
-  emptySub: { color: Afryko.textDim, fontSize: 14, textAlign: 'center', marginTop: 6, lineHeight: 20 },
+  emptyTitle: { color: Afylo.text, fontSize: 16, fontFamily: Font.bold, marginTop: 12 },
+  emptySub: { color: Afylo.textDim, fontSize: 14, textAlign: 'center', marginTop: 6, lineHeight: 20 },
 });

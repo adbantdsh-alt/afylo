@@ -6,7 +6,7 @@ import { useState } from 'react';
 import { Pressable, ScrollView, Share, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { Afryko, Font, Radius, Type } from '@/constants/brand';
+import { Afylo, Font, Radius, Type } from '@/constants/brand';
 import { photo } from '@/lib/mock';
 import { findSound } from '@/lib/sounds';
 
@@ -21,7 +21,7 @@ export default function SoundPage() {
   const [saved, setSaved] = useState(false);
   const [playing, setPlaying] = useState(false);
 
-  const s = sound ?? { id: 'x', title: 'Son', artist: 'Afryko', cover: photo('snd', 300, 300), duration: '0:30', uses: '12 k', audio: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3' };
+  const s = sound ?? { id: 'x', title: 'Son', artist: 'Afylo', cover: photo('snd', 300, 300), duration: '0:30', uses: '12 k', audio: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3' };
   const player = useAudioPlayer(s.audio);
   const togglePlay = () => {
     if (playing) { player.pause(); setPlaying(false); }
@@ -29,13 +29,13 @@ export default function SoundPage() {
   };
 
   const share = async () => {
-    try { await Share.share({ message: `Écoute "${s.title}" — ${s.artist} sur Afryko` }); } catch {}
+    try { await Share.share({ message: `Écoute "${s.title}" — ${s.artist} sur Afylo` }); } catch {}
   };
   const useSound = () => router.push({ pathname: '/post-new', params: { soundId: s.id, soundTitle: s.title } });
 
   return (
     <View style={styles.root}>
-      <SafeAreaView edges={['top']} style={{ backgroundColor: Afryko.navBg }}>
+      <SafeAreaView edges={['top']} style={{ backgroundColor: Afylo.navBg }}>
         <View style={styles.header}>
           <Ionicons name="chevron-back" size={26} color="#fff" onPress={() => (router.canGoBack() ? router.back() : router.replace('/accueil'))} />
           <Text style={styles.headerTitle} numberOfLines={1}>{s.title}</Text>
@@ -61,8 +61,8 @@ export default function SoundPage() {
         </View>
 
         <View style={styles.actions}>
-          <Action icon={fav ? 'heart' : 'heart-outline'} label="Favori" color={fav ? Afryko.live : '#fff'} onPress={() => setFav((v) => !v)} />
-          <Action icon={saved ? 'bookmark' : 'bookmark-outline'} label="Enregistrer" color={saved ? Afryko.gold : '#fff'} onPress={() => setSaved((v) => !v)} />
+          <Action icon={fav ? 'heart' : 'heart-outline'} label="Favori" color={fav ? Afylo.live : '#fff'} onPress={() => setFav((v) => !v)} />
+          <Action icon={saved ? 'bookmark' : 'bookmark-outline'} label="Enregistrer" color={saved ? Afylo.gold : '#fff'} onPress={() => setSaved((v) => !v)} />
           <Action icon="share-social-outline" label="Partager" onPress={share} />
         </View>
       </SafeAreaView>
@@ -103,7 +103,7 @@ function Action({ icon, label, color = '#fff', onPress }: { icon: keyof typeof I
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: Afryko.bg },
+  root: { flex: 1, backgroundColor: Afylo.bg },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 14, paddingVertical: 10 },
   headerTitle: { color: '#fff', fontFamily: Font.semibold, fontSize: 16, flex: 1, textAlign: 'center', marginHorizontal: 10 },
   hero: { flexDirection: 'row', gap: 14, paddingHorizontal: 16, paddingBottom: 16 },
@@ -118,13 +118,13 @@ const styles = StyleSheet.create({
   action: { alignItems: 'center', gap: 4 },
   actionLabel: { color: '#fff', ...Type.caption },
 
-  section: { ...Type.body, fontFamily: Font.semibold, color: Afryko.text, padding: 16, paddingBottom: 8 },
+  section: { ...Type.body, fontFamily: Font.semibold, color: Afylo.text, padding: 16, paddingBottom: 8 },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 2, paddingHorizontal: 2 },
-  cell: { width: '33%', aspectRatio: 0.75, backgroundColor: Afryko.surfaceAlt, flexGrow: 1 },
+  cell: { width: '33%', aspectRatio: 0.75, backgroundColor: Afylo.surfaceAlt, flexGrow: 1 },
   cellViews: { position: 'absolute', bottom: 6, left: 6, flexDirection: 'row', alignItems: 'center', gap: 3 },
   cellViewsText: { color: '#fff', fontSize: 11, fontFamily: Font.semibold },
 
-  footer: { position: 'absolute', left: 0, right: 0, bottom: 0, paddingHorizontal: 16, paddingTop: 8, backgroundColor: Afryko.bg, borderTopWidth: 1, borderTopColor: Afryko.border },
-  useBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, height: 52, borderRadius: Radius.pill, backgroundColor: Afryko.live },
+  footer: { position: 'absolute', left: 0, right: 0, bottom: 0, paddingHorizontal: 16, paddingTop: 8, backgroundColor: Afylo.bg, borderTopWidth: 1, borderTopColor: Afylo.border },
+  useBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, height: 52, borderRadius: Radius.pill, backgroundColor: Afylo.live },
   useText: { color: '#fff', fontFamily: Font.semibold, fontSize: 16 },
 });

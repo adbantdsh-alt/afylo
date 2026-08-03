@@ -1,5 +1,5 @@
 /**
- * Couche d'accès aux données Afryko (Supabase).
+ * Couche d'accès aux données Afylo (Supabase).
  * Les écritures passent par RLS : owner_id / author_id doivent = auth.uid().
  */
 import { supabase } from './supabase';

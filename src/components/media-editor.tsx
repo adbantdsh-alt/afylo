@@ -7,7 +7,7 @@ import { Animated, Image as RNImage, LayoutRectangle, Modal, PanResponder, Platf
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { SoundPicker } from '@/components/sound-picker';
-import { Afryko, Font, Radius } from '@/constants/brand';
+import { Afylo, Font, Radius } from '@/constants/brand';
 import { photo } from '@/lib/mock';
 import type { Sound } from '@/lib/sounds';
 import type { Product } from '@/types/db';
@@ -222,7 +222,7 @@ export function MediaEditor({
                           {p.promo_cfa && p.promo_cfa < p.price_cfa ? <Text style={styles.sheetPriceOld}>{p.price_cfa.toLocaleString('fr-FR')} F</Text> : null}
                         </View>
                       </View>
-                      <Ionicons name={on ? 'checkmark-circle' : 'add-circle-outline'} size={24} color={on ? Afryko.violet2 : '#fff'} />
+                      <Ionicons name={on ? 'checkmark-circle' : 'add-circle-outline'} size={24} color={on ? Afylo.violet2 : '#fff'} />
                     </Pressable>
                   );
                 })}
@@ -238,7 +238,7 @@ export function MediaEditor({
 function Tool({ icon, onPress, label, active }: { icon: any; onPress: () => void; label?: string; active?: boolean }) {
   return (
     <Pressable onPress={onPress} style={styles.tool}>
-      <Ionicons name={icon} size={24} color={active ? Afryko.violet2 : '#fff'} />
+      <Ionicons name={icon} size={24} color={active ? Afylo.violet2 : '#fff'} />
       {label ? <Text style={styles.toolLabel}>{label}</Text> : null}
     </Pressable>
   );
@@ -316,11 +316,11 @@ const styles = StyleSheet.create({
   sheetRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 8 },
   sheetImg: { width: 48, height: 48, borderRadius: 10, backgroundColor: '#222' },
   sheetName: { color: '#fff', fontFamily: Font.semibold, fontSize: 15 },
-  sheetPrice: { color: Afryko.gold, fontSize: 13, fontFamily: Font.bold, marginTop: 2 },
+  sheetPrice: { color: Afylo.gold, fontSize: 13, fontFamily: Font.bold, marginTop: 2 },
   sheetPriceOld: { color: '#ffffff77', fontSize: 11, fontFamily: Font.semibold, textDecorationLine: 'line-through' },
 
   bottom: { position: 'absolute', bottom: 0, left: 0, right: 0, paddingHorizontal: 16, alignItems: 'flex-end' },
-  cta: { flexDirection: 'row', alignItems: 'center', gap: 8, height: 50, paddingHorizontal: 22, borderRadius: Radius.pill, backgroundColor: Afryko.violet },
+  cta: { flexDirection: 'row', alignItems: 'center', gap: 8, height: 50, paddingHorizontal: 22, borderRadius: Radius.pill, backgroundColor: Afylo.violet },
   ctaText: { color: '#fff', fontFamily: Font.bold, fontSize: 16 },
 
   overlayBox: { position: 'absolute', top: 0, left: 0, minWidth: 40, maxWidth: '80%', alignItems: 'flex-start' },
@@ -331,7 +331,7 @@ const styles = StyleSheet.create({
   editorSheet: { ...StyleSheet.absoluteFillObject, backgroundColor: '#000000E6' },
   editorTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, height: 48 },
   editorCancel: { color: '#fff', fontSize: 16, fontFamily: Font.medium },
-  editorOk: { backgroundColor: Afryko.violet, borderRadius: Radius.pill, paddingHorizontal: 18, paddingVertical: 8 },
+  editorOk: { backgroundColor: Afylo.violet, borderRadius: Radius.pill, paddingHorizontal: 18, paddingVertical: 8 },
   editorOkText: { color: '#fff', fontFamily: Font.bold, fontSize: 15 },
   editorCenter: { flex: 1, justifyContent: 'center', paddingHorizontal: 24, gap: 14 },
   textInput: { fontSize: 26, fontFamily: Font.bold, textAlign: 'center' },

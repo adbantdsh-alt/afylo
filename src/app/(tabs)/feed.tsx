@@ -11,7 +11,7 @@ import { PaymentSheet } from '@/components/payment-sheet';
 import { Avatar } from '@/components/ui-kit';
 import { VerifiedBadge, verifiedKind } from '@/components/verified';
 import { useBuzz } from '@/lib/buzz';
-import { Afryko, Font, Radius, Type } from '@/constants/brand';
+import { Afylo, Font, Radius, Type } from '@/constants/brand';
 import { useAuthGate } from '@/lib/auth-gate';
 import { followUser, listCreators, listFeedProducts, listLiveNow, myFollowingIds, unfollowUser, type FeedProduct, type LiveRow } from '@/lib/db';
 import { hashId } from '@/lib/feed-map';
@@ -58,7 +58,7 @@ export default function Feed() {
 
   return (
     <View style={styles.root}>
-      <SafeAreaView edges={['top']} style={{ backgroundColor: Afryko.bg }}>
+      <SafeAreaView edges={['top']} style={{ backgroundColor: Afylo.bg }}>
         <View style={styles.header}>
           <View style={styles.segs}>
             <Pressable style={styles.seg} onPress={() => setMode('tout')}>
@@ -81,10 +81,10 @@ export default function Feed() {
         <ScrollView
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{ paddingBottom: 120 }}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(true); }} tintColor={Afryko.violet} />}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(true); }} tintColor={Afylo.violet} />}
           {...scroll}>
           {/* Hero */}
-          <LinearGradient colors={[Afryko.violet, Afryko.live]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.hero}>
+          <LinearGradient colors={[Afylo.violet, Afylo.live]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.hero}>
             <Text style={styles.heroTitle}>🌍 L'Afrique en live</Text>
             <Text style={styles.heroSub}>Découvre les lives, achète en direct et gagne en repartageant.</Text>
           </LinearGradient>
@@ -160,13 +160,13 @@ export default function Feed() {
         <ScrollView
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.masonry}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(true); }} tintColor={Afryko.violet} />}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(true); }} tintColor={Afylo.violet} />}
           {...scroll}>
           {loading ? (
             <Text style={styles.dim}>Recherche des lives…</Text>
           ) : lives.length === 0 ? (
             <View style={styles.empty}>
-              <Ionicons name="radio-outline" size={44} color={Afryko.textFaint} />
+              <Ionicons name="radio-outline" size={44} color={Afylo.textFaint} />
               <Text style={styles.emptyTitle}>Aucun live pour l'instant</Text>
               <Text style={styles.dim}>Sois le premier à passer en direct.</Text>
               <Pressable onPress={goLive} style={styles.emptyBtn}><Ionicons name="radio" size={18} color="#fff" /><Text style={styles.emptyBtnText}>Démarrer un live</Text></Pressable>
@@ -237,14 +237,14 @@ function LiveTile({ l, isBuzz, onPress }: { l: LiveRow; isBuzz?: boolean; onPres
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: Afryko.bg },
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingTop: 4, borderBottomWidth: 1, borderBottomColor: Afryko.border },
+  root: { flex: 1, backgroundColor: Afylo.bg },
+  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingTop: 4, borderBottomWidth: 1, borderBottomColor: Afylo.border },
   segs: { flexDirection: 'row' },
   seg: { marginRight: 22, paddingVertical: 12, alignItems: 'center' },
-  segText: { ...Type.subtitle, fontFamily: Font.bold, color: Afryko.textDim },
-  segTextOn: { color: Afryko.text },
-  segLine: { position: 'absolute', bottom: -1, left: 0, right: 0, height: 2, borderRadius: 2, backgroundColor: Afryko.text },
-  goLiveBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: Afryko.live, borderRadius: Radius.pill, paddingHorizontal: 12, height: 36 },
+  segText: { ...Type.subtitle, fontFamily: Font.bold, color: Afylo.textDim },
+  segTextOn: { color: Afylo.text },
+  segLine: { position: 'absolute', bottom: -1, left: 0, right: 0, height: 2, borderRadius: 2, backgroundColor: Afylo.text },
+  goLiveBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: Afylo.live, borderRadius: Radius.pill, paddingHorizontal: 12, height: 36 },
   goLiveText: { color: '#fff', fontFamily: Font.bold, fontSize: 12 },
 
   hero: { marginHorizontal: 16, marginTop: 12, borderRadius: Radius.xl, padding: 20 },
@@ -252,44 +252,44 @@ const styles = StyleSheet.create({
   heroSub: { color: '#ffffffe6', fontSize: 14, marginTop: 6, lineHeight: 20 },
 
   sectionHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, marginBottom: 10 },
-  sectionTitle: { ...Type.subtitle, color: Afryko.text },
-  seeAll: { color: Afryko.violet, fontFamily: Font.semibold, fontSize: 13 },
+  sectionTitle: { ...Type.subtitle, color: Afylo.text },
+  seeAll: { color: Afylo.violet, fontFamily: Font.semibold, fontSize: 13 },
   strip: { paddingHorizontal: 16, gap: 12 },
-  dim: { color: Afryko.textDim, fontSize: 14, textAlign: 'center', width: '100%', marginTop: 30 },
+  dim: { color: Afylo.textDim, fontSize: 14, textAlign: 'center', width: '100%', marginTop: 30 },
 
   // Live horizontal (vitrine)
-  liveH: { width: 132, aspectRatio: 0.8, borderRadius: Radius.lg, overflow: 'hidden', backgroundColor: Afryko.surfaceAlt, justifyContent: 'space-between' },
+  liveH: { width: 132, aspectRatio: 0.8, borderRadius: Radius.lg, overflow: 'hidden', backgroundColor: Afylo.surfaceAlt, justifyContent: 'space-between' },
   liveHTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 7 },
   liveHBottom: { flexDirection: 'row', alignItems: 'center', gap: 5, padding: 7 },
   liveHName: { color: '#fff', fontSize: 11, fontFamily: Font.bold, flexShrink: 1 },
 
   // Produit horizontal
   prodH: { width: 140 },
-  prodHImg: { width: 140, height: 140, borderRadius: Radius.md, backgroundColor: Afryko.surfaceAlt },
-  prodHTitle: { ...Type.small, fontFamily: Font.semibold, color: Afryko.text, marginTop: 7 },
+  prodHImg: { width: 140, height: 140, borderRadius: Radius.md, backgroundColor: Afylo.surfaceAlt },
+  prodHTitle: { ...Type.small, fontFamily: Font.semibold, color: Afylo.text, marginTop: 7 },
   prodHPriceRow: { flexDirection: 'row', alignItems: 'baseline', gap: 6, marginTop: 2 },
-  prodHPrice: { color: Afryko.gold, fontSize: 15, fontFamily: Font.bold },
-  prodHOld: { color: Afryko.textFaint, fontSize: 11, textDecorationLine: 'line-through' },
-  prodHSold: { color: Afryko.textDim, fontSize: 11, marginTop: 2 },
+  prodHPrice: { color: Afylo.gold, fontSize: 15, fontFamily: Font.bold },
+  prodHOld: { color: Afylo.textFaint, fontSize: 11, textDecorationLine: 'line-through' },
+  prodHSold: { color: Afylo.textDim, fontSize: 11, marginTop: 2 },
 
   // Créateur
-  creatorCard: { width: 108, alignItems: 'center', backgroundColor: Afryko.surface, borderWidth: 1, borderColor: Afryko.border, borderRadius: Radius.lg, padding: 12, gap: 8 },
+  creatorCard: { width: 108, alignItems: 'center', backgroundColor: Afylo.surface, borderWidth: 1, borderColor: Afylo.border, borderRadius: Radius.lg, padding: 12, gap: 8 },
   creatorNameRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 8 },
-  creatorName: { color: Afryko.text, fontSize: 13, fontFamily: Font.bold, flexShrink: 1 },
-  creatorSub: { color: Afryko.textDim, fontSize: 11, marginTop: 1 },
-  followBtn: { alignSelf: 'stretch', backgroundColor: Afryko.violet, borderRadius: Radius.pill, paddingVertical: 8, alignItems: 'center' },
-  followBtnOn: { backgroundColor: 'transparent', borderWidth: 1, borderColor: Afryko.border },
+  creatorName: { color: Afylo.text, fontSize: 13, fontFamily: Font.bold, flexShrink: 1 },
+  creatorSub: { color: Afylo.textDim, fontSize: 11, marginTop: 1 },
+  followBtn: { alignSelf: 'stretch', backgroundColor: Afylo.violet, borderRadius: Radius.pill, paddingVertical: 8, alignItems: 'center' },
+  followBtnOn: { backgroundColor: 'transparent', borderWidth: 1, borderColor: Afylo.border },
   followText: { color: '#fff', fontFamily: Font.bold, fontSize: 12 },
-  followTextOn: { color: Afryko.text },
+  followTextOn: { color: Afylo.text },
 
   // Badges partagés
   cardScrim: { ...StyleSheet.absoluteFillObject, backgroundColor: '#00000026' },
-  liveBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: Afryko.live, borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 },
+  liveBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: Afylo.live, borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 },
   liveDot: { width: 5, height: 5, borderRadius: 3, backgroundColor: '#fff' },
   liveBadgeText: { color: '#fff', fontSize: 9, fontFamily: Font.bold, letterSpacing: 0.5 },
   viewers: { flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: '#00000066', borderRadius: 8, paddingHorizontal: 6, paddingVertical: 2 },
   viewersText: { color: '#fff', fontSize: 10, fontFamily: Font.semibold },
-  sellTag: { position: 'absolute', top: 34, left: 7, flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: Afryko.green, borderRadius: 5, paddingHorizontal: 6, paddingVertical: 2 },
+  sellTag: { position: 'absolute', top: 34, left: 7, flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: Afylo.green, borderRadius: 5, paddingHorizontal: 6, paddingVertical: 2 },
   tagText: { color: '#fff', fontSize: 9, fontFamily: Font.bold },
   buzzTag: { position: 'absolute', top: 34, right: 7 },
   buzzTileTag: { position: 'absolute', top: 38, right: 8 },
@@ -298,14 +298,14 @@ const styles = StyleSheet.create({
   masonry: { paddingHorizontal: 6, paddingTop: 6, paddingBottom: 120 },
   masonryRow: { flexDirection: 'row', gap: 6 },
   masonryCol: { flex: 1, gap: 6 },
-  tile: { borderRadius: 14, overflow: 'hidden', backgroundColor: Afryko.surfaceAlt, justifyContent: 'space-between' },
+  tile: { borderRadius: 14, overflow: 'hidden', backgroundColor: Afylo.surfaceAlt, justifyContent: 'space-between' },
   tileTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 8 },
-  tileSell: { position: 'absolute', top: 38, left: 8, flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: Afryko.green, borderRadius: 6, paddingHorizontal: 7, paddingVertical: 3 },
+  tileSell: { position: 'absolute', top: 38, left: 8, flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: Afylo.green, borderRadius: 6, paddingHorizontal: 7, paddingVertical: 3 },
   tileBottom: { flexDirection: 'row', alignItems: 'center', gap: 6, padding: 8 },
   tileHost: { color: '#fff', fontSize: 12, fontFamily: Font.bold, flexShrink: 1 },
 
   empty: { width: '100%', alignItems: 'center', paddingHorizontal: 30, paddingVertical: 50, gap: 8 },
-  emptyTitle: { color: Afryko.text, fontSize: 17, fontFamily: Font.bold, marginTop: 8 },
-  emptyBtn: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: Afryko.live, borderRadius: Radius.pill, paddingHorizontal: 20, paddingVertical: 13, marginTop: 16 },
+  emptyTitle: { color: Afylo.text, fontSize: 17, fontFamily: Font.bold, marginTop: 8 },
+  emptyBtn: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: Afylo.live, borderRadius: Radius.pill, paddingHorizontal: 20, paddingVertical: 13, marginTop: 16 },
   emptyBtnText: { color: '#fff', fontFamily: Font.bold, fontSize: 15 },
 });

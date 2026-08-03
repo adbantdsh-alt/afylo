@@ -75,7 +75,7 @@ export function captureWebFrameDataUrl(mirror = false): string | null {
   }
 }
 
-const MIRROR_STYLE_ID = 'afryko-cam-mirror';
+const MIRROR_STYLE_ID = 'afylo-cam-mirror';
 
 /**
  * Impose l'orientation de l'aperçu caméra web via une feuille de style `!important`

@@ -81,7 +81,7 @@ export function RepostsProvider({ children }: { children: ReactNode }) {
     if (commission && r.post.product && pro) {
       const sales = 1 + (hashCode(r.post.id) % 3);
       const earned = commissionFor(r.post.product.price, commission) * sales;
-      affiliate = { code, link: `afryko.shop/r/${code}`, commission, sales, earned };
+      affiliate = { code, link: `afylo.shop/r/${code}`, commission, sales, earned };
     }
     const tempId = `rp${rid++}`;
     const optimistic: Repost = { ...r, id: tempId, createdAt: safeNow(), affiliate };

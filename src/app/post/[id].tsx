@@ -7,7 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Avatar } from '@/components/ui-kit';
 import { VerifiedBadge } from '@/components/verified';
-import { Afryko, Font, Radius } from '@/constants/brand';
+import { Afylo, Font, Radius } from '@/constants/brand';
 import { getPost, likePost, listMyLikedPostIds, listPostsByAuthor, unlikePost } from '@/lib/db';
 import { mapFeedPost } from '@/lib/feed-map';
 import type { Post } from '@/lib/mock';
@@ -51,10 +51,10 @@ export default function PostViewer() {
 
   return (
     <View style={styles.root}>
-      <SafeAreaView edges={['top']} style={{ backgroundColor: Afryko.bg }}>
+      <SafeAreaView edges={['top']} style={{ backgroundColor: Afylo.bg }}>
         <View style={styles.header}>
           <Pressable onPress={() => (router.canGoBack() ? router.back() : router.replace('/accueil'))} style={styles.hbtn}>
-            <Ionicons name="arrow-back" size={24} color={Afryko.text} />
+            <Ionicons name="arrow-back" size={24} color={Afylo.text} />
           </Pressable>
           <Text style={styles.title}>Publications</Text>
           <View style={{ width: 40 }} />
@@ -62,10 +62,10 @@ export default function PostViewer() {
       </SafeAreaView>
 
       {loading ? (
-        <ActivityIndicator color={Afryko.violet} style={{ marginTop: 40 }} />
+        <ActivityIndicator color={Afylo.violet} style={{ marginTop: 40 }} />
       ) : posts.length === 0 ? (
         <View style={styles.empty}>
-          <Ionicons name="images-outline" size={30} color={Afryko.textFaint} />
+          <Ionicons name="images-outline" size={30} color={Afylo.textFaint} />
           <Text style={styles.emptyText}>Aucune publication.</Text>
         </View>
       ) : (
@@ -138,7 +138,7 @@ function PostView({ post, liked, onLike, onOpenComments }: { post: Post; liked: 
       {/* Produit → Acheter */}
       {post.product && (
         <View style={styles.buyBar}>
-          <View style={styles.buyIcon}><Ionicons name="bag-handle" size={18} color={Afryko.ink} /></View>
+          <View style={styles.buyIcon}><Ionicons name="bag-handle" size={18} color={Afylo.ink} /></View>
           <View style={{ flex: 1 }}>
             <Text style={styles.buyTitle} numberOfLines={1}>{post.product.title}</Text>
             <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 6 }}>
@@ -152,26 +152,26 @@ function PostView({ post, liked, onLike, onOpenComments }: { post: Post; liked: 
 
       {/* Stats + commentaires */}
       <View style={styles.stats}>
-        <Pressable style={styles.stat} onPress={toggleLike}><Ionicons name={isLiked ? 'star' : 'star-outline'} size={20} color={isLiked ? Afryko.gold : Afryko.textDim} /><Text style={[styles.statN, isLiked && { color: Afryko.gold }]}>{post.likes}</Text></Pressable>
-        <Pressable style={styles.stat} onPress={onOpenComments}><Ionicons name="chatbubble-outline" size={19} color={Afryko.textDim} /><Text style={styles.statN}>{post.comments}</Text></Pressable>
-        <View style={styles.stat}><Ionicons name="eye-outline" size={20} color={Afryko.textDim} /><Text style={styles.statN}>{post.views}</Text></View>
+        <Pressable style={styles.stat} onPress={toggleLike}><Ionicons name={isLiked ? 'star' : 'star-outline'} size={20} color={isLiked ? Afylo.gold : Afylo.textDim} /><Text style={[styles.statN, isLiked && { color: Afylo.gold }]}>{post.likes}</Text></Pressable>
+        <Pressable style={styles.stat} onPress={onOpenComments}><Ionicons name="chatbubble-outline" size={19} color={Afylo.textDim} /><Text style={styles.statN}>{post.comments}</Text></Pressable>
+        <View style={styles.stat}><Ionicons name="eye-outline" size={20} color={Afylo.textDim} /><Text style={styles.statN}>{post.views}</Text></View>
       </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: Afryko.bg },
+  root: { flex: 1, backgroundColor: Afylo.bg },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 12, paddingVertical: 8 },
   hbtn: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
-  title: { color: Afryko.text, fontSize: 18, fontFamily: Font.bold },
+  title: { color: Afylo.text, fontSize: 18, fontFamily: Font.bold },
   empty: { alignItems: 'center', gap: 10, marginTop: 60 },
-  emptyText: { color: Afryko.textDim, fontSize: 15 },
+  emptyText: { color: Afylo.textDim, fontSize: 15 },
 
-  card: { borderBottomWidth: 8, borderBottomColor: Afryko.surfaceAlt },
+  card: { borderBottomWidth: 8, borderBottomColor: Afylo.surfaceAlt },
   authorRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 10 },
-  name: { color: Afryko.text, fontSize: 15, fontFamily: Font.bold },
-  time: { color: Afryko.textDim, fontSize: 12, marginTop: 1 },
+  name: { color: Afylo.text, fontSize: 15, fontFamily: Font.bold },
+  time: { color: Afylo.textDim, fontSize: 12, marginTop: 1 },
 
   ovl: { position: 'absolute', maxWidth: '80%' },
   ovlText: { fontSize: 20, fontFamily: Font.bold, textShadowColor: '#00000088', textShadowRadius: 4 },
@@ -181,18 +181,18 @@ const styles = StyleSheet.create({
   dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#ffffff88' },
   dotOn: { backgroundColor: '#fff', width: 7, height: 7, borderRadius: 3.5 },
 
-  caption: { color: Afryko.text, fontSize: 15, lineHeight: 21, paddingHorizontal: 16, paddingTop: 12 },
-  textPost: { color: Afryko.text, fontSize: 16, lineHeight: 23, paddingHorizontal: 16, paddingTop: 8 },
+  caption: { color: Afylo.text, fontSize: 15, lineHeight: 21, paddingHorizontal: 16, paddingTop: 12 },
+  textPost: { color: Afylo.text, fontSize: 16, lineHeight: 23, paddingHorizontal: 16, paddingTop: 8 },
 
-  buyBar: { flexDirection: 'row', alignItems: 'center', gap: 10, marginHorizontal: 16, marginTop: 12, backgroundColor: Afryko.surface, borderRadius: Radius.md, padding: 10, borderWidth: 1, borderColor: Afryko.border },
-  buyIcon: { width: 38, height: 38, borderRadius: 10, backgroundColor: Afryko.gold, alignItems: 'center', justifyContent: 'center' },
-  buyTitle: { color: Afryko.text, fontSize: 14, fontFamily: Font.semibold },
-  buyPrice: { color: Afryko.gold, fontSize: 14, fontFamily: Font.bold, marginTop: 1 },
-  buyPriceOld: { color: Afryko.textFaint, fontSize: 12, fontFamily: Font.semibold, textDecorationLine: 'line-through' },
-  buyBtn: { backgroundColor: Afryko.violet, borderRadius: Radius.pill, paddingHorizontal: 16, paddingVertical: 9 },
+  buyBar: { flexDirection: 'row', alignItems: 'center', gap: 10, marginHorizontal: 16, marginTop: 12, backgroundColor: Afylo.surface, borderRadius: Radius.md, padding: 10, borderWidth: 1, borderColor: Afylo.border },
+  buyIcon: { width: 38, height: 38, borderRadius: 10, backgroundColor: Afylo.gold, alignItems: 'center', justifyContent: 'center' },
+  buyTitle: { color: Afylo.text, fontSize: 14, fontFamily: Font.semibold },
+  buyPrice: { color: Afylo.gold, fontSize: 14, fontFamily: Font.bold, marginTop: 1 },
+  buyPriceOld: { color: Afylo.textFaint, fontSize: 12, fontFamily: Font.semibold, textDecorationLine: 'line-through' },
+  buyBtn: { backgroundColor: Afylo.violet, borderRadius: Radius.pill, paddingHorizontal: 16, paddingVertical: 9 },
   buyBtnText: { color: '#fff', fontFamily: Font.bold, fontSize: 13 },
 
   stats: { flexDirection: 'row', gap: 26, paddingHorizontal: 16, paddingVertical: 14 },
   stat: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  statN: { color: Afryko.textDim, fontSize: 14, fontFamily: Font.semibold },
+  statN: { color: Afylo.textDim, fontSize: 14, fontFamily: Font.semibold },
 });

@@ -1,10 +1,10 @@
 /**
- * Moteur de rémunération Afryko — calcule le portefeuille RÉEL d'un créateur
+ * Moteur de rémunération Afylo — calcule le portefeuille RÉEL d'un créateur
  * à partir des commandes (`orders`), des commissions d'affiliation et des
  * Creator Rewards. Aucune donnée fictive : un nouveau compte démarre à ZÉRO.
  *
  * Flux d'argent :
- *  - Vente produit : le vendeur touche  montant − commission revendeur − frais Afryko (5 %).
+ *  - Vente produit : le vendeur touche  montant − commission revendeur − frais Afylo (5 %).
  *  - Affiliation   : le revendeur touche la commission du produit sur les ventes qu'il a générées.
  *  - Rewards       : 100 FCFA / 1 000 vues qualifiées (barème dans algo.ts).
  *  - Séquestre     : l'argent d'une commande payée est bloqué jusqu'à livraison,
@@ -30,7 +30,7 @@ export type WalletSummary = {
   salesNet: number; // ventes libérées (net vendeur)
   affiliationNet: number; // commissions revendeur libérées
   rewardsNet: number; // Creator Rewards (vues qualifiées)
-  feeTotal: number; // total prélevé par Afryko (5 %)
+  feeTotal: number; // total prélevé par Afylo (5 %)
   breakdown: { label: string; value: number; dim?: boolean }[];
   transactions: WalletTx[];
   reach: { followers: number; following: number; posts: number; views: number; sales: number };
@@ -40,7 +40,7 @@ export type WalletSummary = {
 const RELEASED: OrderStatus[] = ['delivered', 'released'];
 const ESCROW: OrderStatus[] = ['paid', 'shipped'];
 
-/** Net qui revient au vendeur sur une commande (après commission affilié + frais Afryko). */
+/** Net qui revient au vendeur sur une commande (après commission affilié + frais Afylo). */
 const sellerNet = (o: Order) => Math.max(0, (o.amount_cfa || 0) - (o.commission_cfa || 0) - (o.platform_fee_cfa || 0));
 
 function timeAgo(iso: string): string {
@@ -124,7 +124,7 @@ export async function getWalletSummary(myId: string | null, affiliateExtra = 0):
   if (salesAvail > 0) breakdown.push({ label: 'Ventes produits', value: salesAvail });
   if (affiliationNet > 0) breakdown.push({ label: 'Commissions affiliation', value: affiliationNet });
   if (rewardsNet > 0) breakdown.push({ label: 'Creator Rewards (vues)', value: rewardsNet });
-  if (feeTotal > 0) breakdown.push({ label: 'Commission Afryko (5 %)', value: -feeTotal, dim: true });
+  if (feeTotal > 0) breakdown.push({ label: 'Commission Afylo (5 %)', value: -feeTotal, dim: true });
 
   if (rewardsNet > 0) {
     txs.unshift({ id: 'rw', kind: 'tip', label: 'Creator Rewards · vues', sub: `${reach.views.toLocaleString('fr-FR')} vues`, amount: rewardsNet, date: 'ce mois' });

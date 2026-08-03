@@ -9,7 +9,7 @@ import { withTiming } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { MediaEditor, type EditResult } from '@/components/media-editor';
-import { Afryko, Font, Radius } from '@/constants/brand';
+import { Afylo, Font, Radius } from '@/constants/brand';
 import { useAuthGate } from '@/lib/auth-gate';
 import { listMyProducts, startLive } from '@/lib/db';
 import { useMe } from '@/lib/me';
@@ -311,13 +311,13 @@ export default function Creer() {
 
           {/* Déclencheur */}
           {locked ? (
-            <Pressable style={[styles.shutterRing, { borderColor: Afryko.live }]} onPress={endRecord}>
+            <Pressable style={[styles.shutterRing, { borderColor: Afylo.live }]} onPress={endRecord}>
               <View style={styles.stopCore} />
             </Pressable>
           ) : (
             <View
               {...shutterPan.panHandlers}
-              style={[styles.shutterRing, mode === 'Live' && styles.shutterLive, recording && { borderColor: Afryko.live, transform: [{ scale: 1.15 }] }]}>
+              style={[styles.shutterRing, mode === 'Live' && styles.shutterLive, recording && { borderColor: Afylo.live, transform: [{ scale: 1.15 }] }]}>
               <View style={[styles.shutterCore, mode === 'Live' && styles.shutterCoreLive, recording && styles.shutterCoreRec]} />
             </View>
           )}
@@ -355,11 +355,11 @@ const styles = StyleSheet.create({
   cameraCircle: { width: 74, height: 74, borderRadius: 37, backgroundColor: '#ffffff1A', alignItems: 'center', justifyContent: 'center', marginBottom: 8 },
   stageHint: { color: '#fff', fontFamily: Font.semibold, fontSize: 16 },
   stageSub: { color: '#ffffff88', fontSize: 13, marginTop: 4 },
-  allowBtn: { backgroundColor: Afryko.violet, paddingHorizontal: 18, paddingVertical: 10, borderRadius: Radius.pill, marginTop: 8 },
+  allowBtn: { backgroundColor: Afylo.violet, paddingHorizontal: 18, paddingVertical: 10, borderRadius: Radius.pill, marginTop: 8 },
   allowText: { color: '#fff', fontFamily: Font.semibold, fontSize: 14 },
 
   recPill: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#000000AA', paddingHorizontal: 12, paddingVertical: 5, borderRadius: Radius.pill },
-  recDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: Afryko.live },
+  recDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: Afylo.live },
   recText: { color: '#fff', fontFamily: Font.bold, fontSize: 12 },
 
   lockHint: { flexDirection: 'row', alignItems: 'center', gap: 5, alignSelf: 'center', backgroundColor: '#00000066', paddingHorizontal: 12, paddingVertical: 6, borderRadius: Radius.pill, marginBottom: 12 },
@@ -368,11 +368,11 @@ const styles = StyleSheet.create({
   captureRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-around', paddingHorizontal: 40, marginTop: 10 },
   tool: { width: 50, height: 50, borderRadius: 25, backgroundColor: '#00000055', alignItems: 'center', justifyContent: 'center' },
   shutterRing: { width: 82, height: 82, borderRadius: 41, borderWidth: 5, borderColor: '#fff', alignItems: 'center', justifyContent: 'center' },
-  shutterLive: { borderColor: Afryko.live },
+  shutterLive: { borderColor: Afylo.live },
   shutterCore: { width: 64, height: 64, borderRadius: 32, backgroundColor: '#fff' },
-  shutterCoreRec: { backgroundColor: Afryko.live },
-  shutterCoreLive: { backgroundColor: Afryko.live },
-  stopCore: { width: 30, height: 30, borderRadius: 8, backgroundColor: Afryko.live },
+  shutterCoreRec: { backgroundColor: Afylo.live },
+  shutterCoreLive: { backgroundColor: Afylo.live },
+  stopCore: { width: 30, height: 30, borderRadius: 8, backgroundColor: Afylo.live },
   captureHint: { color: '#ffffffcc', fontSize: 12, textAlign: 'center', marginBottom: 10 },
 
   modes: { flexDirection: 'row', justifyContent: 'center', gap: 8, paddingTop: 16, paddingBottom: 8 },

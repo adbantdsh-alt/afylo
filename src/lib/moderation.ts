@@ -1,5 +1,5 @@
 /**
- * Afryko — moteur de modération (politique de contenu).
+ * Afylo — moteur de modération (politique de contenu).
  *
  * Philosophie : liberté d'expression forte, mais des limites nettes.
  *  - INTERDIT  : bloqué, jamais publié (mineurs/CSAM, violence, illégal, doxxing)

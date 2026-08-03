@@ -6,7 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Avatar } from '@/components/ui-kit';
 import { VerifiedBadge, verifiedKind } from '@/components/verified';
-import { Afryko, Font, Radius, Type } from '@/constants/brand';
+import { Afylo, Font, Radius, Type } from '@/constants/brand';
 import { followUser, listMyFollowers, listMyFollowing, unfollowUser } from '@/lib/db';
 import { useMe } from '@/lib/me';
 import { face } from '@/lib/mock';
@@ -62,10 +62,10 @@ export default function Connections() {
 
   return (
     <View style={styles.root}>
-      <SafeAreaView edges={['top']} style={{ backgroundColor: Afryko.bg }}>
+      <SafeAreaView edges={['top']} style={{ backgroundColor: Afylo.bg }}>
         <View style={styles.header}>
           <Pressable onPress={() => (router.canGoBack() ? router.back() : router.replace('/profil'))} style={styles.iconBtn}>
-            <Ionicons name="chevron-back" size={26} color={Afryko.text} />
+            <Ionicons name="chevron-back" size={26} color={Afylo.text} />
           </Pressable>
           <Text style={styles.title} numberOfLines={1}>{me.handle.startsWith('@') ? me.handle : `@${me.handle}`}</Text>
           <View style={{ width: 40 }} />
@@ -84,15 +84,15 @@ export default function Connections() {
         </View>
 
         <View style={styles.searchBox}>
-          <Ionicons name="search" size={18} color={Afryko.textDim} />
-          <TextInput style={styles.searchInput} value={q} onChangeText={setQ} placeholder="Rechercher" placeholderTextColor={Afryko.textFaint} />
-          {q.length > 0 && <Ionicons name="close-circle" size={18} color={Afryko.textFaint} onPress={() => setQ('')} />}
+          <Ionicons name="search" size={18} color={Afylo.textDim} />
+          <TextInput style={styles.searchInput} value={q} onChangeText={setQ} placeholder="Rechercher" placeholderTextColor={Afylo.textFaint} />
+          {q.length > 0 && <Ionicons name="close-circle" size={18} color={Afylo.textFaint} onPress={() => setQ('')} />}
         </View>
       </SafeAreaView>
 
       <ScrollView contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 40 }} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
         {loading ? (
-          <ActivityIndicator color={Afryko.violet} style={{ marginTop: 34 }} />
+          <ActivityIndicator color={Afylo.violet} style={{ marginTop: 34 }} />
         ) : filtered.length === 0 ? (
           <Text style={styles.empty}>
             {q ? 'Aucun résultat.' : tab === 'followers' ? "Personne ne t'abonne encore." : 'Tu ne suis personne pour le moment.'}
@@ -125,29 +125,29 @@ export default function Connections() {
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: Afryko.bg },
+  root: { flex: 1, backgroundColor: Afylo.bg },
   header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 8, paddingVertical: 6 },
   iconBtn: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
-  title: { ...Type.subtitle, color: Afryko.text, flex: 1 },
+  title: { ...Type.subtitle, color: Afylo.text, flex: 1 },
 
-  tabs: { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: Afryko.border },
+  tabs: { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: Afylo.border },
   tab: { flex: 1, alignItems: 'center', paddingVertical: 12 },
-  tabText: { ...Type.body, fontFamily: Font.semibold, color: Afryko.textDim },
-  tabTextOn: { color: Afryko.text },
-  tabUnderline: { position: 'absolute', bottom: -1, height: 2, left: '25%', right: '25%', borderRadius: 2, backgroundColor: Afryko.text },
+  tabText: { ...Type.body, fontFamily: Font.semibold, color: Afylo.textDim },
+  tabTextOn: { color: Afylo.text },
+  tabUnderline: { position: 'absolute', bottom: -1, height: 2, left: '25%', right: '25%', borderRadius: 2, backgroundColor: Afylo.text },
 
-  searchBox: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: Afryko.surfaceAlt, borderRadius: Radius.pill, paddingHorizontal: 14, height: 42, marginHorizontal: 16, marginTop: 12 },
-  searchInput: { flex: 1, ...Type.body, fontSize: 15, color: Afryko.text, height: '100%' },
+  searchBox: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: Afylo.surfaceAlt, borderRadius: Radius.pill, paddingHorizontal: 14, height: 42, marginHorizontal: 16, marginTop: 12 },
+  searchInput: { flex: 1, ...Type.body, fontSize: 15, color: Afylo.text, height: '100%' },
 
-  empty: { color: Afryko.textDim, fontSize: 14, textAlign: 'center', marginTop: 40, lineHeight: 20 },
+  empty: { color: Afylo.textDim, fontSize: 14, textAlign: 'center', marginTop: 40, lineHeight: 20 },
 
   row: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 10 },
   rowLeft: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 12 },
   rowNameLine: { flexDirection: 'row', alignItems: 'center', gap: 5 },
-  rowName: { ...Type.body, fontFamily: Font.semibold, color: Afryko.text, flexShrink: 1 },
-  rowHandle: { ...Type.caption, color: Afryko.textDim, marginTop: 1 },
-  followBtn: { backgroundColor: Afryko.violet, borderRadius: Radius.pill, paddingHorizontal: 18, height: 34, alignItems: 'center', justifyContent: 'center' },
-  followBtnOn: { backgroundColor: 'transparent', borderWidth: 1, borderColor: Afryko.border },
+  rowName: { ...Type.body, fontFamily: Font.semibold, color: Afylo.text, flexShrink: 1 },
+  rowHandle: { ...Type.caption, color: Afylo.textDim, marginTop: 1 },
+  followBtn: { backgroundColor: Afylo.violet, borderRadius: Radius.pill, paddingHorizontal: 18, height: 34, alignItems: 'center', justifyContent: 'center' },
+  followBtnOn: { backgroundColor: 'transparent', borderWidth: 1, borderColor: Afylo.border },
   followText: { color: '#fff', fontFamily: Font.bold, fontSize: 13 },
-  followTextOn: { color: Afryko.text },
+  followTextOn: { color: Afylo.text },
 });

@@ -1,11 +1,11 @@
 {
   "expo": {
-    "name": "Afryko",
-    "slug": "afryko",
+    "name": "Afylo",
+    "slug": "afylo",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "afryko",
+    "scheme": "afylo",
     "userInterfaceStyle": "automatic",
     "ios": {
       "icon": "./assets/expo.icon"
@@ -28,8 +28,8 @@
       [
         "expo-camera",
         {
-          "cameraPermission": "Afryko utilise la caméra pour prendre des photos et vidéos.",
-          "microphonePermission": "Afryko utilise le micro pour enregistrer des vidéos et lives."
+          "cameraPermission": "Afylo utilise la caméra pour prendre des photos et vidéos.",
+          "microphonePermission": "Afylo utilise le micro pour enregistrer des vidéos et lives."
         }
       ],
       [

@@ -20,7 +20,7 @@ export type SavedAccount = {
   refresh_token: string;
 };
 
-const KEY = 'afryko-accounts';
+const KEY = 'afylo-accounts';
 
 export async function listAccounts(): Promise<SavedAccount[]> {
   try {

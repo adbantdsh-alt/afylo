@@ -7,7 +7,7 @@ import { Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { CardsSkeleton, Skeleton } from '@/components/skeleton';
-import { Afryko, Font, Radius } from '@/constants/brand';
+import { Afylo, Font, Radius } from '@/constants/brand';
 import { useCheckoutProfile } from '@/lib/checkout-profile';
 import { useMe } from '@/lib/me';
 import { useReposts } from '@/lib/reposts';
@@ -46,15 +46,15 @@ export default function Portefeuille() {
 
   return (
     <View style={styles.root}>
-      <SafeAreaView edges={['top']} style={{ backgroundColor: Afryko.bg }}>
+      <SafeAreaView edges={['top']} style={{ backgroundColor: Afylo.bg }}>
         <View style={styles.header}>
           <Pressable onPress={() => (router.canGoBack() ? router.back() : router.replace('/accueil'))} style={styles.back}>
-            <Ionicons name="chevron-back" size={24} color={Afryko.text} />
+            <Ionicons name="chevron-back" size={24} color={Afylo.text} />
           </Pressable>
           <Text style={styles.title}>Portefeuille</Text>
           <View style={{ flex: 1 }} />
           <Pressable style={styles.back} onPress={load}>
-            <Ionicons name="refresh" size={20} color={Afryko.textDim} />
+            <Ionicons name="refresh" size={20} color={Afylo.textDim} />
           </Pressable>
         </View>
 
@@ -101,7 +101,7 @@ function WalletTab({ summary, methodLabel, methodNumber, onWithdraw }: { summary
   return (
     <>
       {/* Carte solde */}
-      <LinearGradient colors={[Afryko.violet, Afryko.violet2]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.balanceCard}>
+      <LinearGradient colors={[Afylo.violet, Afylo.violet2]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.balanceCard}>
         <Text style={styles.balanceLabel}>Solde disponible</Text>
         <Text style={styles.balanceValue}>{fmt(available)} <Text style={styles.balanceCur}>{currency}</Text></Text>
 
@@ -113,7 +113,7 @@ function WalletTab({ summary, methodLabel, methodNumber, onWithdraw }: { summary
         )}
 
         <Pressable style={[styles.withdrawBtn, !canWithdraw && { opacity: 0.55 }]} disabled={!canWithdraw} onPress={onWithdraw}>
-          <Ionicons name="arrow-down-circle" size={18} color={Afryko.violet} />
+          <Ionicons name="arrow-down-circle" size={18} color={Afylo.violet} />
           <Text style={styles.withdrawText}>{canWithdraw ? 'Retirer' : 'Retrait dès 1 000 F'}</Text>
         </Pressable>
       </LinearGradient>
@@ -125,7 +125,7 @@ function WalletTab({ summary, methodLabel, methodNumber, onWithdraw }: { summary
           <Text style={styles.rewardsTitle}>Creator Rewards</Text>
           <Text style={styles.rewardsSub}>{fmt(rewardsNet)} F ce mois · 100 F / 1 000 vues</Text>
         </View>
-        <Ionicons name="chevron-forward" size={18} color={Afryko.textFaint} />
+        <Ionicons name="chevron-forward" size={18} color={Afylo.textFaint} />
       </Pressable>
 
       {/* Méthode de retrait */}
@@ -136,7 +136,7 @@ function WalletTab({ summary, methodLabel, methodNumber, onWithdraw }: { summary
         </View>
         <View style={styles.methodRow}>
           <View style={styles.methodIcon}>
-            <Ionicons name="phone-portrait" size={20} color={Afryko.violet} />
+            <Ionicons name="phone-portrait" size={20} color={Afylo.violet} />
           </View>
           <View style={{ flex: 1 }}>
             <Text style={styles.methodName}>{methodLabel}</Text>
@@ -152,8 +152,8 @@ function WalletTab({ summary, methodLabel, methodNumber, onWithdraw }: { summary
           <Text style={styles.cardTitle}>Répartition des revenus</Text>
           {breakdown.map((b, i) => (
             <View key={i} style={styles.line}>
-              <Text style={[styles.lineLabel, b.dim && { color: Afryko.textFaint }]}>{b.label}</Text>
-              <Text style={[styles.lineValue, b.dim && { color: Afryko.textFaint }, b.label.startsWith('Commissions') && { color: '#16A34A' }]}>{b.value < 0 ? '−' : ''}{fmt(Math.abs(b.value))} F</Text>
+              <Text style={[styles.lineLabel, b.dim && { color: Afylo.textFaint }]}>{b.label}</Text>
+              <Text style={[styles.lineValue, b.dim && { color: Afylo.textFaint }, b.label.startsWith('Commissions') && { color: '#16A34A' }]}>{b.value < 0 ? '−' : ''}{fmt(Math.abs(b.value))} F</Text>
             </View>
           ))}
           <View style={styles.divider} />
@@ -168,7 +168,7 @@ function WalletTab({ summary, methodLabel, methodNumber, onWithdraw }: { summary
       <Text style={styles.sectionTitle}>Transactions</Text>
       {transactions.length === 0 ? (
         <View style={[styles.card, styles.empty]}>
-          <Ionicons name="receipt-outline" size={30} color={Afryko.textFaint} />
+          <Ionicons name="receipt-outline" size={30} color={Afylo.textFaint} />
           <Text style={styles.emptyTitle}>Aucune transaction</Text>
           <Text style={styles.emptySub}>Tes ventes, commissions d'affiliation et Creator Rewards apparaîtront ici.</Text>
         </View>
@@ -184,11 +184,11 @@ function WalletTab({ summary, methodLabel, methodNumber, onWithdraw }: { summary
 }
 
 const TX_META: Record<WalletTx['kind'], { icon: keyof typeof Ionicons.glyphMap; color: string }> = {
-  sale: { icon: 'bag-check', color: Afryko.green },
-  tip: { icon: 'gift', color: Afryko.gold },
-  affiliation: { icon: 'people', color: Afryko.violet },
-  payout: { icon: 'arrow-up-circle', color: Afryko.textDim },
-  escrow: { icon: 'lock-closed', color: Afryko.live },
+  sale: { icon: 'bag-check', color: Afylo.green },
+  tip: { icon: 'gift', color: Afylo.gold },
+  affiliation: { icon: 'people', color: Afylo.violet },
+  payout: { icon: 'arrow-up-circle', color: Afylo.textDim },
+  escrow: { icon: 'lock-closed', color: Afylo.live },
 };
 
 function TxRow({ tx, last }: { tx: WalletTx; last: boolean }) {
@@ -203,7 +203,7 @@ function TxRow({ tx, last }: { tx: WalletTx; last: boolean }) {
         <Text style={styles.txLabel} numberOfLines={1}>{tx.label}</Text>
         <Text style={styles.txSub}>{tx.sub} · {tx.date}</Text>
       </View>
-      <Text style={[styles.txAmount, { color: tx.kind === 'escrow' ? Afryko.textDim : positive ? Afryko.green : Afryko.text }]}>
+      <Text style={[styles.txAmount, { color: tx.kind === 'escrow' ? Afylo.textDim : positive ? Afylo.green : Afylo.text }]}>
         {tx.kind === 'escrow' ? fmt(tx.amount) : signed(tx.amount)} F
       </Text>
     </View>
@@ -220,10 +220,10 @@ function StatsTab({ summary }: { summary: WalletSummary }) {
   return (
     <>
       <View style={styles.kpiGrid}>
-        <Kpi icon="eye" label="Vues" value={fmt(reach.views)} trend="total" color={Afryko.violet} />
-        <Kpi icon="bag-check" label="Ventes" value={String(reach.sales)} trend="total" color={Afryko.green} />
-        <Kpi icon="cash" label="Revenus (F)" value={fmt(revenue)} trend="total" color={Afryko.gold} />
-        <Kpi icon="people" label="Abonnés" value={fmt(reach.followers)} trend="total" color={Afryko.live} />
+        <Kpi icon="eye" label="Vues" value={fmt(reach.views)} trend="total" color={Afylo.violet} />
+        <Kpi icon="bag-check" label="Ventes" value={String(reach.sales)} trend="total" color={Afylo.green} />
+        <Kpi icon="cash" label="Revenus (F)" value={fmt(revenue)} trend="total" color={Afylo.gold} />
+        <Kpi icon="people" label="Abonnés" value={fmt(reach.followers)} trend="total" color={Afylo.live} />
       </View>
 
       {topPosts.length > 0 ? (
@@ -244,7 +244,7 @@ function StatsTab({ summary }: { summary: WalletSummary }) {
         </View>
       ) : (
         <View style={[styles.card, styles.empty]}>
-          <Ionicons name="stats-chart-outline" size={30} color={Afryko.textFaint} />
+          <Ionicons name="stats-chart-outline" size={30} color={Afylo.textFaint} />
           <Text style={styles.emptyTitle}>Pas encore de statistiques</Text>
           <Text style={styles.emptySub}>Publie des vidéos et vends pour suivre tes performances en temps réel.</Text>
         </View>
@@ -289,7 +289,7 @@ function WithdrawSheet({ visible, available, currency, methodLabel, methodNumber
                 onChangeText={(t) => setAmount(t.replace(/[^0-9]/g, ''))}
                 keyboardType="number-pad"
                 placeholder="0"
-                placeholderTextColor={Afryko.textFaint}
+                placeholderTextColor={Afylo.textFaint}
                 style={styles.amountInput}
               />
               <Text style={styles.amountCur}>{currency}</Text>
@@ -304,7 +304,7 @@ function WithdrawSheet({ visible, available, currency, methodLabel, methodNumber
             </View>
 
             <View style={styles.destRow}>
-              <Ionicons name="phone-portrait" size={18} color={Afryko.violet} />
+              <Ionicons name="phone-portrait" size={18} color={Afylo.violet} />
               <Text style={styles.destText}>{methodLabel} · {methodNumber}</Text>
             </View>
 
@@ -341,22 +341,22 @@ function Kpi({ icon, label, value, trend, color }: { icon: keyof typeof Ionicons
       </View>
       <Text style={styles.kpiValue}>{value}</Text>
       <Text style={styles.kpiLabel}>{label}</Text>
-      <Text style={[styles.kpiTrend, { color: Afryko.green }]}>{trend}</Text>
+      <Text style={[styles.kpiTrend, { color: Afylo.green }]}>{trend}</Text>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: Afryko.bg },
+  root: { flex: 1, backgroundColor: Afylo.bg },
   header: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, paddingVertical: 8 },
   back: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
-  title: { color: Afryko.text, fontSize: 22, fontFamily: Font.bold },
+  title: { color: Afylo.text, fontSize: 22, fontFamily: Font.bold },
 
-  tabs: { flexDirection: 'row', paddingHorizontal: 16, borderBottomWidth: 1, borderBottomColor: Afryko.border },
+  tabs: { flexDirection: 'row', paddingHorizontal: 16, borderBottomWidth: 1, borderBottomColor: Afylo.border },
   tabBtn: { paddingVertical: 12, marginRight: 24, alignItems: 'center' },
-  tabText: { color: Afryko.textDim, fontSize: 15, fontFamily: Font.semibold },
-  tabTextActive: { color: Afryko.text },
-  tabUnderline: { position: 'absolute', bottom: -1, left: 0, right: 0, height: 2, borderRadius: 2, backgroundColor: Afryko.text },
+  tabText: { color: Afylo.textDim, fontSize: 15, fontFamily: Font.semibold },
+  tabTextActive: { color: Afylo.text },
+  tabUnderline: { position: 'absolute', bottom: -1, left: 0, right: 0, height: 2, borderRadius: 2, backgroundColor: Afylo.text },
 
   // Carte solde
   balanceCard: { borderRadius: Radius.xl, padding: 20 },
@@ -366,83 +366,83 @@ const styles = StyleSheet.create({
   pendingRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 10 },
   pendingText: { color: '#ffffffcc', fontSize: 12, fontFamily: Font.medium },
   withdrawBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: '#fff', borderRadius: Radius.pill, paddingVertical: 13, marginTop: 18 },
-  withdrawText: { color: Afryko.violet, fontFamily: Font.bold, fontSize: 15 },
+  withdrawText: { color: Afylo.violet, fontFamily: Font.bold, fontSize: 15 },
 
-  card: { backgroundColor: Afryko.surface, borderWidth: 1, borderColor: Afryko.border, borderRadius: Radius.lg, padding: 16, marginTop: 14 },
+  card: { backgroundColor: Afylo.surface, borderWidth: 1, borderColor: Afylo.border, borderRadius: Radius.lg, padding: 16, marginTop: 14 },
   rewardsCard: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: '#16A34A0F', borderWidth: 1, borderColor: '#16A34A33', borderRadius: Radius.lg, padding: 14, marginTop: 14 },
   rewardsIcon: { width: 42, height: 42, borderRadius: 12, backgroundColor: '#16A34A1A', alignItems: 'center', justifyContent: 'center' },
-  rewardsTitle: { color: Afryko.text, fontFamily: Font.bold, fontSize: 15 },
-  rewardsSub: { color: Afryko.textDim, fontSize: 13, marginTop: 1 },
-  cardTitle: { color: Afryko.text, fontSize: 16, fontFamily: Font.bold, marginBottom: 14 },
-  sectionTitle: { color: Afryko.text, fontSize: 16, fontFamily: Font.bold, marginTop: 22, marginBottom: -2 },
+  rewardsTitle: { color: Afylo.text, fontFamily: Font.bold, fontSize: 15 },
+  rewardsSub: { color: Afylo.textDim, fontSize: 13, marginTop: 1 },
+  cardTitle: { color: Afylo.text, fontSize: 16, fontFamily: Font.bold, marginBottom: 14 },
+  sectionTitle: { color: Afylo.text, fontSize: 16, fontFamily: Font.bold, marginTop: 22, marginBottom: -2 },
   empty: { alignItems: 'center', paddingVertical: 28 },
-  emptyTitle: { color: Afryko.text, fontSize: 15, fontFamily: Font.bold, marginTop: 10 },
-  emptySub: { color: Afryko.textDim, fontSize: 13, textAlign: 'center', marginTop: 4, lineHeight: 18, paddingHorizontal: 20 },
+  emptyTitle: { color: Afylo.text, fontSize: 15, fontFamily: Font.bold, marginTop: 10 },
+  emptySub: { color: Afylo.textDim, fontSize: 13, textAlign: 'center', marginTop: 4, lineHeight: 18, paddingHorizontal: 20 },
   rowBetween: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  link: { color: Afryko.violet, fontSize: 13, fontFamily: Font.semibold, marginBottom: 14 },
+  link: { color: Afylo.violet, fontSize: 13, fontFamily: Font.semibold, marginBottom: 14 },
 
   methodRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  methodIcon: { width: 42, height: 42, borderRadius: 12, backgroundColor: Afryko.violet + '18', alignItems: 'center', justifyContent: 'center' },
-  methodName: { color: Afryko.text, fontSize: 15, fontFamily: Font.semibold },
-  methodSub: { color: Afryko.textDim, fontSize: 13, marginTop: 1 },
-  defaultTag: { backgroundColor: Afryko.surfaceAlt, paddingHorizontal: 10, paddingVertical: 5, borderRadius: Radius.pill },
-  defaultTagText: { color: Afryko.textDim, fontSize: 11, fontFamily: Font.semibold },
+  methodIcon: { width: 42, height: 42, borderRadius: 12, backgroundColor: Afylo.violet + '18', alignItems: 'center', justifyContent: 'center' },
+  methodName: { color: Afylo.text, fontSize: 15, fontFamily: Font.semibold },
+  methodSub: { color: Afylo.textDim, fontSize: 13, marginTop: 1 },
+  defaultTag: { backgroundColor: Afylo.surfaceAlt, paddingHorizontal: 10, paddingVertical: 5, borderRadius: Radius.pill },
+  defaultTagText: { color: Afylo.textDim, fontSize: 11, fontFamily: Font.semibold },
 
   line: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 7 },
-  lineLabel: { color: Afryko.textDim, fontSize: 14 },
-  lineValue: { color: Afryko.text, fontSize: 14, fontFamily: Font.semibold },
-  divider: { height: 1, backgroundColor: Afryko.border, marginVertical: 6 },
-  netLabel: { color: Afryko.text, fontSize: 15, fontFamily: Font.bold },
-  netValue: { color: Afryko.gold, fontSize: 17, fontFamily: Font.bold },
+  lineLabel: { color: Afylo.textDim, fontSize: 14 },
+  lineValue: { color: Afylo.text, fontSize: 14, fontFamily: Font.semibold },
+  divider: { height: 1, backgroundColor: Afylo.border, marginVertical: 6 },
+  netLabel: { color: Afylo.text, fontSize: 15, fontFamily: Font.bold },
+  netValue: { color: Afylo.gold, fontSize: 17, fontFamily: Font.bold },
 
   txRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12 },
-  txBorder: { borderBottomWidth: 1, borderBottomColor: Afryko.surfaceAlt },
+  txBorder: { borderBottomWidth: 1, borderBottomColor: Afylo.surfaceAlt },
   txIcon: { width: 38, height: 38, borderRadius: 11, alignItems: 'center', justifyContent: 'center' },
-  txLabel: { color: Afryko.text, fontSize: 14, fontFamily: Font.semibold },
-  txSub: { color: Afryko.textDim, fontSize: 12, marginTop: 1 },
+  txLabel: { color: Afylo.text, fontSize: 14, fontFamily: Font.semibold },
+  txSub: { color: Afylo.textDim, fontSize: 12, marginTop: 1 },
   txAmount: { fontSize: 14, fontFamily: Font.bold },
 
   // KPIs
   kpiGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
-  kpi: { width: '46%', flexGrow: 1, backgroundColor: Afryko.surface, borderWidth: 1, borderColor: Afryko.border, borderRadius: Radius.lg, padding: 14 },
+  kpi: { width: '46%', flexGrow: 1, backgroundColor: Afylo.surface, borderWidth: 1, borderColor: Afylo.border, borderRadius: Radius.lg, padding: 14 },
   kpiIcon: { width: 34, height: 34, borderRadius: 10, alignItems: 'center', justifyContent: 'center', marginBottom: 10 },
-  kpiValue: { color: Afryko.text, fontSize: 22, fontFamily: Font.bold },
-  kpiLabel: { color: Afryko.textDim, fontSize: 13, marginTop: 2 },
+  kpiValue: { color: Afylo.text, fontSize: 22, fontFamily: Font.bold },
+  kpiLabel: { color: Afylo.textDim, fontSize: 13, marginTop: 2 },
   kpiTrend: { fontSize: 12, fontFamily: Font.bold, marginTop: 4 },
 
   chart: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', height: 140, gap: 8 },
   barCol: { flex: 1, alignItems: 'center', height: '100%', justifyContent: 'flex-end' },
   barTrack: { flex: 1, width: '70%', justifyContent: 'flex-end' },
   bar: { width: '100%', borderRadius: 8, minHeight: 6 },
-  barLabel: { color: Afryko.textDim, fontSize: 11, marginTop: 6 },
+  barLabel: { color: Afylo.textDim, fontSize: 11, marginTop: 6 },
 
   viralRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 8 },
-  rank: { color: Afryko.textFaint, fontSize: 16, fontFamily: Font.bold, width: 16 },
-  viralThumb: { width: 44, height: 44, borderRadius: 10, backgroundColor: Afryko.surfaceAlt },
-  viralViews: { color: Afryko.text, fontSize: 13, fontFamily: Font.semibold, marginBottom: 6 },
-  viralTrack: { height: 6, borderRadius: 3, backgroundColor: Afryko.surfaceAlt, overflow: 'hidden' },
-  viralFill: { height: '100%', borderRadius: 3, backgroundColor: Afryko.violet },
-  viralScore: { color: Afryko.violet, fontSize: 15, fontFamily: Font.bold },
+  rank: { color: Afylo.textFaint, fontSize: 16, fontFamily: Font.bold, width: 16 },
+  viralThumb: { width: 44, height: 44, borderRadius: 10, backgroundColor: Afylo.surfaceAlt },
+  viralViews: { color: Afylo.text, fontSize: 13, fontFamily: Font.semibold, marginBottom: 6 },
+  viralTrack: { height: 6, borderRadius: 3, backgroundColor: Afylo.surfaceAlt, overflow: 'hidden' },
+  viralFill: { height: '100%', borderRadius: 3, backgroundColor: Afylo.violet },
+  viralScore: { color: Afylo.violet, fontSize: 15, fontFamily: Font.bold },
 
   // Sheet retrait
   backdrop: { flex: 1, backgroundColor: '#00000066' },
-  sheet: { backgroundColor: Afryko.bg, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 20, paddingBottom: 34 },
-  grabber: { alignSelf: 'center', width: 40, height: 4, borderRadius: 2, backgroundColor: Afryko.border, marginBottom: 16 },
-  sheetTitle: { color: Afryko.text, fontSize: 19, fontFamily: Font.bold },
-  sheetSub: { color: Afryko.textDim, fontSize: 13, marginTop: 4 },
+  sheet: { backgroundColor: Afylo.bg, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 20, paddingBottom: 34 },
+  grabber: { alignSelf: 'center', width: 40, height: 4, borderRadius: 2, backgroundColor: Afylo.border, marginBottom: 16 },
+  sheetTitle: { color: Afylo.text, fontSize: 19, fontFamily: Font.bold },
+  sheetSub: { color: Afylo.textDim, fontSize: 13, marginTop: 4 },
   amountWrap: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'center', gap: 8, marginTop: 22 },
-  amountInput: { color: Afryko.text, fontSize: 44, fontFamily: Font.bold, minWidth: 60, textAlign: 'center', padding: 0 },
-  amountCur: { color: Afryko.textDim, fontSize: 18, fontFamily: Font.semibold },
+  amountInput: { color: Afylo.text, fontSize: 44, fontFamily: Font.bold, minWidth: 60, textAlign: 'center', padding: 0 },
+  amountCur: { color: Afylo.textDim, fontSize: 18, fontFamily: Font.semibold },
   quickRow: { flexDirection: 'row', justifyContent: 'center', gap: 10, marginTop: 16 },
-  quick: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: Radius.pill, backgroundColor: Afryko.surfaceAlt },
-  quickText: { color: Afryko.text, fontSize: 13, fontFamily: Font.semibold },
-  destRow: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: Afryko.surfaceAlt, borderRadius: Radius.md, padding: 14, marginTop: 20 },
-  destText: { color: Afryko.text, fontSize: 14, fontFamily: Font.semibold },
-  errText: { color: Afryko.live, fontSize: 13, fontFamily: Font.medium, marginTop: 12, textAlign: 'center' },
-  primaryBtn: { backgroundColor: Afryko.violet, borderRadius: Radius.pill, paddingVertical: 15, alignItems: 'center', marginTop: 20 },
-  primaryDisabled: { backgroundColor: Afryko.textFaint },
+  quick: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: Radius.pill, backgroundColor: Afylo.surfaceAlt },
+  quickText: { color: Afylo.text, fontSize: 13, fontFamily: Font.semibold },
+  destRow: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: Afylo.surfaceAlt, borderRadius: Radius.md, padding: 14, marginTop: 20 },
+  destText: { color: Afylo.text, fontSize: 14, fontFamily: Font.semibold },
+  errText: { color: Afylo.live, fontSize: 13, fontFamily: Font.medium, marginTop: 12, textAlign: 'center' },
+  primaryBtn: { backgroundColor: Afylo.violet, borderRadius: Radius.pill, paddingVertical: 15, alignItems: 'center', marginTop: 20 },
+  primaryDisabled: { backgroundColor: Afylo.textFaint },
   primaryText: { color: '#fff', fontFamily: Font.bold, fontSize: 16 },
-  okIcon: { width: 66, height: 66, borderRadius: 33, backgroundColor: Afryko.green, alignItems: 'center', justifyContent: 'center', marginBottom: 16 },
-  okTitle: { color: Afryko.text, fontSize: 20, fontFamily: Font.bold },
-  okSub: { color: Afryko.textDim, fontSize: 14, textAlign: 'center', marginTop: 8, lineHeight: 20, paddingHorizontal: 10 },
+  okIcon: { width: 66, height: 66, borderRadius: 33, backgroundColor: Afylo.green, alignItems: 'center', justifyContent: 'center', marginBottom: 16 },
+  okTitle: { color: Afylo.text, fontSize: 20, fontFamily: Font.bold },
+  okSub: { color: Afylo.textDim, fontSize: 14, textAlign: 'center', marginTop: 8, lineHeight: 20, paddingHorizontal: 10 },
 });

@@ -7,7 +7,7 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { Afryko, Font, Radius, Type } from '@/constants/brand';
+import { Afylo, Font, Radius, Type } from '@/constants/brand';
 import { useAuthGate } from '@/lib/auth-gate';
 import { createProduct, getProduct, updateProduct, uploadFile, uploadImage } from '@/lib/db';
 import { classifyProduct } from '@/lib/moderation';
@@ -132,9 +132,9 @@ export default function ProductNew() {
 
   return (
     <View style={styles.root}>
-      <SafeAreaView edges={['top']} style={{ backgroundColor: Afryko.bg }}>
+      <SafeAreaView edges={['top']} style={{ backgroundColor: Afylo.bg }}>
         <View style={styles.header}>
-          <Pressable onPress={() => (router.canGoBack() ? router.back() : router.replace('/accueil'))} style={styles.hbtn}><Ionicons name="close" size={26} color={Afryko.text} /></Pressable>
+          <Pressable onPress={() => (router.canGoBack() ? router.back() : router.replace('/accueil'))} style={styles.hbtn}><Ionicons name="close" size={26} color={Afylo.text} /></Pressable>
           <Text style={styles.title}>{editId ? 'Modifier le produit' : 'Nouveau produit'}</Text>
           <View style={{ width: 40 }} />
         </View>
@@ -146,7 +146,7 @@ export default function ProductNew() {
           <View style={styles.typeRow}>
             {(['physical', 'digital'] as const).map((k) => (
               <Pressable key={k} onPress={() => setKind(k)} style={[styles.type, kind === k && styles.typeOn]}>
-                <Ionicons name={k === 'physical' ? 'cube-outline' : 'cloud-download-outline'} size={18} color={kind === k ? '#fff' : Afryko.textDim} />
+                <Ionicons name={k === 'physical' ? 'cube-outline' : 'cloud-download-outline'} size={18} color={kind === k ? '#fff' : Afylo.textDim} />
                 <Text style={[styles.typeText, kind === k && { color: '#fff' }]}>{k === 'physical' ? 'Physique' : 'Digital'}</Text>
               </Pressable>
             ))}
@@ -164,7 +164,7 @@ export default function ProductNew() {
             ))}
             {images.length < maxImages && (
               <Pressable onPress={pickImages} style={styles.addThumb}>
-                <Ionicons name="camera" size={26} color={Afryko.violet} />
+                <Ionicons name="camera" size={26} color={Afylo.violet} />
                 <Text style={styles.addThumbText}>Ajouter</Text>
               </Pressable>
             )}
@@ -175,7 +175,7 @@ export default function ProductNew() {
             <Card>
               <Text style={styles.cardTitle}>Fichier livré à l'acheteur</Text>
               <Pressable onPress={pickFile} style={styles.fileBtn}>
-                <Ionicons name={file ? 'document-attach' : 'cloud-upload-outline'} size={22} color={Afryko.violet} />
+                <Ionicons name={file ? 'document-attach' : 'cloud-upload-outline'} size={22} color={Afylo.violet} />
                 <Text style={styles.fileText} numberOfLines={1}>{file ? file.name : 'Choisir un fichier (PDF, ZIP, MP3…)'}</Text>
               </Pressable>
               <Text style={styles.hint}>Stock illimité (∞) · le fichier est envoyé après paiement sécurisé XaalisPay.</Text>
@@ -208,14 +208,14 @@ export default function ProductNew() {
               <Text style={[styles.subLabel, { marginTop: 14 }]}>Offres de quantité (prix par lot)</Text>
               {tiers.map((t, i) => (
                 <View key={i} style={styles.tierRow}>
-                  <TextInput style={[styles.input, styles.tierQty]} value={t.qty} onChangeText={(v) => updateTier(i, 'qty', v)} placeholder="Qté" placeholderTextColor={Afryko.textFaint} keyboardType="numeric" />
+                  <TextInput style={[styles.input, styles.tierQty]} value={t.qty} onChangeText={(v) => updateTier(i, 'qty', v)} placeholder="Qté" placeholderTextColor={Afylo.textFaint} keyboardType="numeric" />
                   <Text style={styles.tierArrow}>→</Text>
-                  <TextInput style={[styles.input, { flex: 1 }]} value={t.price} onChangeText={(v) => updateTier(i, 'price', v)} placeholder="Prix total (FCFA)" placeholderTextColor={Afryko.textFaint} keyboardType="numeric" />
-                  <Pressable onPress={() => removeTier(i)} style={styles.tierX}><Ionicons name="close" size={18} color={Afryko.live} /></Pressable>
+                  <TextInput style={[styles.input, { flex: 1 }]} value={t.price} onChangeText={(v) => updateTier(i, 'price', v)} placeholder="Prix total (FCFA)" placeholderTextColor={Afylo.textFaint} keyboardType="numeric" />
+                  <Pressable onPress={() => removeTier(i)} style={styles.tierX}><Ionicons name="close" size={18} color={Afylo.live} /></Pressable>
                 </View>
               ))}
               <Pressable onPress={addTier} style={styles.addTier}>
-                <Ionicons name="add-circle-outline" size={20} color={Afryko.violet} />
+                <Ionicons name="add-circle-outline" size={20} color={Afylo.violet} />
                 <Text style={styles.addTierText}>Ajouter un palier (ex : 1 → 3000, 2 → 5000)</Text>
               </Pressable>
             </Card>
@@ -228,12 +228,12 @@ export default function ProductNew() {
                 <Text style={styles.switchTitle}>Activer l'affiliation</Text>
                 <Text style={styles.switchHint}>Des créateurs revendent ton produit contre commission.</Text>
               </View>
-              <Switch value={affiliationOn} onValueChange={setAffiliationOn} trackColor={{ true: Afryko.violet }} />
+              <Switch value={affiliationOn} onValueChange={setAffiliationOn} trackColor={{ true: Afylo.violet }} />
             </View>
             {affiliationOn && (
               <>
                 <Field label="Commission (%) — min. 15" value={commission} onChange={setCommission} placeholder="15" numeric />
-                <Text style={styles.hint}>Sur {commission || '15'}% : le créateur touche {Math.max(0, (parseInt(commission, 10) || 15) - 5)}%, Afryko 5%.</Text>
+                <Text style={styles.hint}>Sur {commission || '15'}% : le créateur touche {Math.max(0, (parseInt(commission, 10) || 15) - 5)}%, Afylo 5%.</Text>
               </>
             )}
           </Card>
@@ -267,7 +267,7 @@ function Field({ label, value, onChange, placeholder, numeric, multiline }: { la
         value={value}
         onChangeText={onChange}
         placeholder={placeholder}
-        placeholderTextColor={Afryko.textFaint}
+        placeholderTextColor={Afylo.textFaint}
         keyboardType={numeric ? 'numeric' : 'default'}
         multiline={multiline}
       />
@@ -276,52 +276,52 @@ function Field({ label, value, onChange, placeholder, numeric, multiline }: { la
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: Afryko.bg },
+  root: { flex: 1, backgroundColor: Afylo.bg },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 12, paddingVertical: 8 },
   hbtn: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
-  title: { ...Type.subtitle, color: Afryko.text },
+  title: { ...Type.subtitle, color: Afylo.text },
 
   typeRow: { flexDirection: 'row', gap: 10, marginBottom: 6 },
-  type: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, height: 46, borderRadius: Radius.md, backgroundColor: Afryko.surface, borderWidth: 1, borderColor: Afryko.border },
-  typeOn: { backgroundColor: Afryko.violet, borderColor: Afryko.violet },
-  typeText: { ...Type.body, fontFamily: Font.semibold, color: Afryko.textDim },
+  type: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, height: 46, borderRadius: Radius.md, backgroundColor: Afylo.surface, borderWidth: 1, borderColor: Afylo.border },
+  typeOn: { backgroundColor: Afylo.violet, borderColor: Afylo.violet },
+  typeText: { ...Type.body, fontFamily: Font.semibold, color: Afylo.textDim },
 
-  section: { ...Type.body, fontFamily: Font.semibold, color: Afryko.text, marginTop: 8 },
-  hint: { ...Type.caption, color: Afryko.textDim, marginTop: 8, lineHeight: 17 },
-  thumb: { width: 88, height: 88, borderRadius: Radius.md, overflow: 'hidden', backgroundColor: Afryko.surfaceAlt },
+  section: { ...Type.body, fontFamily: Font.semibold, color: Afylo.text, marginTop: 8 },
+  hint: { ...Type.caption, color: Afylo.textDim, marginTop: 8, lineHeight: 17 },
+  thumb: { width: 88, height: 88, borderRadius: Radius.md, overflow: 'hidden', backgroundColor: Afylo.surfaceAlt },
   coverTag: { position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: '#000000AA', paddingVertical: 2, alignItems: 'center' },
   coverText: { color: '#fff', fontSize: 9, fontFamily: Font.semibold },
   thumbX: { position: 'absolute', top: 4, right: 4, width: 22, height: 22, borderRadius: 11, backgroundColor: '#000000AA', alignItems: 'center', justifyContent: 'center' },
-  addThumb: { width: 88, height: 88, borderRadius: Radius.md, borderWidth: 1.5, borderStyle: 'dashed', borderColor: Afryko.violet, backgroundColor: Afryko.surface, alignItems: 'center', justifyContent: 'center', gap: 4 },
-  addThumbText: { ...Type.caption, color: Afryko.violet, fontFamily: Font.semibold },
+  addThumb: { width: 88, height: 88, borderRadius: Radius.md, borderWidth: 1.5, borderStyle: 'dashed', borderColor: Afylo.violet, backgroundColor: Afylo.surface, alignItems: 'center', justifyContent: 'center', gap: 4 },
+  addThumbText: { ...Type.caption, color: Afylo.violet, fontFamily: Font.semibold },
 
-  card: { backgroundColor: Afryko.surface, borderRadius: Radius.lg, borderWidth: 1, borderColor: Afryko.border, padding: 14, marginTop: 14 },
-  cardTitle: { ...Type.body, fontFamily: Font.semibold, color: Afryko.text, marginBottom: 10 },
-  label: { ...Type.small, fontFamily: Font.semibold, color: Afryko.text, marginBottom: 8, marginTop: 8 },
-  subLabel: { ...Type.small, color: Afryko.textDim, marginBottom: 8 },
-  input: { backgroundColor: Afryko.bg, borderRadius: Radius.md, borderWidth: 1, borderColor: Afryko.border, color: Afryko.text, ...Type.body, paddingHorizontal: 14, height: 50 },
+  card: { backgroundColor: Afylo.surface, borderRadius: Radius.lg, borderWidth: 1, borderColor: Afylo.border, padding: 14, marginTop: 14 },
+  cardTitle: { ...Type.body, fontFamily: Font.semibold, color: Afylo.text, marginBottom: 10 },
+  label: { ...Type.small, fontFamily: Font.semibold, color: Afylo.text, marginBottom: 8, marginTop: 8 },
+  subLabel: { ...Type.small, color: Afylo.textDim, marginBottom: 8 },
+  input: { backgroundColor: Afylo.bg, borderRadius: Radius.md, borderWidth: 1, borderColor: Afylo.border, color: Afylo.text, ...Type.body, paddingHorizontal: 14, height: 50 },
   row: { flexDirection: 'row', gap: 12 },
 
-  fileBtn: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: Afryko.bg, borderRadius: Radius.md, borderWidth: 1.5, borderStyle: 'dashed', borderColor: Afryko.violet, padding: 14 },
-  fileText: { ...Type.body, color: Afryko.text, flex: 1 },
+  fileBtn: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: Afylo.bg, borderRadius: Radius.md, borderWidth: 1.5, borderStyle: 'dashed', borderColor: Afylo.violet, padding: 14 },
+  fileText: { ...Type.body, color: Afylo.text, flex: 1 },
 
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  chip: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: Radius.pill, backgroundColor: Afryko.bg, borderWidth: 1, borderColor: Afryko.border },
-  chipOn: { backgroundColor: Afryko.violet, borderColor: Afryko.violet },
-  chipText: { ...Type.small, color: Afryko.text },
+  chip: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: Radius.pill, backgroundColor: Afylo.bg, borderWidth: 1, borderColor: Afylo.border },
+  chipOn: { backgroundColor: Afylo.violet, borderColor: Afylo.violet },
+  chipText: { ...Type.small, color: Afylo.text },
 
   tierRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 },
   tierQty: { width: 64, textAlign: 'center' },
-  tierArrow: { color: Afryko.textDim, fontSize: 18 },
+  tierArrow: { color: Afylo.textDim, fontSize: 18 },
   tierX: { width: 34, height: 34, alignItems: 'center', justifyContent: 'center' },
   addTier: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 4 },
-  addTierText: { ...Type.small, color: Afryko.violet, fontFamily: Font.semibold },
+  addTierText: { ...Type.small, color: Afylo.violet, fontFamily: Font.semibold },
 
   switchRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  switchTitle: { ...Type.body, fontFamily: Font.semibold, color: Afryko.text },
-  switchHint: { ...Type.caption, color: Afryko.textDim, marginTop: 2, lineHeight: 17 },
+  switchTitle: { ...Type.body, fontFamily: Font.semibold, color: Afylo.text },
+  switchHint: { ...Type.caption, color: Afylo.textDim, marginTop: 2, lineHeight: 17 },
 
-  error: { color: Afryko.live, ...Type.small, fontFamily: Font.semibold, marginTop: 16 },
-  publish: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, height: 54, borderRadius: Radius.pill, backgroundColor: Afryko.violet, marginTop: 20 },
+  error: { color: Afylo.live, ...Type.small, fontFamily: Font.semibold, marginTop: 16 },
+  publish: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, height: 54, borderRadius: Radius.pill, backgroundColor: Afylo.violet, marginTop: 20 },
   publishText: { color: '#fff', fontFamily: Font.semibold, fontSize: 16 },
 });

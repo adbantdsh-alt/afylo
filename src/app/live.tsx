@@ -10,7 +10,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Avatar } from '@/components/ui-kit';
 import { GiftSheet } from '@/components/gift-sheet';
 import { PaymentSheet } from '@/components/payment-sheet';
-import { Afryko, Font, Radius } from '@/constants/brand';
+import { Afylo, Font, Radius } from '@/constants/brand';
 import { BuzzBadge } from '@/components/buzz-badge';
 import { useIsBuzz } from '@/lib/buzz';
 import { endLive, setLiveViewers } from '@/lib/db';
@@ -39,9 +39,9 @@ const GIFTS = [500, 1000, 2000, 5000];
 const HEART_COLORS = ['#E11D48', '#FF4D8D', '#FF7AB8', '#B8791F', '#6E80FF', '#FF5A5F', '#FF2D55'];
 const SYS: Record<'join' | 'like' | 'share' | 'guest' | 'sale', { icon: keyof typeof Ionicons.glyphMap; color: string }> = {
   join: { icon: 'enter-outline', color: '#7EC8FF' },
-  like: { icon: 'heart', color: Afryko.live },
+  like: { icon: 'heart', color: Afylo.live },
   share: { icon: 'arrow-redo', color: '#fff' },
-  guest: { icon: 'mic', color: Afryko.violet2 },
+  guest: { icon: 'mic', color: Afylo.violet2 },
   sale: { icon: 'bag-check', color: '#37D67A' },
 };
 
@@ -136,7 +136,7 @@ export default function Live() {
     addComment({ name: me.name, avatar: me.avatar, text: `a offert ${amount.toLocaleString('fr-FR')} FCFA 🎁`, gift: true });
     spawnHearts(width / 2, height / 2, 8);
   };
-  const share = async () => { try { await Share.share({ message: `${name} est en direct sur Afryko — rejoins !` }); } catch {} };
+  const share = async () => { try { await Share.share({ message: `${name} est en direct sur Afylo — rejoins !` }); } catch {} };
   const send = () => {
     if (!text.trim()) return;
     addComment({ name: me.name, avatar: me.avatar, text: text.trim() });
@@ -274,7 +274,7 @@ export default function Live() {
                       <Text style={styles.pName} numberOfLines={1}>{p.title}</Text>
                       <Text style={styles.pMeta}>{p.price} · {p.tag}</Text>
                     </View>
-                    <Ionicons name={on ? 'checkmark-circle' : 'ellipse-outline'} size={24} color={on ? Afryko.violet : '#ffffff66'} />
+                    <Ionicons name={on ? 'checkmark-circle' : 'ellipse-outline'} size={24} color={on ? Afylo.violet : '#ffffff66'} />
                   </Pressable>
                 );
               })}
@@ -334,7 +334,7 @@ export default function Live() {
         {/* Commentaire épinglé */}
         {pinned && (
           <View style={styles.pinned}>
-            <Ionicons name="pin" size={13} color={Afryko.gold} />
+            <Ionicons name="pin" size={13} color={Afylo.gold} />
             <Text style={styles.pinnedText} numberOfLines={1}><Text style={{ fontFamily: Font.semibold }}>{pinned.name}</Text> · {pinned.text}</Text>
             {isHost && <Ionicons name="close" size={16} color="#ffffff99" onPress={() => setPinned(null)} />}
           </View>
@@ -405,7 +405,7 @@ export default function Live() {
           ) : (
             <Pressable
               onPress={requested === 'live' ? leaveStage : requestJoin}
-              style={[styles.circleBtn, requested !== 'idle' && { backgroundColor: Afryko.violet }]}>
+              style={[styles.circleBtn, requested !== 'idle' && { backgroundColor: Afylo.violet }]}>
               <Ionicons
                 name={requested === 'live' ? (localMode === 'video' ? 'videocam' : 'mic') : requested === 'pending' ? 'hourglass' : requested === 'accepted' ? 'checkmark' : 'hand-left'}
                 size={20}
@@ -427,9 +427,9 @@ export default function Live() {
           )}
 
           {!isHost && (
-            <Pressable onPress={() => setGiftOpen(true)} style={styles.circleBtn}><Ionicons name="gift" size={24} color={Afryko.gold} /></Pressable>
+            <Pressable onPress={() => setGiftOpen(true)} style={styles.circleBtn}><Ionicons name="gift" size={24} color={Afylo.gold} /></Pressable>
           )}
-          <Pressable onPress={sendHeart} style={styles.circleBtn}><Ionicons name="heart" size={26} color={Afryko.live} /></Pressable>
+          <Pressable onPress={sendHeart} style={styles.circleBtn}><Ionicons name="heart" size={26} color={Afylo.live} /></Pressable>
         </View>
       </SafeAreaView>
 
@@ -461,7 +461,7 @@ export default function Live() {
                     <Text style={styles.reqSub}>veut intervenir</Text>
                   </View>
                   <Pressable onPress={() => acceptGuest(r, 'audio')} style={styles.reqIcon}><Ionicons name="mic" size={18} color="#fff" /></Pressable>
-                  <Pressable onPress={() => acceptGuest(r, 'video')} style={[styles.reqIcon, { backgroundColor: Afryko.violet }]}><Ionicons name="videocam" size={18} color="#fff" /></Pressable>
+                  <Pressable onPress={() => acceptGuest(r, 'video')} style={[styles.reqIcon, { backgroundColor: Afylo.violet }]}><Ionicons name="videocam" size={18} color="#fff" /></Pressable>
                   <Pressable onPress={() => refuseGuest(r.id)} style={styles.reqIconGhost}><Ionicons name="close" size={18} color="#fff" /></Pressable>
                 </View>
               ))
@@ -495,7 +495,7 @@ export default function Live() {
             <Text style={styles.chooserSub}>Comment veux-tu intervenir dans le live ?</Text>
             <View style={styles.chooserRow}>
               <Pressable onPress={() => chooseMode('audio')} style={styles.chooserBtn}>
-                <Ionicons name="mic" size={26} color={Afryko.text} />
+                <Ionicons name="mic" size={26} color={Afylo.text} />
                 <Text style={styles.chooserBtnText}>Audio</Text>
               </Pressable>
               <Pressable onPress={() => chooseMode('video')} style={[styles.chooserBtn, styles.chooserBtnVideo]}>
@@ -524,7 +524,7 @@ export default function Live() {
                       <Text style={styles.pName} numberOfLines={1}>{p.title}</Text>
                       <Text style={styles.pMeta}>{p.price} · {p.tag}</Text>
                     </View>
-                    <Ionicons name={on ? 'checkmark-circle' : 'add-circle-outline'} size={24} color={on ? Afryko.violet : '#ffffff88'} />
+                    <Ionicons name={on ? 'checkmark-circle' : 'add-circle-outline'} size={24} color={on ? Afylo.violet : '#ffffff88'} />
                   </Pressable>
                 );
               })}
@@ -548,7 +548,7 @@ export default function Live() {
                     <Text style={styles.pName} numberOfLines={1}>{p.title}</Text>
                     <Text style={styles.pMeta}>{p.price} · {p.tag}</Text>
                   </View>
-                  <Ionicons name="send" size={20} color={Afryko.violet2} />
+                  <Ionicons name="send" size={20} color={Afylo.violet2} />
                 </Pressable>
               ))}
             </ScrollView>
@@ -564,17 +564,17 @@ export default function Live() {
             <Text style={styles.modMsg}>{mod?.text}</Text>
             {isHost ? (
               <>
-                <Pressable style={styles.modItem} onPress={() => mod && pinComment(mod)}><Ionicons name="pin-outline" size={20} color={Afryko.text} /><Text style={styles.modItemText}>Épingler</Text></Pressable>
-                <Pressable style={styles.modItem} onPress={() => mod && replyTo(mod.name)}><Ionicons name="return-up-back-outline" size={20} color={Afryko.text} /><Text style={styles.modItemText}>Répondre</Text></Pressable>
-                <Pressable style={styles.modItem} onPress={() => { const n = mod?.name ?? null; setMod(null); setLinkPicker(n); }}><Ionicons name="pricetag-outline" size={20} color={Afryko.violet} /><Text style={[styles.modItemText, { color: Afryko.violet }]}>Répondre avec un lien produit</Text></Pressable>
-                <Pressable style={styles.modItem} onPress={() => mod && deleteComment(mod.id)}><Ionicons name="trash-outline" size={20} color={Afryko.live} /><Text style={[styles.modItemText, { color: Afryko.live }]}>Supprimer</Text></Pressable>
-                <Pressable style={styles.modItem} onPress={() => mod && blockUser(mod.name)}><Ionicons name="ban-outline" size={20} color={Afryko.live} /><Text style={[styles.modItemText, { color: Afryko.live }]}>Bloquer {mod?.name}</Text></Pressable>
+                <Pressable style={styles.modItem} onPress={() => mod && pinComment(mod)}><Ionicons name="pin-outline" size={20} color={Afylo.text} /><Text style={styles.modItemText}>Épingler</Text></Pressable>
+                <Pressable style={styles.modItem} onPress={() => mod && replyTo(mod.name)}><Ionicons name="return-up-back-outline" size={20} color={Afylo.text} /><Text style={styles.modItemText}>Répondre</Text></Pressable>
+                <Pressable style={styles.modItem} onPress={() => { const n = mod?.name ?? null; setMod(null); setLinkPicker(n); }}><Ionicons name="pricetag-outline" size={20} color={Afylo.violet} /><Text style={[styles.modItemText, { color: Afylo.violet }]}>Répondre avec un lien produit</Text></Pressable>
+                <Pressable style={styles.modItem} onPress={() => mod && deleteComment(mod.id)}><Ionicons name="trash-outline" size={20} color={Afylo.live} /><Text style={[styles.modItemText, { color: Afylo.live }]}>Supprimer</Text></Pressable>
+                <Pressable style={styles.modItem} onPress={() => mod && blockUser(mod.name)}><Ionicons name="ban-outline" size={20} color={Afylo.live} /><Text style={[styles.modItemText, { color: Afylo.live }]}>Bloquer {mod?.name}</Text></Pressable>
               </>
             ) : (
               <>
-                <Pressable style={styles.modItem} onPress={() => mod && replyTo(mod.name)}><Ionicons name="return-up-back-outline" size={20} color={Afryko.text} /><Text style={styles.modItemText}>Répondre à {mod?.name}</Text></Pressable>
-                <Pressable style={styles.modItem} onPress={() => mod && router.push({ pathname: '/creator/[id]', params: { id: mod.name, name: mod.name, avatar: mod.avatar } })}><Ionicons name="person-outline" size={20} color={Afryko.text} /><Text style={styles.modItemText}>Voir le profil</Text></Pressable>
-                <Pressable style={styles.modItem} onPress={reportComment}><Ionicons name="flag-outline" size={20} color={Afryko.live} /><Text style={[styles.modItemText, { color: Afryko.live }]}>Signaler</Text></Pressable>
+                <Pressable style={styles.modItem} onPress={() => mod && replyTo(mod.name)}><Ionicons name="return-up-back-outline" size={20} color={Afylo.text} /><Text style={styles.modItemText}>Répondre à {mod?.name}</Text></Pressable>
+                <Pressable style={styles.modItem} onPress={() => mod && router.push({ pathname: '/creator/[id]', params: { id: mod.name, name: mod.name, avatar: mod.avatar } })}><Ionicons name="person-outline" size={20} color={Afylo.text} /><Text style={styles.modItemText}>Voir le profil</Text></Pressable>
+                <Pressable style={styles.modItem} onPress={reportComment}><Ionicons name="flag-outline" size={20} color={Afylo.live} /><Text style={[styles.modItemText, { color: Afylo.live }]}>Signaler</Text></Pressable>
               </>
             )}
             <Pressable style={styles.modCancel} onPress={() => setMod(null)}><Text style={styles.modCancelText}>Annuler</Text></Pressable>
@@ -629,7 +629,7 @@ export default function Live() {
       <Modal visible={endConfirm} transparent animationType="fade" onRequestClose={() => setEndConfirm(false)}>
         <View style={styles.chooserOverlay}>
           <View style={styles.chooserCard}>
-            <View style={[styles.chooserIcon, { backgroundColor: Afryko.live }]}><Ionicons name="stop" size={24} color="#fff" /></View>
+            <View style={[styles.chooserIcon, { backgroundColor: Afylo.live }]}><Ionicons name="stop" size={24} color="#fff" /></View>
             <Text style={styles.chooserTitle}>Terminer le live ?</Text>
             <Text style={styles.chooserSub}>{Math.max(1, viewers)} spectateur(s) te regardent{sales.length > 0 ? ` · ${sales.length} vente(s)` : ''}. Cette action arrête la diffusion.</Text>
             <Pressable onPress={() => { setEndConfirm(false); leave(); }} style={styles.endBtn}>
@@ -713,7 +713,7 @@ function BigPop({ x, y }: { x: number; y: number }) {
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: '#000', overflow: 'hidden' },
   permWrap: { alignItems: 'center', justifyContent: 'center', gap: 12, backgroundColor: '#111' },
-  permBtn: { backgroundColor: Afryko.violet, paddingHorizontal: 18, paddingVertical: 10, borderRadius: Radius.pill },
+  permBtn: { backgroundColor: Afylo.violet, paddingHorizontal: 18, paddingVertical: 10, borderRadius: Radius.pill },
   permBtnText: { color: '#fff', fontFamily: Font.semibold },
 
   setupDim: { ...StyleSheet.absoluteFillObject, backgroundColor: '#00000066' },
@@ -729,29 +729,29 @@ const styles = StyleSheet.create({
   pImg: { width: 46, height: 46, borderRadius: 10, backgroundColor: '#222' },
   pName: { color: '#fff', fontFamily: Font.semibold, fontSize: 14 },
   pMeta: { color: '#ffffff99', fontSize: 12, marginTop: 2 },
-  startBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: Afryko.live, height: 52, borderRadius: Radius.pill, marginTop: 12 },
+  startBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: Afylo.live, height: 52, borderRadius: Radius.pill, marginTop: 12 },
   startDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#fff' },
   startText: { color: '#fff', fontFamily: Font.bold, fontSize: 16 },
 
   top: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 12, paddingTop: 8 },
   hostPill: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#00000055', borderRadius: Radius.pill, paddingLeft: 4, paddingRight: 10, paddingVertical: 4, maxWidth: 170 },
   hostName: { color: '#fff', fontFamily: Font.semibold, fontSize: 13, flexShrink: 1 },
-  followBtn: { backgroundColor: Afryko.violet, width: 22, height: 22, borderRadius: 11, alignItems: 'center', justifyContent: 'center' },
+  followBtn: { backgroundColor: Afylo.violet, width: 22, height: 22, borderRadius: 11, alignItems: 'center', justifyContent: 'center' },
   followText: { color: '#fff', fontFamily: Font.bold, fontSize: 13 },
-  liveBadge: { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: Afryko.live, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 },
+  liveBadge: { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: Afylo.live, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 },
   liveDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#fff' },
   liveText: { color: '#fff', fontFamily: Font.bold, fontSize: 10 },
   viewersPill: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#00000055', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 12 },
   viewersText: { color: '#fff', fontFamily: Font.semibold, fontSize: 12 },
   close: { width: 34, height: 34, borderRadius: 17, backgroundColor: '#00000055', alignItems: 'center', justifyContent: 'center' },
-  reqBadge: { position: 'absolute', top: -3, right: -3, minWidth: 18, height: 18, paddingHorizontal: 4, borderRadius: 9, backgroundColor: Afryko.live, alignItems: 'center', justifyContent: 'center', borderWidth: 1.5, borderColor: '#000' },
+  reqBadge: { position: 'absolute', top: -3, right: -3, minWidth: 18, height: 18, paddingHorizontal: 4, borderRadius: 9, backgroundColor: Afylo.live, alignItems: 'center', justifyContent: 'center', borderWidth: 1.5, borderColor: '#000' },
   reqBadgeText: { color: '#fff', fontFamily: Font.bold, fontSize: 10 },
 
   pinned: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#00000066', marginHorizontal: 12, marginTop: 10, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 12, borderWidth: 1, borderColor: '#FFD98A55' },
   pinnedText: { color: '#fff', fontSize: 13, flex: 1 },
 
   guestStrip: { flexDirection: 'row', gap: 10, paddingHorizontal: 14, marginTop: 12 },
-  guestPip: { width: 78, height: 104, borderRadius: 14, overflow: 'hidden', backgroundColor: '#111', borderWidth: 2, borderColor: Afryko.violet },
+  guestPip: { width: 78, height: 104, borderRadius: 14, overflow: 'hidden', backgroundColor: '#111', borderWidth: 2, borderColor: Afylo.violet },
   guestAudio: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#1a1a22' },
   guestNameBar: { position: 'absolute', left: 0, right: 0, bottom: 0, flexDirection: 'row', alignItems: 'center', gap: 3, paddingHorizontal: 5, paddingVertical: 3, backgroundColor: '#00000088' },
   guestName: { color: '#fff', fontFamily: Font.semibold, fontSize: 10, flex: 1 },
@@ -765,7 +765,7 @@ const styles = StyleSheet.create({
   linkChip: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 7, backgroundColor: '#ffffff1f', borderWidth: 1, borderColor: '#ffffff33', borderRadius: Radius.pill, paddingLeft: 10, paddingRight: 5, paddingVertical: 5 },
   linkChipTitle: { color: '#fff', fontFamily: Font.semibold, fontSize: 12, maxWidth: 120 },
   linkChipPrice: { color: '#FFD98A', fontFamily: Font.bold, fontSize: 12 },
-  linkChipCta: { backgroundColor: Afryko.violet, borderRadius: Radius.pill, paddingHorizontal: 12, paddingVertical: 5 },
+  linkChipCta: { backgroundColor: Afylo.violet, borderRadius: Radius.pill, paddingHorizontal: 12, paddingVertical: 5 },
   linkChipCtaText: { color: '#fff', fontFamily: Font.semibold, fontSize: 12 },
   linkHint: { color: '#ffffff99', fontSize: 13, marginBottom: 10, marginTop: -4 },
   giftBubble: { backgroundColor: '#B8791Fee', borderWidth: 1, borderColor: '#FFD98A' },
@@ -777,7 +777,7 @@ const styles = StyleSheet.create({
   inputBar: { flex: 1, flexDirection: 'row', alignItems: 'center', backgroundColor: '#00000066', borderRadius: Radius.pill, borderWidth: 1, borderColor: '#ffffff33', paddingHorizontal: 16, height: 44, overflow: 'hidden' },
   input: { flex: 1, color: '#fff', fontSize: 15, height: '100%' },
   circleBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#00000055', alignItems: 'center', justifyContent: 'center' },
-  sellBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: Afryko.violet, paddingHorizontal: 16, height: 44, borderRadius: Radius.pill, marginLeft: 'auto' },
+  sellBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: Afylo.violet, paddingHorizontal: 16, height: 44, borderRadius: Radius.pill, marginLeft: 'auto' },
   sellText: { color: '#fff', fontFamily: Font.semibold, fontSize: 14 },
   heartShadow: { textShadowColor: '#00000066', textShadowRadius: 6, textShadowOffset: { width: 0, height: 1 } },
 
@@ -810,25 +810,25 @@ const styles = StyleSheet.create({
   reqRemoveText: { color: '#fff', fontFamily: Font.semibold, fontSize: 13 },
 
   chooserOverlay: { flex: 1, backgroundColor: '#000000aa', alignItems: 'center', justifyContent: 'center', padding: 30 },
-  chooserCard: { backgroundColor: Afryko.bg, borderRadius: 24, padding: 24, alignItems: 'center', width: '100%', maxWidth: 360 },
-  chooserIcon: { width: 56, height: 56, borderRadius: 28, backgroundColor: Afryko.green, alignItems: 'center', justifyContent: 'center', marginBottom: 14 },
-  chooserTitle: { color: Afryko.text, fontFamily: Font.bold, fontSize: 20 },
-  chooserSub: { color: Afryko.textDim, fontSize: 14, textAlign: 'center', marginTop: 6, marginBottom: 20 },
+  chooserCard: { backgroundColor: Afylo.bg, borderRadius: 24, padding: 24, alignItems: 'center', width: '100%', maxWidth: 360 },
+  chooserIcon: { width: 56, height: 56, borderRadius: 28, backgroundColor: Afylo.green, alignItems: 'center', justifyContent: 'center', marginBottom: 14 },
+  chooserTitle: { color: Afylo.text, fontFamily: Font.bold, fontSize: 20 },
+  chooserSub: { color: Afylo.textDim, fontSize: 14, textAlign: 'center', marginTop: 6, marginBottom: 20 },
   chooserRow: { flexDirection: 'row', gap: 12, alignSelf: 'stretch' },
-  chooserBtn: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 20, borderRadius: Radius.lg, backgroundColor: Afryko.surfaceAlt, borderWidth: 1, borderColor: Afryko.border },
-  chooserBtnVideo: { backgroundColor: Afryko.violet, borderColor: Afryko.violet },
-  chooserBtnText: { color: Afryko.text, fontFamily: Font.bold, fontSize: 15 },
-  chooserCancel: { color: Afryko.textDim, fontFamily: Font.semibold, fontSize: 15, marginTop: 18 },
-  endBtn: { alignSelf: 'stretch', backgroundColor: Afryko.live, borderRadius: Radius.pill, paddingVertical: 15, alignItems: 'center', marginTop: 22 },
+  chooserBtn: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 20, borderRadius: Radius.lg, backgroundColor: Afylo.surfaceAlt, borderWidth: 1, borderColor: Afylo.border },
+  chooserBtnVideo: { backgroundColor: Afylo.violet, borderColor: Afylo.violet },
+  chooserBtnText: { color: Afylo.text, fontFamily: Font.bold, fontSize: 15 },
+  chooserCancel: { color: Afylo.textDim, fontFamily: Font.semibold, fontSize: 15, marginTop: 18 },
+  endBtn: { alignSelf: 'stretch', backgroundColor: Afylo.live, borderRadius: Radius.pill, paddingVertical: 15, alignItems: 'center', marginTop: 22 },
   endBtnText: { color: '#fff', fontFamily: Font.bold, fontSize: 16 },
   endCancel: { marginTop: 4 },
 
   modOverlay: { flex: 1, backgroundColor: '#00000088', justifyContent: 'center', paddingHorizontal: 30 },
-  modSheet: { backgroundColor: Afryko.surface, borderRadius: 20, padding: 16 },
-  modWho: { color: Afryko.text, fontFamily: Font.bold, fontSize: 15 },
-  modMsg: { color: Afryko.textDim, fontSize: 14, marginTop: 2, marginBottom: 10 },
+  modSheet: { backgroundColor: Afylo.surface, borderRadius: 20, padding: 16 },
+  modWho: { color: Afylo.text, fontFamily: Font.bold, fontSize: 15 },
+  modMsg: { color: Afylo.textDim, fontSize: 14, marginTop: 2, marginBottom: 10 },
   modItem: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12 },
-  modItemText: { color: Afryko.text, fontFamily: Font.semibold, fontSize: 15 },
+  modItemText: { color: Afylo.text, fontFamily: Font.semibold, fontSize: 15 },
   modCancel: { alignItems: 'center', paddingVertical: 12, marginTop: 4 },
-  modCancelText: { color: Afryko.textDim, fontFamily: Font.semibold, fontSize: 15 },
+  modCancelText: { color: Afylo.textDim, fontFamily: Font.semibold, fontSize: 15 },
 });

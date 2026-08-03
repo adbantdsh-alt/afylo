@@ -5,7 +5,7 @@
 import { useEffect, useRef } from 'react';
 import { Animated, StyleSheet, View, type DimensionValue, type ViewStyle } from 'react-native';
 
-import { Afryko } from '@/constants/brand';
+import { Afylo } from '@/constants/brand';
 
 export function Skeleton({ w, h, radius = 10, style }: { w?: DimensionValue; h?: DimensionValue; radius?: number; style?: ViewStyle }) {
   const op = useRef(new Animated.Value(0.45)).current;
@@ -19,7 +19,7 @@ export function Skeleton({ w, h, radius = 10, style }: { w?: DimensionValue; h?:
     loop.start();
     return () => loop.stop();
   }, [op]);
-  return <Animated.View style={[{ width: w, height: h, borderRadius: radius, backgroundColor: Afryko.surfaceAlt, opacity: op }, style]} />;
+  return <Animated.View style={[{ width: w, height: h, borderRadius: radius, backgroundColor: Afylo.surfaceAlt, opacity: op }, style]} />;
 }
 
 export function SkeletonCircle({ size }: { size: number }) {

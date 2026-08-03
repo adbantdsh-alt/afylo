@@ -1,5 +1,5 @@
 /**
- * Afryko — système de design (clair + sombre).
+ * Afylo — système de design (clair + sombre).
  * « Là où l'Afrique crée, vend et gagne. »
  *
  * Le thème est résolu AU CHARGEMENT (les couleurs sont figées dans les
@@ -75,7 +75,7 @@ const darkPalette: Palette = {
   glassShadow: 'rgba(0,0,0,0.5)',
 };
 
-const THEME_KEY = 'afryko-theme';
+const THEME_KEY = 'afylo-theme';
 
 /** Lecture SYNCHRONE de la préférence (web: localStorage). Défaut: 'system'. */
 function readThemePref(): ThemePref {
@@ -102,7 +102,7 @@ export const THEME_MODE: ThemeMode = pref === 'system' ? systemMode() : pref;
 export const isDark = THEME_MODE === 'dark';
 
 /** Palette active de l'app (figée au chargement). */
-export const Afryko: Palette = THEME_MODE === 'dark' ? darkPalette : lightPalette;
+export const Afylo: Palette = THEME_MODE === 'dark' ? darkPalette : lightPalette;
 
 /** Préférence enregistrée ('light' | 'dark' | 'system'). */
 export function getThemePref(): ThemePref {
@@ -132,7 +132,7 @@ export const Font = {
 
 /**
  * Échelle typographique (spec premium). À étaler dans les styles :
- *   <Text style={[Type.name, { color: Afryko.text }]}>…</Text>
+ *   <Text style={[Type.name, { color: Afylo.text }]}>…</Text>
  * On utilise fontFamily par graisse (Inter a de vraies graisses),
  * jamais fontWeight, pour un rendu net et cohérent iOS/Android/web.
  */

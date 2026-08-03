@@ -113,7 +113,7 @@ export const posts: Post[] = [
     avatar: avatar(5),
     badge: 'créateur',
     time: 'il y a 45 min',
-    image: face('afryko-look', 700, 800),
+    image: face('afylo-look', 700, 800),
     likes: '7.2 K',
     comments: '300',
     views: '69 K',
@@ -134,7 +134,7 @@ export const posts: Post[] = [
     avatar: avatar(9),
     badge: 'boutique',
     time: 'il y a 2 h',
-    image: face('afryko-beauty', 700, 800),
+    image: face('afylo-beauty', 700, 800),
     likes: '4.1 K',
     comments: '210',
     views: '33 K',
@@ -150,7 +150,7 @@ export const posts: Post[] = [
     avatar: avatar(15),
     badge: 'créateur',
     time: 'il y a 5 h',
-    image: face('afryko-music', 700, 800),
+    image: face('afylo-music', 700, 800),
     likes: '9.8 K',
     comments: '640',
     views: '112 K',
@@ -165,7 +165,7 @@ export const posts: Post[] = [
     avatar: avatar(3),
     badge: 'créateur',
     time: 'il y a 6 h',
-    image: face('afryko-vlog', 700, 800),
+    image: face('afylo-vlog', 700, 800),
     likes: '3.4 K',
     comments: '128',
     views: '41 K',
@@ -257,7 +257,7 @@ export const myPurchases: Purchase[] = [
   { id: 'pu3', title: 'Sneakers urbaines', price: '25 000 FCFA', seller: 'Modou Shop', image: photo('buy3', 300, 300), status: 'sequestre', date: "aujourd'hui" },
 ];
 
-// ---- Afryko Creator Rewards (rémunération à la vue) ----
+// ---- Afylo Creator Rewards (rémunération à la vue) ----
 export const creatorRewards = {
   eligibility: { followers: 128000, videos30d: 24, qualifiedViews30d: 184200, age18: true, kyc: true, hasPayout: true },
   qualifiedViews30d: 184200,
@@ -303,7 +303,7 @@ export const wallet = {
     { label: 'Ventes produits', value: 382000 },
     { label: 'Pourboires lives', value: 35000 },
     { label: 'Commissions affiliation', value: 18500 },
-    { label: 'Commission Afryko (5%)', value: -21775, dim: true },
+    { label: 'Commission Afylo (5%)', value: -21775, dim: true },
   ],
 };
 
