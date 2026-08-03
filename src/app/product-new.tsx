@@ -9,6 +9,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Afylo, Font, Radius, Type } from '@/constants/brand';
 import { useAuthGate } from '@/lib/auth-gate';
+import { PRODUCT_CATEGORIES } from '@/lib/categories';
 import { createProduct, getProduct, updateProduct, uploadFile, uploadImage } from '@/lib/db';
 import { classifyProduct } from '@/lib/moderation';
 
@@ -30,6 +31,7 @@ export default function ProductNew() {
   const [promo, setPromo] = useState('');
   const [stock, setStock] = useState('');
   const [condition, setCondition] = useState<string | null>(null);
+  const [category, setCategory] = useState<string | null>(null);
   const [tiers, setTiers] = useState<{ qty: string; price: string }[]>([]);
   const [affiliationOn, setAffiliationOn] = useState(false);
   const [commission, setCommission] = useState('15');
@@ -55,6 +57,7 @@ export default function ProductNew() {
         setDescription(p.description ?? '');
         if (p.commission_pct > 0) { setAffiliationOn(true); setCommission(String(p.commission_pct)); }
         if (p.kind === 'digital' && p.price_cfa === 0) setFree(true);
+        setCategory(p.category ?? null);
         setTiers((p.quantity_tiers ?? []).map((t) => ({ qty: String(t.qty), price: String(t.price_cfa) })));
       })
       .catch(() => {});
@@ -116,6 +119,7 @@ export default function ProductNew() {
         promo_cfa: promoN,
         stock: kind === 'digital' ? 999999 : parseInt(stock.replace(/\D/g, ''), 10) || 0,
         commission_pct: commissionN,
+        category: kind === 'digital' && !category ? 'digital' : category,
         description: finalDesc || undefined,
         image_url: urls[0] ?? null,
         images: urls,
@@ -193,6 +197,19 @@ export default function ProductNew() {
               <Text style={styles.hint}>Stock illimité (∞) · {free ? 'gratuit — aucun paiement.' : 'envoyé après paiement sécurisé XaalisPay.'}</Text>
             </Card>
           )}
+
+          {/* Catégorie (pour le marketplace / filtres) */}
+          <Card>
+            <Text style={styles.cardTitle}>Catégorie</Text>
+            <View style={styles.chips}>
+              {PRODUCT_CATEGORIES.map((c) => (
+                <Pressable key={c.key} onPress={() => setCategory((v) => (v === c.key ? null : c.key))} style={[styles.chip, category === c.key && styles.chipOn]}>
+                  <Ionicons name={c.icon as any} size={14} color={category === c.key ? '#fff' : Afylo.textDim} />
+                  <Text style={[styles.chipText, category === c.key && { color: '#fff' }]}>{c.label}</Text>
+                </Pressable>
+              ))}
+            </View>
+          </Card>
 
           {/* Infos */}
           <Card>
@@ -325,7 +342,7 @@ const styles = StyleSheet.create({
   fileText: { ...Type.body, color: Afylo.text, flex: 1 },
 
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  chip: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: Radius.pill, backgroundColor: Afylo.bg, borderWidth: 1, borderColor: Afylo.border },
+  chip: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 14, paddingVertical: 8, borderRadius: Radius.pill, backgroundColor: Afylo.bg, borderWidth: 1, borderColor: Afylo.border },
   chipOn: { backgroundColor: Afylo.violet, borderColor: Afylo.violet },
   chipText: { ...Type.small, color: Afylo.text },
 

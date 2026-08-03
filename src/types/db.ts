@@ -49,6 +49,7 @@ export interface Product {
   digital_file_url: string | null;
   quantity_tiers: { qty: number; price_cfa: number }[];
   commission_pct: number;
+  category: string | null;
   is_active: boolean;
   sold_count: number;
   created_at: string;

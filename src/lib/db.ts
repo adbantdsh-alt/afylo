@@ -537,6 +537,7 @@ export type ProductInput = {
   promo_cfa?: number | null;
   stock: number;
   commission_pct: number;
+  category?: string | null;
   description?: string;
   image_url?: string | null;
   images?: string[];

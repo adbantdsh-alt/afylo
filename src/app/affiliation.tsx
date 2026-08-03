@@ -7,12 +7,13 @@ import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Afylo, Font, Radius, Type } from '@/constants/brand';
+import { PRODUCT_CATEGORIES } from '@/lib/categories';
 import { addAffiliation, listAffiliatableProducts, listMyAffiliatedProductIds, removeAffiliation, startLive, type FeedProduct } from '@/lib/db';
 import { useMe } from '@/lib/me';
 import { photo } from '@/lib/mock';
 
 /** Produit affiliable affiché (issu d'un vrai produit d'un autre vendeur). */
-type AffItem = { id: string; title: string; price: number; promo: number | null; commission: number; image: string; seller: string; tiers: { qty: number; price_cfa: number }[] };
+type AffItem = { id: string; title: string; price: number; promo: number | null; commission: number; image: string; seller: string; tiers: { qty: number; price_cfa: number }[]; category: string | null; sold: number; created: string };
 const toAff = (p: FeedProduct): AffItem => ({
   id: p.id,
   title: p.title,
@@ -22,6 +23,9 @@ const toAff = (p: FeedProduct): AffItem => ({
   image: p.image_url || photo(`p-${p.id}`, 400, 400),
   seller: p.owner?.display_name || p.owner?.handle || 'Vendeur',
   tiers: p.quantity_tiers ?? [],
+  category: p.category,
+  sold: p.sold_count ?? 0,
+  created: p.created_at,
 });
 
 export default function Affiliation() {
@@ -35,6 +39,8 @@ export default function Affiliation() {
     router.push({ pathname: '/live', params: { role: 'host', liveId: live?.id ?? '', name: me.name, avatar: me.avatar, product } });
   };
   const [query, setQuery] = useState('');
+  const [cat, setCat] = useState<string>(''); // catégorie filtrée ('' = toutes)
+  const [sort, setSort] = useState<'top' | 'commission' | 'price' | 'recent'>('top');
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [items, setItems] = useState<AffItem[]>([]);
   const [affiliatedIds, setAffiliatedIds] = useState<Set<string>>(new Set());
@@ -51,9 +57,14 @@ export default function Affiliation() {
     (on ? removeAffiliation(p.id) : addAffiliation(p.id)).catch(() => {});
   };
 
+  const SORTS = { top: (a: AffItem, b: AffItem) => b.sold - a.sold, commission: (a: AffItem, b: AffItem) => b.commission - a.commission, price: (a: AffItem, b: AffItem) => (a.promo ?? a.price) - (b.promo ?? b.price), recent: (a: AffItem, b: AffItem) => b.created.localeCompare(a.created) };
   const list = useMemo(
-    () => items.filter((p) => (query ? (p.title + ' ' + p.seller).toLowerCase().includes(query.toLowerCase()) : true)),
-    [items, query],
+    () =>
+      items
+        .filter((p) => (cat ? p.category === cat : true))
+        .filter((p) => (query ? (p.title + ' ' + p.seller).toLowerCase().includes(query.toLowerCase()) : true))
+        .sort(SORTS[sort]),
+    [items, query, cat, sort],
   );
 
   const copyLink = async (p: AffItem) => {
@@ -65,6 +76,26 @@ export default function Affiliation() {
     setTimeout(() => setCopiedId((c) => (c === p.id ? null : c)), 1500);
   };
 
+  // Marketplace d'affiliation : réservé aux comptes PRO (vendeurs/affiliés).
+  if (!me.isPro) {
+    return (
+      <View style={styles.root}>
+        <SafeAreaView edges={['top']} style={{ backgroundColor: Afylo.bg }}>
+          <View style={styles.header}>
+            <Pressable onPress={() => (router.canGoBack() ? router.back() : router.replace('/accueil'))} style={styles.back}><Ionicons name="chevron-back" size={26} color={Afylo.text} /></Pressable>
+            <View style={{ flex: 1 }}><Text style={styles.title}>Affiliation</Text></View>
+          </View>
+        </SafeAreaView>
+        <View style={styles.gate}>
+          <View style={styles.gateIcon}><Ionicons name="repeat" size={40} color={Afylo.violet} /></View>
+          <Text style={styles.gateTitle}>Réservé aux comptes Pro</Text>
+          <Text style={styles.gateSub}>Passe en compte professionnel pour revendre les produits d'autres créateurs et gagner des commissions.</Text>
+          <Pressable style={styles.gateBtn} onPress={() => router.push('/upgrade-pro')}><Text style={styles.gateBtnText}>Passer en Pro</Text></Pressable>
+        </View>
+      </View>
+    );
+  }
+
   return (
     <View style={styles.root}>
       <SafeAreaView edges={['top']} style={{ backgroundColor: Afylo.bg }}>
@@ -73,8 +104,8 @@ export default function Affiliation() {
             <Ionicons name="chevron-back" size={26} color={Afylo.text} />
           </Pressable>
           <View style={{ flex: 1 }}>
-            <Text style={styles.title}>Affiliation</Text>
-            <Text style={styles.subtitle}>Copie un lien, partage-le en live, gagne une commission</Text>
+            <Text style={styles.title}>Marketplace affiliation</Text>
+            <Text style={styles.subtitle}>Revends les meilleurs produits, gagne une commission</Text>
           </View>
         </View>
 
@@ -88,8 +119,31 @@ export default function Affiliation() {
             placeholder="Chercher un produit"
             placeholderTextColor={Afylo.textFaint}
           />
+          {query.length > 0 && <Ionicons name="close-circle" size={18} color={Afylo.textFaint} onPress={() => setQuery('')} />}
         </View>
 
+        {/* Catégories */}
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.catRow}>
+          <Pressable onPress={() => setCat('')} style={[styles.catChip, cat === '' && styles.catChipOn]}>
+            <Ionicons name="apps-outline" size={15} color={cat === '' ? '#fff' : Afylo.textDim} />
+            <Text style={[styles.catText, cat === '' && { color: '#fff' }]}>Tout</Text>
+          </Pressable>
+          {PRODUCT_CATEGORIES.map((c) => (
+            <Pressable key={c.key} onPress={() => setCat(c.key)} style={[styles.catChip, cat === c.key && styles.catChipOn]}>
+              <Ionicons name={c.icon as any} size={15} color={cat === c.key ? '#fff' : Afylo.textDim} />
+              <Text style={[styles.catText, cat === c.key && { color: '#fff' }]}>{c.label}</Text>
+            </Pressable>
+          ))}
+        </ScrollView>
+
+        {/* Tri */}
+        <View style={styles.sortRow}>
+          {([['top', 'Top ventes'], ['commission', 'Commission'], ['price', 'Prix'], ['recent', 'Récent']] as const).map(([k, label]) => (
+            <Pressable key={k} onPress={() => setSort(k)} style={[styles.sortChip, sort === k && styles.sortChipOn]}>
+              <Text style={[styles.sortText, sort === k && styles.sortTextOn]}>{label}</Text>
+            </Pressable>
+          ))}
+        </View>
       </SafeAreaView>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 16, paddingBottom: 40 }}>
@@ -179,6 +233,23 @@ const styles = StyleSheet.create({
   chipText: { ...Type.small, color: Afylo.textDim },
 
   count: { ...Type.small, color: Afylo.textDim, marginBottom: 12 },
+
+  catRow: { gap: 8, paddingHorizontal: 16, paddingTop: 12 },
+  catChip: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 14, height: 38, borderRadius: Radius.pill, backgroundColor: Afylo.surface, borderWidth: 1, borderColor: Afylo.border },
+  catChipOn: { backgroundColor: Afylo.violet, borderColor: Afylo.violet },
+  catText: { color: Afylo.textDim, fontFamily: Font.semibold, fontSize: 13 },
+  sortRow: { flexDirection: 'row', gap: 8, paddingHorizontal: 16, paddingTop: 10 },
+  sortChip: { paddingHorizontal: 12, paddingVertical: 7, borderRadius: Radius.pill, backgroundColor: Afylo.surfaceAlt },
+  sortChipOn: { backgroundColor: Afylo.ink },
+  sortText: { color: Afylo.textDim, fontFamily: Font.semibold, fontSize: 12 },
+  sortTextOn: { color: Afylo.bg },
+
+  gate: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 36, gap: 10 },
+  gateIcon: { width: 76, height: 76, borderRadius: 38, backgroundColor: Afylo.violet + '1A', alignItems: 'center', justifyContent: 'center', marginBottom: 6 },
+  gateTitle: { color: Afylo.text, fontFamily: Font.bold, fontSize: 20 },
+  gateSub: { color: Afylo.textDim, fontSize: 14, textAlign: 'center', lineHeight: 20 },
+  gateBtn: { backgroundColor: Afylo.violet, borderRadius: Radius.pill, paddingHorizontal: 28, paddingVertical: 13, marginTop: 10 },
+  gateBtnText: { color: '#fff', fontFamily: Font.bold, fontSize: 15 },
   empty: { ...Type.body, color: Afylo.textDim, textAlign: 'center', marginTop: 30 },
 
   card: { flexDirection: 'row', backgroundColor: Afylo.surface, borderRadius: Radius.lg, padding: 10, marginBottom: 12, borderWidth: 1, borderColor: Afylo.border },
