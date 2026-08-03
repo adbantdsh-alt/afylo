@@ -3,7 +3,7 @@ import { Image } from 'expo-image';
 import { useVideoPlayer, VideoView } from 'expo-video';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Animated, Dimensions, Modal, Pressable, ScrollView, Share, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Animated, Dimensions, Linking, Modal, Pressable, ScrollView, Share, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Avatar, IconButton } from '@/components/ui-kit';
@@ -315,6 +315,7 @@ function PostCard({ post, isPro, myHandle, onDeletePost, onEditPost }: { post: P
           ) : (
             <Image source={{ uri: post.image }} style={styles.mediaImg} contentFit="cover" transition={250} blurRadius={post.sensitive && !revealed ? 30 : 0} />
           )}
+          {post.overlays && post.overlays.length > 0 && !(post.sensitive && !revealed) && <PostOverlays overlays={post.overlays} />}
           {post.sensitive && !revealed && (
             <Pressable style={styles.sensitiveOverlay} onPress={() => setRevealed(true)}>
               <Ionicons name="eye-off-outline" size={28} color="#fff" />
@@ -433,6 +434,30 @@ function PostCard({ post, isPro, myHandle, onDeletePost, onEditPost }: { post: P
 
 /** +1 visuel quand on like (les compteurs façon "7.2k" restent tels quels). */
 const SCREEN_W = Dimensions.get('window').width;
+
+/** Calques texte/lien (éditeur) posés sur le média — position en % (indépendante de la résolution). */
+function PostOverlays({ overlays }: { overlays: NonNullable<Post['overlays']> }) {
+  const openLink = (url?: string) => { if (url) Linking.openURL(url.startsWith('http') ? url : `https://${url}`).catch(() => {}); };
+  return (
+    <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
+      {overlays.map((o) => (
+        <Pressable
+          key={o.id}
+          onPress={() => o.kind === 'link' && openLink(o.url)}
+          style={[styles.ovl, { left: `${o.x * 100}%`, top: `${o.y * 100}%` }]}>
+          {o.kind === 'link' ? (
+            <View style={styles.ovlLink}>
+              <Ionicons name="link" size={13} color="#fff" />
+              <Text style={styles.ovlLinkText} numberOfLines={1}>{o.text || o.url}</Text>
+            </View>
+          ) : (
+            <Text style={[styles.ovlText, { color: o.color }]}>{o.text}</Text>
+          )}
+        </Pressable>
+      ))}
+    </View>
+  );
+}
 
 /** Lecture vidéo dans le feed (muette, en boucle). */
 function FeedVideo({ uri }: { uri: string }) {
@@ -573,6 +598,10 @@ const styles = StyleSheet.create({
   uploadPct: { color: Afryko.textDim, fontSize: 11, marginTop: 3, fontFamily: Font.medium },
   uploadRetry: { backgroundColor: Afryko.violet, paddingHorizontal: 12, paddingVertical: 7, borderRadius: Radius.pill },
   uploadRetryText: { color: '#fff', fontSize: 13, fontFamily: Font.semibold },
+  ovl: { position: 'absolute', maxWidth: '80%' },
+  ovlText: { fontSize: 20, fontFamily: Font.bold, textShadowColor: '#00000088', textShadowRadius: 4 },
+  ovlLink: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#0A84FFe6', borderRadius: 999, paddingHorizontal: 10, paddingVertical: 5 },
+  ovlLinkText: { color: '#fff', fontSize: 13, fontFamily: Font.semibold },
   dots: { position: 'absolute', bottom: 10, left: 0, right: 0, flexDirection: 'row', justifyContent: 'center', gap: 5 },
   dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#ffffff88' },
   dotOn: { backgroundColor: '#fff', width: 7, height: 7, borderRadius: 3.5 },

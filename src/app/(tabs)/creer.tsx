@@ -2,10 +2,9 @@ import { Ionicons } from '@expo/vector-icons';
 import { CameraView, useCameraPermissions, useMicrophonePermissions } from 'expo-camera';
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
-import { useVideoPlayer, VideoView } from 'expo-video';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Modal, PanResponder, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Modal, PanResponder, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { withTiming } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -16,6 +15,7 @@ import { useMe } from '@/lib/me';
 import { myProducts } from '@/lib/mock';
 import { useStories, type StoryProduct } from '@/lib/stories';
 import { useTabBar } from '@/lib/tabbar';
+import { MediaEditor, type EditResult } from '@/components/media-editor';
 import { captureWebPhoto, startWebRecording, stopWebRecording } from '@/lib/web-recorder';
 
 type Mode = 'Publication' | 'Story' | 'Reel' | 'Live';
@@ -41,7 +41,6 @@ export default function Creer() {
   const [recording, setRecording] = useState(false);
   const [locked, setLocked] = useState(false);
   const [recSecs, setRecSecs] = useState(0);
-  const [busy, setBusy] = useState(false);
   const [product, setProduct] = useState<StoryProduct | null>(null);
   const [productPicker, setProductPicker] = useState(false);
 
@@ -180,27 +179,42 @@ export default function Creer() {
     }),
   ).current;
 
-  const publish = async () => {
+  // Après l'éditeur : story → publie direct ; sinon → post-new (légende + produits) en transmettant les calques.
+  const handleContinue = (res: EditResult) => {
     if (!gate(mode === 'Story' ? 'publier une story' : 'publier')) return;
-    if (!media) return;
     if (mode === 'Story') {
-      setBusy(true);
-      addStory({ type: media.type, uri: media.uri }, product ?? undefined);
-      setBusy(false);
+      addStory({ type: res.type, uri: res.uri }, product ?? undefined);
       router.replace('/accueil');
     } else {
-      router.push({ pathname: '/post-new', params: { kind: media.type === 'video' ? 'video' : 'image', uri: media.uri } });
+      router.push({
+        pathname: '/post-new',
+        params: {
+          kind: res.type === 'video' ? 'video' : 'image',
+          uri: res.uri,
+          overlays: res.overlays.length ? JSON.stringify(res.overlays) : '',
+          muted: res.muted ? '1' : '',
+          soundId: res.sound?.id ?? '',
+          soundTitle: res.sound?.title ?? '',
+        },
+      });
     }
   };
 
   const camDenied = permission && !permission.granted;
 
+  // Média capturé → éditeur plein écran (texte, son, musique, rogner, lien).
+  if (media) {
+    return (
+      <View style={styles.root}>
+        <MediaEditor media={media} onClose={() => setMedia(null)} onContinue={handleContinue} ctaLabel={mode === 'Story' ? 'Publier la story' : 'Continuer'} />
+      </View>
+    );
+  }
+
   return (
     <View style={styles.root}>
-      {/* Caméra / média en PLEIN ÉCRAN */}
-      {media ? (
-        <PreviewMedia media={media} />
-      ) : permission?.granted ? (
+      {/* Caméra en PLEIN ÉCRAN */}
+      {permission?.granted ? (
         <>
           <CameraView key={facing} ref={camRef} style={StyleSheet.absoluteFill} facing={facing} mode="video" mirror={false} />
           {/* Double-tap n'importe où = retourner la caméra */}
@@ -226,15 +240,9 @@ export default function Creer() {
           ) : (
             <View />
           )}
-          {!media ? (
-            <Pressable onPress={flip} style={styles.hIcon} hitSlop={10}>
-              <Ionicons name="camera-reverse-outline" size={26} color="#fff" />
-            </Pressable>
-          ) : (
-            <Pressable onPress={() => setMedia(null)} style={styles.hIcon} hitSlop={10}>
-              <Ionicons name="refresh" size={24} color="#fff" />
-            </Pressable>
-          )}
+          <Pressable onPress={flip} style={styles.hIcon} hitSlop={10}>
+            <Ionicons name="camera-reverse-outline" size={26} color="#fff" />
+          </Pressable>
         </View>
 
         <View style={{ flex: 1 }} pointerEvents="box-none" />
@@ -252,67 +260,50 @@ export default function Creer() {
           )}
         </Pressable>
 
-        {media ? (
-          // ---- Aperçu : publier ----
-          <View style={styles.previewBar} pointerEvents="box-none">
-            <Pressable onPress={publish} style={[styles.publishBtn, mode === 'Live' && { backgroundColor: Afryko.live }]}>
-              {busy ? <ActivityIndicator color="#fff" /> : (
-                <>
-                  <Text style={styles.publishText}>{mode === 'Story' ? 'Publier la story' : 'Continuer'}</Text>
-                  <Ionicons name="arrow-forward" size={20} color="#fff" />
-                </>
-              )}
-            </Pressable>
+        {/* ---- Capture ---- */}
+        {recording && !locked && (
+          <View style={styles.lockHint} pointerEvents="none">
+            <Ionicons name="chevron-up" size={16} color="#fff" />
+            <Ionicons name="lock-closed" size={14} color="#fff" />
+            <Text style={styles.lockHintText}>Glisse pour verrouiller</Text>
           </View>
-        ) : (
-          // ---- Capture ----
-          <>
-            {/* Indice verrouillage pendant l'enregistrement */}
-            {recording && !locked && (
-              <View style={styles.lockHint} pointerEvents="none">
-                <Ionicons name="chevron-up" size={16} color="#fff" />
-                <Ionicons name="lock-closed" size={14} color="#fff" />
-                <Text style={styles.lockHintText}>Glisse pour verrouiller</Text>
-              </View>
-            )}
-
-            <View style={styles.captureRow} pointerEvents="box-none">
-              <Pressable style={styles.tool} onPress={() => pick('image')} hitSlop={8}>
-                <Ionicons name="images" size={26} color="#fff" />
-              </Pressable>
-
-              {/* Déclencheur */}
-              {locked ? (
-                <Pressable style={[styles.shutterRing, { borderColor: Afryko.live }]} onPress={endRecord}>
-                  <View style={styles.stopCore} />
-                </Pressable>
-              ) : (
-                <View
-                  {...shutterPan.panHandlers}
-                  style={[styles.shutterRing, recording && { borderColor: Afryko.live, transform: [{ scale: 1.15 }] }]}>
-                  <View style={[styles.shutterCore, recording && styles.shutterCoreRec]} />
-                </View>
-              )}
-
-              <Pressable style={styles.tool} onPress={() => pick('video')} hitSlop={8}>
-                <Ionicons name="film" size={26} color="#fff" />
-              </Pressable>
-            </View>
-
-            <Text style={styles.captureHint}>
-              {mode === 'Live' ? 'Appuie pour passer en direct' : 'Appuie = photo · Reste appuyé = vidéo'}
-            </Text>
-
-            {/* Onglets de mode */}
-            <View style={styles.modes} pointerEvents="box-none">
-              {MODES.map((m) => (
-                <Pressable key={m} onPress={() => setMode(m)} hitSlop={6}>
-                  <Text style={[styles.mode, mode === m && styles.modeActive]}>{m.toUpperCase()}</Text>
-                </Pressable>
-              ))}
-            </View>
-          </>
         )}
+
+        <View style={styles.captureRow} pointerEvents="box-none">
+          <Pressable style={styles.tool} onPress={() => pick('image')} hitSlop={8}>
+            <Ionicons name="images" size={26} color="#fff" />
+          </Pressable>
+
+          {/* Déclencheur */}
+          {locked ? (
+            <Pressable style={[styles.shutterRing, { borderColor: Afryko.live }]} onPress={endRecord}>
+              <View style={styles.stopCore} />
+            </Pressable>
+          ) : (
+            <View
+              {...shutterPan.panHandlers}
+              style={[styles.shutterRing, recording && { borderColor: Afryko.live, transform: [{ scale: 1.15 }] }]}>
+              <View style={[styles.shutterCore, recording && styles.shutterCoreRec]} />
+            </View>
+          )}
+
+          <Pressable style={styles.tool} onPress={() => pick('video')} hitSlop={8}>
+            <Ionicons name="film" size={26} color="#fff" />
+          </Pressable>
+        </View>
+
+        <Text style={styles.captureHint}>
+          {mode === 'Live' ? 'Appuie pour passer en direct' : 'Appuie = photo · Reste appuyé = vidéo'}
+        </Text>
+
+        {/* Onglets de mode */}
+        <View style={styles.modes} pointerEvents="box-none">
+          {MODES.map((m) => (
+            <Pressable key={m} onPress={() => setMode(m)} hitSlop={6}>
+              <Text style={[styles.mode, mode === m && styles.modeActive]}>{m.toUpperCase()}</Text>
+            </Pressable>
+          ))}
+        </View>
       </SafeAreaView>
 
       {/* Sélecteur de produit */}
@@ -344,16 +335,6 @@ function fmtTime(s: number) {
   const m = Math.floor(s / 60);
   const r = s % 60;
   return `${m}:${r.toString().padStart(2, '0')}`;
-}
-
-function PreviewMedia({ media }: { media: { uri: string; type: 'image' | 'video' } }) {
-  if (media.type === 'video') return <PreviewVideo uri={media.uri} />;
-  return <Image source={{ uri: media.uri }} style={StyleSheet.absoluteFill} contentFit="cover" />;
-}
-function PreviewVideo({ uri }: { uri: string }) {
-  // muted = requis pour que le navigateur autorise la lecture auto (sinon la vidéo reste figée sur la 1re image).
-  const player = useVideoPlayer(uri, (p) => { p.loop = true; p.muted = true; p.play(); });
-  return <VideoView player={player} style={StyleSheet.absoluteFill} contentFit="cover" nativeControls={false} />;
 }
 
 const styles = StyleSheet.create({

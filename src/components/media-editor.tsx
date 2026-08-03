@@ -1,0 +1,273 @@
+import { Ionicons } from '@expo/vector-icons';
+import { Image } from 'expo-image';
+import { SaveFormat, manipulateAsync } from 'expo-image-manipulator';
+import { useVideoPlayer, VideoView } from 'expo-video';
+import { useRef, useState } from 'react';
+import { Animated, Image as RNImage, LayoutRectangle, PanResponder, Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+
+import { SoundPicker } from '@/components/sound-picker';
+import { Afryko, Font, Radius } from '@/constants/brand';
+import type { Sound } from '@/lib/sounds';
+
+export type Overlay = {
+  id: string;
+  kind: 'text' | 'link';
+  text: string;
+  x: number; // fraction 0..1 du cadre (centre du calque)
+  y: number;
+  color: string;
+  url?: string;
+};
+
+export type EditResult = {
+  uri: string;
+  type: 'image' | 'video';
+  overlays: Overlay[];
+  muted: boolean;
+  sound: Sound | null;
+};
+
+const COLORS = ['#FFFFFF', '#111111', '#FF2D55', '#FFD60A', '#34C759', '#0A84FF', '#AF52DE'];
+let seq = 0;
+const uid = () => `ov${++seq}`;
+
+export function MediaEditor({
+  media,
+  onClose,
+  onContinue,
+  ctaLabel = 'Continuer',
+}: {
+  media: { uri: string; type: 'image' | 'video' };
+  onClose: () => void;
+  onContinue: (r: EditResult) => void;
+  ctaLabel?: string;
+}) {
+  const [uri, setUri] = useState(media.uri);
+  const [overlays, setOverlays] = useState<Overlay[]>([]);
+  const [muted, setMuted] = useState(false);
+  const [sound, setSound] = useState<Sound | null>(null);
+  const [soundOpen, setSoundOpen] = useState(false);
+
+  // Édition de texte en cours
+  const [draft, setDraft] = useState<{ id: string | null; text: string; color: string; kind: 'text' | 'link'; url: string } | null>(null);
+  const [frame, setFrame] = useState<LayoutRectangle | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  const isVideo = media.type === 'video';
+
+  const addText = () => setDraft({ id: null, text: '', color: '#FFFFFF', kind: 'text', url: '' });
+  const addLink = () => setDraft({ id: null, text: '', color: '#0A84FF', kind: 'link', url: '' });
+  const editOverlay = (o: Overlay) => setDraft({ id: o.id, text: o.text, color: o.color, kind: o.kind, url: o.url ?? '' });
+
+  const commitDraft = () => {
+    if (!draft) return;
+    const text = draft.text.trim();
+    if (!text && draft.kind === 'text') { setDraft(null); return; }
+    if (draft.kind === 'link' && !draft.url.trim()) { setDraft(null); return; }
+    setOverlays((cur) => {
+      if (draft.id) return cur.map((o) => (o.id === draft.id ? { ...o, text: text || draft.url, color: draft.color, url: draft.url.trim() || undefined } : o));
+      return [...cur, { id: uid(), kind: draft.kind, text: text || draft.url.trim(), x: 0.24, y: 0.4, color: draft.color, url: draft.kind === 'link' ? draft.url.trim() : undefined }];
+    });
+    setDraft(null);
+  };
+  const removeOverlay = (id: string) => setOverlays((cur) => cur.filter((o) => o.id !== id));
+  const moveOverlay = (id: string, x: number, y: number) => setOverlays((cur) => cur.map((o) => (o.id === id ? { ...o, x, y } : o)));
+
+  // Rogner (image) : recadre centré au ratio choisi
+  const crop = async (ratio: number) => {
+    if (isVideo) return;
+    setBusy(true);
+    try {
+      const { width, height } = await getSize(uri);
+      let cw = width, ch = Math.round(width / ratio);
+      if (ch > height) { ch = height; cw = Math.round(height * ratio); }
+      const ox = Math.round((width - cw) / 2), oy = Math.round((height - ch) / 2);
+      const r = await manipulateAsync(uri, [{ crop: { originX: ox, originY: oy, width: cw, height: ch } }], { compress: 0.9, format: SaveFormat.JPEG });
+      setUri(r.uri);
+    } catch {}
+    setBusy(false);
+  };
+  const rotate = async () => {
+    if (isVideo) return;
+    setBusy(true);
+    try { const r = await manipulateAsync(uri, [{ rotate: 90 }], { compress: 0.9, format: SaveFormat.JPEG }); setUri(r.uri); } catch {}
+    setBusy(false);
+  };
+
+  const done = () => onContinue({ uri, type: media.type, overlays, muted, sound });
+
+  return (
+    <View style={styles.root}>
+      {/* Média + calques */}
+      <View style={styles.stage} onLayout={(e) => setFrame(e.nativeEvent.layout)}>
+        {isVideo ? <EditorVideo uri={uri} muted={muted} /> : <Image source={{ uri }} style={StyleSheet.absoluteFill} contentFit="contain" />}
+
+        {frame &&
+          overlays.map((o) => (
+            <DraggableOverlay key={o.id} overlay={o} frame={frame} onMove={moveOverlay} onEdit={() => editOverlay(o)} onRemove={() => removeOverlay(o.id)} />
+          ))}
+      </View>
+
+      {/* Barre haut : son + fermer */}
+      <SafeAreaView edges={['top']} style={styles.top} pointerEvents="box-none">
+        <Pressable onPress={onClose} style={styles.topIcon}><Ionicons name="close" size={26} color="#fff" /></Pressable>
+        <Pressable onPress={() => setSoundOpen(true)} style={styles.soundChip}>
+          <Ionicons name="musical-notes" size={16} color="#fff" />
+          <Text style={styles.soundChipText} numberOfLines={1}>{sound ? `${sound.title}` : 'Ajouter un son'}</Text>
+        </Pressable>
+        <View style={{ width: 44 }} />
+      </SafeAreaView>
+
+      {/* Barre outils droite (façon Snap) */}
+      <SafeAreaView edges={['top']} style={styles.tools} pointerEvents="box-none">
+        <Tool icon="text" onPress={addText} />
+        {!isVideo && <Tool icon="crop" onPress={() => crop(1)} label="1:1" />}
+        {!isVideo && <Tool icon="crop" onPress={() => crop(4 / 5)} label="4:5" />}
+        {!isVideo && <Tool icon="refresh" onPress={rotate} />}
+        <Tool icon="musical-note" onPress={() => setSoundOpen(true)} />
+        {isVideo && <Tool icon={muted ? 'volume-mute' : 'volume-high'} onPress={() => setMuted((m) => !m)} active={muted} />}
+        <Tool icon="link" onPress={addLink} />
+      </SafeAreaView>
+
+      {/* CTA */}
+      <SafeAreaView edges={['bottom']} style={styles.bottom} pointerEvents="box-none">
+        <Pressable onPress={done} style={styles.cta} disabled={busy}>
+          <Text style={styles.ctaText}>{ctaLabel}</Text>
+          <Ionicons name="arrow-forward" size={20} color="#fff" />
+        </Pressable>
+      </SafeAreaView>
+
+      {/* Éditeur de texte / lien */}
+      {draft && (
+        <View style={styles.editorSheet}>
+          <SafeAreaView edges={['top']} style={{ flex: 1 }}>
+            <View style={styles.editorTop}>
+              <Pressable onPress={() => setDraft(null)}><Text style={styles.editorCancel}>Annuler</Text></Pressable>
+              <Pressable onPress={commitDraft} style={styles.editorOk}><Text style={styles.editorOkText}>OK</Text></Pressable>
+            </View>
+            <View style={styles.editorCenter}>
+              {draft.kind === 'link' && (
+                <TextInput
+                  style={styles.linkInput}
+                  value={draft.url}
+                  onChangeText={(t) => setDraft((d) => (d ? { ...d, url: t } : d))}
+                  placeholder="https://…  (lien cliquable)"
+                  placeholderTextColor="#ffffff88"
+                  autoCapitalize="none"
+                  autoFocus
+                />
+              )}
+              <TextInput
+                style={[styles.textInput, { color: draft.color }]}
+                value={draft.text}
+                onChangeText={(t) => setDraft((d) => (d ? { ...d, text: t } : d))}
+                placeholder={draft.kind === 'link' ? 'Texte du lien (option)' : 'Écris quelque chose'}
+                placeholderTextColor="#ffffff66"
+                autoFocus={draft.kind === 'text'}
+                multiline
+              />
+            </View>
+            <View style={styles.colorRow}>
+              {COLORS.map((c) => (
+                <Pressable key={c} onPress={() => setDraft((d) => (d ? { ...d, color: c } : d))} style={[styles.swatch, { backgroundColor: c }, draft.color === c && styles.swatchOn]} />
+              ))}
+            </View>
+          </SafeAreaView>
+        </View>
+      )}
+
+      <SoundPicker visible={soundOpen} onSelect={(s) => { setSound(s); setSoundOpen(false); }} onClose={() => setSoundOpen(false)} />
+    </View>
+  );
+}
+
+function Tool({ icon, onPress, label, active }: { icon: any; onPress: () => void; label?: string; active?: boolean }) {
+  return (
+    <Pressable onPress={onPress} style={styles.tool}>
+      <Ionicons name={icon} size={24} color={active ? Afryko.violet2 : '#fff'} />
+      {label ? <Text style={styles.toolLabel}>{label}</Text> : null}
+    </Pressable>
+  );
+}
+
+function DraggableOverlay({ overlay, frame, onMove, onEdit, onRemove }: { overlay: Overlay; frame: LayoutRectangle; onMove: (id: string, x: number, y: number) => void; onEdit: () => void; onRemove: () => void }) {
+  const pan = useRef(new Animated.ValueXY({ x: overlay.x * frame.width, y: overlay.y * frame.height })).current;
+  const start = useRef({ x: overlay.x * frame.width, y: overlay.y * frame.height });
+  const moved = useRef(false);
+  const responder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: (_e, g) => Math.abs(g.dx) > 3 || Math.abs(g.dy) > 3,
+      onPanResponderGrant: () => { moved.current = false; start.current = { x: (pan.x as any)._value, y: (pan.y as any)._value }; },
+      onPanResponderMove: (_e, g) => {
+        moved.current = true;
+        pan.setValue({ x: clamp(start.current.x + g.dx, 0, frame.width), y: clamp(start.current.y + g.dy, 0, frame.height) });
+      },
+      onPanResponderRelease: () => {
+        const x = clamp((pan.x as any)._value, 0, frame.width) / frame.width;
+        const y = clamp((pan.y as any)._value, 0, frame.height) / frame.height;
+        onMove(overlay.id, x, y);
+        if (!moved.current) onEdit();
+      },
+    }),
+  ).current;
+
+  return (
+    <Animated.View style={[styles.overlayBox, { transform: pan.getTranslateTransform() }]} {...responder.panHandlers}>
+      <View style={overlay.kind === 'link' ? styles.linkChip : undefined}>
+        {overlay.kind === 'link' && <Ionicons name="link" size={14} color="#fff" style={{ marginRight: 4 }} />}
+        <Text style={[styles.overlayText, { color: overlay.kind === 'link' ? '#fff' : overlay.color }]}>{overlay.text}</Text>
+      </View>
+      <Pressable onPress={onRemove} style={styles.overlayX} hitSlop={8}><Ionicons name="close" size={12} color="#fff" /></Pressable>
+    </Animated.View>
+  );
+}
+
+function EditorVideo({ uri, muted }: { uri: string; muted: boolean }) {
+  const player = useVideoPlayer(uri, (p) => { p.loop = true; p.muted = true; p.play(); });
+  // web : reste muet pour autoriser l'autoplay ; natif : reflète le choix son on/off
+  player.muted = Platform.OS === 'web' ? true : muted;
+  return <VideoView player={player} style={StyleSheet.absoluteFill} contentFit="contain" nativeControls={false} />;
+}
+
+async function getSize(uri: string): Promise<{ width: number; height: number }> {
+  return new Promise((resolve) => {
+    RNImage.getSize(uri, (width, height) => resolve({ width, height }), () => resolve({ width: 1080, height: 1080 }));
+  });
+}
+const clamp = (v: number, min: number, max: number) => Math.max(min, Math.min(max, v));
+
+const styles = StyleSheet.create({
+  root: { flex: 1, backgroundColor: '#000' },
+  stage: { ...StyleSheet.absoluteFillObject },
+  top: { position: 'absolute', top: 0, left: 0, right: 0, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, gap: 8 },
+  topIcon: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#00000055', alignItems: 'center', justifyContent: 'center' },
+  soundChip: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, alignSelf: 'center', backgroundColor: '#00000088', borderRadius: Radius.pill, height: 40, paddingHorizontal: 14, maxWidth: 240, marginHorizontal: 'auto' },
+  soundChipText: { color: '#fff', fontFamily: Font.semibold, fontSize: 14 },
+
+  tools: { position: 'absolute', top: 64, right: 8, gap: 18, alignItems: 'center' },
+  tool: { alignItems: 'center', gap: 2 },
+  toolLabel: { color: '#fff', fontSize: 9, fontFamily: Font.semibold },
+
+  bottom: { position: 'absolute', bottom: 0, left: 0, right: 0, paddingHorizontal: 16, alignItems: 'flex-end' },
+  cta: { flexDirection: 'row', alignItems: 'center', gap: 8, height: 50, paddingHorizontal: 22, borderRadius: Radius.pill, backgroundColor: Afryko.violet },
+  ctaText: { color: '#fff', fontFamily: Font.bold, fontSize: 16 },
+
+  overlayBox: { position: 'absolute', top: 0, left: 0, minWidth: 40, maxWidth: '80%', alignItems: 'flex-start' },
+  overlayText: { fontSize: 24, fontFamily: Font.bold, textShadowColor: '#00000066', textShadowRadius: 4, textAlign: 'center' },
+  linkChip: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#0A84FFdd', borderRadius: Radius.pill, paddingHorizontal: 12, paddingVertical: 6 },
+  overlayX: { position: 'absolute', top: -10, right: -10, width: 20, height: 20, borderRadius: 10, backgroundColor: '#000000AA', alignItems: 'center', justifyContent: 'center' },
+
+  editorSheet: { ...StyleSheet.absoluteFillObject, backgroundColor: '#000000E6' },
+  editorTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, height: 48 },
+  editorCancel: { color: '#fff', fontSize: 16, fontFamily: Font.medium },
+  editorOk: { backgroundColor: Afryko.violet, borderRadius: Radius.pill, paddingHorizontal: 18, paddingVertical: 8 },
+  editorOkText: { color: '#fff', fontFamily: Font.bold, fontSize: 15 },
+  editorCenter: { flex: 1, justifyContent: 'center', paddingHorizontal: 24, gap: 14 },
+  textInput: { fontSize: 26, fontFamily: Font.bold, textAlign: 'center' },
+  linkInput: { color: '#fff', fontSize: 16, borderBottomWidth: 1, borderBottomColor: '#ffffff44', paddingVertical: 8, textAlign: 'center' },
+  colorRow: { flexDirection: 'row', justifyContent: 'center', gap: 12, paddingBottom: 20 },
+  swatch: { width: 30, height: 30, borderRadius: 15, borderWidth: 2, borderColor: '#ffffff55' },
+  swatchOn: { borderColor: '#fff', transform: [{ scale: 1.15 }] },
+});

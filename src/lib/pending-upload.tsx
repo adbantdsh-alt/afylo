@@ -6,7 +6,7 @@
  */
 import { createContext, useCallback, useContext, useRef, useState } from 'react';
 
-import { createPost } from './db';
+import { createPost, type PostOverlay } from './db';
 import { uploadToStorage } from './upload';
 
 export type PendingMedia = { uri: string; type: 'image' | 'video' };
@@ -16,6 +16,8 @@ export type PublishArgs = {
   caption?: string;
   aspect_ratio?: number | null;
   productIds?: string[];
+  overlays?: PostOverlay[];
+  muted?: boolean;
 };
 
 export type PendingState = {
@@ -68,6 +70,8 @@ export function PendingUploadProvider({ children }: { children: React.ReactNode 
         media_url: urls[0],
         media_urls: urls,
         aspect_ratio: args.aspect_ratio ?? null,
+        overlays: args.overlays,
+        muted: args.muted,
         productIds: args.productIds,
       });
       setPending(null);

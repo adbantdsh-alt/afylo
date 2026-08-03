@@ -53,6 +53,16 @@ export interface Product {
   updated_at: string;
 }
 
+export interface PostOverlayDB {
+  id: string;
+  kind: 'text' | 'link';
+  text: string;
+  x: number;
+  y: number;
+  color: string;
+  url?: string;
+}
+
 export interface Post {
   id: string;
   author_id: string;
@@ -60,6 +70,8 @@ export interface Post {
   media_url: string | null;
   media_urls: string[] | null; // carrousel (0013)
   aspect_ratio: number | null; // proportion largeur/hauteur (0014)
+  overlays: PostOverlayDB[] | null; // calques texte/lien (0015)
+  muted: boolean | null; // vidéo sans son (0015)
   thumbnail_url: string | null;
   caption: string | null;
   duration_seconds: number | null;

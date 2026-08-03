@@ -724,6 +724,8 @@ export async function listFeed(): Promise<FeedPost[]> {
   return (data as FeedPost[]) ?? [];
 }
 
+export type PostOverlay = { id: string; kind: 'text' | 'link'; text: string; x: number; y: number; color: string; url?: string };
+
 export type CreatePostInput = {
   kind: 'image' | 'video' | 'story';
   caption?: string;
@@ -732,6 +734,8 @@ export type CreatePostInput = {
   aspect_ratio?: number | null; // largeur/hauteur du 1er média
   thumbnail_url?: string | null;
   productIds?: string[];
+  overlays?: PostOverlay[]; // calques texte/lien (éditeur façon Snap)
+  muted?: boolean; // vidéo publiée sans son
 };
 
 export async function createPost(input: CreatePostInput): Promise<Post> {
@@ -746,6 +750,8 @@ export async function createPost(input: CreatePostInput): Promise<Post> {
       media_url: input.media_url ?? gallery[0] ?? null,
       media_urls: gallery,
       aspect_ratio: input.aspect_ratio ?? null,
+      overlays: input.overlays ?? [],
+      muted: input.muted ?? false,
       thumbnail_url: input.thumbnail_url,
     })
     .select()

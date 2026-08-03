@@ -28,7 +28,13 @@ const ratioOf = (w?: number, h?: number) => (w && h ? clampRatio(w / h) : undefi
 export default function PostNew() {
   const router = useRouter();
   const { session } = useAuth();
-  const params = useLocalSearchParams<{ kind?: string; uri?: string; uris?: string; soundId?: string; soundTitle?: string }>();
+  const params = useLocalSearchParams<{ kind?: string; uri?: string; uris?: string; soundId?: string; soundTitle?: string; overlays?: string; muted?: string }>();
+
+  // Calques (texte/lien) venus de l'éditeur façon Snap.
+  const overlays = (() => {
+    try { return typeof params.overlays === 'string' && params.overlays ? JSON.parse(params.overlays) : []; } catch { return []; }
+  })();
+  const muted = params.muted === '1';
 
   // ---- Médias (carrousel) ----
   const seed: Media[] = (() => {
@@ -141,6 +147,8 @@ export default function PostNew() {
       caption: finalCaption || undefined,
       aspect_ratio: media[0].ratio ?? null,
       productIds: [...selected],
+      overlays,
+      muted,
     });
     router.replace('/accueil');
   };
