@@ -4,7 +4,7 @@ import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Animated, PanResponder, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { PanResponder, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { withTiming } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -15,7 +15,7 @@ import { listMyProducts, startLive } from '@/lib/db';
 import { useMe } from '@/lib/me';
 import { useStories } from '@/lib/stories';
 import { useTabBar } from '@/lib/tabbar';
-import { captureWebFrameDataUrl, captureWebPhoto, clearCameraMirror, setCameraMirror, startWebRecording, stopWebRecording } from '@/lib/web-recorder';
+import { captureWebFrameDataUrl, captureWebPhoto, startWebRecording, stopWebRecording } from '@/lib/web-recorder';
 import type { Product } from '@/types/db';
 
 type Mode = 'Publication' | 'Story' | 'Reel' | 'Live';
@@ -65,7 +65,6 @@ export default function Creer() {
       setMedia(null);
       return () => {
         hidden.value = withTiming(0, { duration: 150 });
-        clearCameraMirror();
       };
     }, [hidden]),
   );
@@ -79,11 +78,6 @@ export default function Creer() {
 
   // Bascule avant/arrière : sur web la caméra se remonte (écran noir) → on fige la dernière
   // frame par-dessus le temps de ré-init, retirée dès que la nouvelle caméra est prête.
-  // Impose le bon miroir selon la caméra : frontal retourné (à l'endroit comme l'arrière), arrière brut.
-  useEffect(() => {
-    if (Platform.OS === 'web') setCameraMirror(facing === 'front');
-  }, [facing]);
-
   const flip = () => {
     if (Platform.OS === 'web') {
       const frame = captureWebFrameDataUrl(facing === 'front'); // même orientation que l'aperçu affiché
@@ -96,20 +90,8 @@ export default function Creer() {
     setFacing((f) => (f === 'back' ? 'front' : 'back'));
   };
   const lastTap = useRef(0);
-  const [focusPt, setFocusPt] = useState<{ x: number; y: number } | null>(null);
-  const focusAnim = useRef(new Animated.Value(0)).current;
-  const showFocus = (x: number, y: number) => {
-    setFocusPt({ x, y });
-    focusAnim.setValue(1);
-    Animated.timing(focusAnim, { toValue: 0, duration: 700, delay: 300, useNativeDriver: true }).start();
-  };
-  const onCameraTap = (e: { nativeEvent: any }) => {
+  const onCameraTap = () => {
     const now = Date.now();
-    const ne = e.nativeEvent || {};
-    // web : offsetX/offsetY (relatifs à la zone caméra) ; natif : locationX/locationY
-    const x = ne.offsetX ?? ne.locationX ?? 0;
-    const y = ne.offsetY ?? ne.locationY ?? 0;
-    showFocus(x, y); // tap = repère de mise au point (autofocus géré par la caméra)
     if (now - lastTap.current < 300) flip(); // double-tap = retourner la caméra
     lastTap.current = now;
   };
@@ -262,30 +244,25 @@ export default function Creer() {
         <>
           {/* key={facing} nécessaire pour que le web réacquière bien le flux ; la frame figée
               ci-dessous masque l'écran noir de ré-init le temps que la caméra soit prête. */}
+          {/* mirror={front} : expo retourne l'aperçu frontal pour l'avoir à l'endroit comme l'arrière
+              (le flux frontal brut est en miroir). La capture est retournée en conséquence. */}
           <CameraView
             key={facing}
             ref={camRef}
             style={StyleSheet.absoluteFill}
             facing={facing}
             mode="video"
-            mirror={false}
+            mirror={facing === 'front'}
             autofocus="on"
             onCameraReady={() => {
-              if (Platform.OS === 'web') setCameraMirror(facing === 'front'); // ré-impose l'orientation sur la nouvelle caméra
               if (freezeTimer.current) clearTimeout(freezeTimer.current);
               setFlipFreeze(null);
             }}
           />
           {/* Frame figée pendant la bascule (pas d'écran noir) */}
           {flipFreeze && <Image source={{ uri: flipFreeze }} style={StyleSheet.absoluteFill} contentFit="cover" />}
-          {/* Tap = focus · Double-tap = retourner la caméra */}
+          {/* Double-tap n'importe où = retourner la caméra */}
           <Pressable style={StyleSheet.absoluteFill} onPress={onCameraTap} />
-          {focusPt && (
-            <Animated.View
-              pointerEvents="none"
-              style={[styles.focusRing, { left: focusPt.x - 36, top: focusPt.y - 36, opacity: focusAnim, transform: [{ scale: focusAnim.interpolate({ inputRange: [0, 1], outputRange: [1.25, 1] }) }] }]}
-            />
-          )}
         </>
       ) : (
         <View style={[StyleSheet.absoluteFill, styles.stageEmpty]}>
@@ -384,8 +361,6 @@ const styles = StyleSheet.create({
   recPill: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#000000AA', paddingHorizontal: 12, paddingVertical: 5, borderRadius: Radius.pill },
   recDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: Afryko.live },
   recText: { color: '#fff', fontFamily: Font.bold, fontSize: 12 },
-
-  focusRing: { position: 'absolute', width: 72, height: 72, borderRadius: 10, borderWidth: 1.5, borderColor: '#FFD60A' },
 
   lockHint: { flexDirection: 'row', alignItems: 'center', gap: 5, alignSelf: 'center', backgroundColor: '#00000066', paddingHorizontal: 12, paddingVertical: 6, borderRadius: Radius.pill, marginBottom: 12 },
   lockHintText: { color: '#fff', fontSize: 12, fontFamily: Font.medium },
