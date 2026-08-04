@@ -12,7 +12,7 @@ import { GiftSheet } from '@/components/gift-sheet';
 import { PaymentSheet, type PayItem } from '@/components/payment-sheet';
 import { Afylo, Font, Radius, Type } from '@/constants/brand';
 import { BuzzBadge } from '@/components/buzz-badge';
-import { useLivePip } from '@/lib/live-pip';
+import { useLivePip, saveLiveSnapshot, takeLiveSnapshot, clearLiveSnapshot } from '@/lib/live-pip';
 import { useIsBuzz } from '@/lib/buzz';
 import { endLive, listFeedProducts, listMyProducts, setLiveViewers } from '@/lib/db';
 import { useMe } from '@/lib/me';
@@ -21,7 +21,7 @@ import { avatar, photo, video } from '@/lib/mock';
 type SellProduct = { id: string; title: string; price: string; image: string; tag: string; priceCfa?: number; tiers?: { qty: number; price_cfa: number }[] };
 type Comment = { id: string; name: string; avatar: string; text: string; gift?: boolean; system?: 'join' | 'like' | 'share' | 'guest' | 'sale' | 'welcome'; product?: { title: string; price: string } };
 type GuestMode = 'audio' | 'video';
-type Guest = { id: string; name: string; avatar: string; mode: GuestMode; local?: boolean };
+type Guest = { id: string; name: string; avatar: string; mode: GuestMode; local?: boolean; muted?: boolean };
 type Heart = { id: number; x: number; y: number; color: string; size: number; emoji?: string };
 type Sale = { id: string; buyer: string; avatar: string; title: string; price: string; tag?: string };
 
@@ -44,7 +44,6 @@ const MSGS = ['Trop belle 😍', 'Ça coûte combien ?', 'Livraison à Thiès ?'
 const GIFTS = [500, 1000, 2000, 5000];
 const BUZZ_GOAL = 10000; // j'aime à atteindre pour que le live obtienne le Buzz
 const HEART_COLORS = ['#E11D48', '#FF4D8D', '#FF7AB8', '#B8791F', '#6E80FF', '#FF5A5F', '#FF2D55'];
-const REACTIONS = ['❤️', '🔥', '😍', '👏', '😂', '🎉', '💎']; // réactions volantes (stickers)
 const SYS: Record<'join' | 'like' | 'share' | 'guest' | 'sale' | 'welcome', { icon: keyof typeof Ionicons.glyphMap; color: string }> = {
   join: { icon: 'enter-outline', color: '#7EC8FF' },
   like: { icon: 'heart', color: Afylo.live },
@@ -119,19 +118,23 @@ export default function Live() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isHost, params.product]);
 
-  const [comments, setComments] = useState<Comment[]>([]);
-  const [supporters, setSupporters] = useState<{ name: string; avatar: string; total: number }[]>([]); // classement des cadeaux
+  // Clé de session + snapshot : si le live a été réduit en PiP, on restaure son état intact.
+  const sessionKey = liveId || name;
+  const restored = useRef(takeLiveSnapshot(sessionKey)).current;
+
+  const [comments, setComments] = useState<Comment[]>(() => (restored?.comments as Comment[]) ?? []);
+  const [supporters, setSupporters] = useState<{ name: string; avatar: string; total: number }[]>(() => (restored?.supporters as any) ?? []); // classement des cadeaux
   const [boardOpen, setBoardOpen] = useState(false); // modal leaderboard
-  const [reactionsOpen, setReactionsOpen] = useState(false); // sélecteur de réactions volantes
-  const [pk, setPk] = useState<null | { opp: string; oppAvatar: string; mine: number; theirs: number; sec: number; winner?: 'me' | 'opp' | 'tie' }>(null); // battle PK
   const [text, setText] = useState('');
-  const [viewers, setViewers] = useState(128);
-  const [likeCount, setLikeCount] = useState(0); // compteur de j'aime réel (objectif Buzz)
+  const [viewers, setViewers] = useState(() => restored?.viewers ?? 128);
+  const [likeCount, setLikeCount] = useState(() => restored?.likeCount ?? 0); // compteur de j'aime réel (objectif Buzz)
   const [buzzReached, setBuzzReached] = useState(false);
   const buzzRef = useRef(false);
   const [hearts, setHearts] = useState<Heart[]>([]);
   const [pops, setPops] = useState<{ id: number; x: number; y: number }[]>([]);
-  const [followed, setFollowed] = useState(false);
+  const [followed, setFollowed] = useState(() => restored?.followed ?? false);
+  const [followedGuests, setFollowedGuests] = useState<string[]>([]); // intervenants suivis
+  const toggleFollowGuest = (n: string) => setFollowedGuests((prev) => (prev.includes(n) ? prev.filter((x) => x !== n) : [...prev, n]));
   const [payOpen, setPayOpen] = useState(false);
   const [giftOpen, setGiftOpen] = useState(false);
   const [sales, setSales] = useState<Sale[]>([]); // ventes reçues pendant le live (vendeur)
@@ -150,15 +153,30 @@ export default function Live() {
   const [endConfirm, setEndConfirm] = useState(false); // confirmation avant de terminer le live (vendeur)
   const lastTap = useRef(0);
   const commentsRef = useRef<ScrollView>(null); // auto-scroll vers le dernier message
+  const atBottomRef = useRef(true); // colle au bas seulement si l'utilisateur n'a pas remonté pour lire
 
   // En entrant sur un live, on retire tout mini-lecteur flottant en cours.
-  useEffect(() => { closePip(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, []);
+  useEffect(() => { closePip(); if (restored) clearLiveSnapshot(sessionKey); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, []);
 
+  // Sauvegarde l'état visible du live pour le restaurer tel quel à la reprise.
+  const snapshotLive = () => saveLiveSnapshot(sessionKey, { comments, likeCount, supporters, viewers, followed });
+  // Quitter complètement le live (pas de mini-lecteur, état effacé).
   const leave = () => {
     if (isHost && liveId) endLive(liveId).catch(() => {}); // ferme le live en base
-    // Spectateur : le live continue dans un mini-lecteur flottant (PiP) au lieu de se fermer.
-    if (!isHost) openPip({ name, avatar: hostAvatar, ...(liveId ? { liveId } : {}) });
+    clearLiveSnapshot(sessionKey);
+    closePip();
     router.canGoBack() ? router.back() : router.replace('/accueil');
+  };
+  // Réduire le live en mini-lecteur flottant (l'état reste intact pour la reprise).
+  const minimize = () => {
+    snapshotLive();
+    openPip({ name, avatar: hostAvatar, ...(liveId ? { liveId } : {}) });
+    router.canGoBack() ? router.back() : router.replace('/accueil');
+  };
+  // Naviguer vers une section de l'app depuis le live → le live se réduit automatiquement en PiP.
+  const minimizeAndGo = (go: () => void) => {
+    if (!isHost) { snapshotLive(); openPip({ name, avatar: hostAvatar, ...(liveId ? { liveId } : {}) }); }
+    go();
   };
   const seq = useRef(0); // compteur d'ids (persiste avec l'état, pas de collision au Fast Refresh)
 
@@ -186,11 +204,6 @@ export default function Live() {
     });
   };
 
-  // Auto-scroll TikTok : on colle toujours au dernier message (deux frames pour laisser le layout se poser).
-  useEffect(() => {
-    const id = requestAnimationFrame(() => requestAnimationFrame(() => commentsRef.current?.scrollToEnd({ animated: true })));
-    return () => cancelAnimationFrame(id);
-  }, [comments]);
   const pushEvent = (nm: string, av: string, system: NonNullable<Comment['system']>, txt: string) => {
     const id = nid('e');
     setComments((prev) => [...prev.slice(-50), { id, name: nm, avatar: av, text: txt, system }]);
@@ -217,29 +230,7 @@ export default function Live() {
     setTimeout(() => setPops((p) => p.filter((z) => z.id !== id)), 700);
   };
   const addLikes = (n = 1) => setLikeCount((c) => c + n);
-  const sendHeart = () => { spawnHearts(width - 38, height - 130, 2); addLikes(2); }; // bouton cœur (bas droite)
-  // Réactions emoji volantes (stickers) — même moteur que les cœurs.
-  const spawnEmoji = (x: number, y: number, emoji: string, count = 1) => {
-    const additions = Array.from({ length: count }, () => ({
-      id: seq.current++,
-      x: x + (Math.random() * 46 - 23),
-      y: y + (Math.random() * 20 - 10),
-      color: '#fff',
-      size: 22 + Math.random() * 20,
-      emoji,
-    }));
-    setHearts((h) => [...h.slice(-44), ...additions]);
-  };
-  const sendReaction = (emoji: string) => { spawnEmoji(width - 38, height - 130, emoji, 3); addLikes(1); setReactionsOpen(false); };
-  // Battle PK : lance un duel de 3 min contre un créateur rival (simulé).
-  const PK_RIVALS = ['DJ Rimok', 'Aïcha Live', 'Le Boss', 'Mamy Style', 'Kaay Fashion'];
-  const startPk = () => {
-    if (pk) return;
-    const opp = PK_RIVALS[Math.floor(Math.random() * PK_RIVALS.length)];
-    setPk({ opp, oppAvatar: avatar(28 + Math.floor(Math.random() * 20)), mine: 0, theirs: 0, sec: 180 });
-    addComment({ name: 'Afylo', avatar: '', text: `Battle PK lancée contre ${opp} ! Soutiens ton créateur avec des cadeaux 🎁`, system: 'welcome' });
-  };
-  const addPkPoints = (n: number) => setPk((p) => (p && !p.winner ? { ...p, mine: p.mine + n } : p));
+  const sendHeart = () => { spawnHearts(width - 38, height - 130, 2); addLikes(2); }; // bouton cœur (spectateur)
 
   // Objectif Buzz atteint → annonce visible par tous (viewers + hôte).
   useEffect(() => {
@@ -254,7 +245,6 @@ export default function Live() {
   const onGiftSent = (amount: number) => {
     addGift(me.name, me.avatar, amount);
     spawnHearts(width / 2, height / 2, 8);
-    addPkPoints(Math.max(1, Math.round(amount / 100))); // les cadeaux boostent le camp du créateur pendant un PK
   };
   const share = async () => { try { await Share.share({ message: `${name} est en direct sur Afylo — rejoins !` }); } catch {} };
   const send = () => {
@@ -282,7 +272,7 @@ export default function Live() {
   };
 
   // Aller sur le profil du live
-  const openHostProfile = () => router.push({ pathname: '/creator/[id]', params: { id: name, name, avatar: hostAvatar } });
+  const openHostProfile = () => minimizeAndGo(() => router.replace({ pathname: '/creator/[id]', params: { id: name, name, avatar: hostAvatar } }));
 
   // Double-tap n'importe où = like à l'endroit touché
   const onScreenTap = (e: any) => {
@@ -300,6 +290,9 @@ export default function Live() {
   };
   const refuseGuest = (id: string) => setRequests((prev) => prev.filter((r) => r.id !== id));
   const removeGuest = (id: string) => { setGuests((prev) => prev.filter((g) => g.id !== id)); showToast('Intervenant retiré'); };
+  // Droits de l'hôte sur un intervenant : couper/activer son micro, sa caméra, ou le faire descendre.
+  const hostToggleGuestMute = (id: string) => setGuests((prev) => prev.map((g) => (g.id === id ? { ...g, muted: !g.muted } : g)));
+  const hostToggleGuestCam = (id: string) => setGuests((prev) => prev.map((g) => (g.id === id ? { ...g, mode: g.mode === 'video' ? 'audio' : 'video' } : g)));
 
   // Côté spectateur : demander à intervenir → accepté → choix audio/vidéo
   const requestJoin = () => {
@@ -331,38 +324,13 @@ export default function Live() {
     setGuests((prev) => prev.map((g) => (g.local ? { ...g, mode: g.mode === 'video' ? 'audio' : 'video' } : g)));
   };
 
-  // Message d'accueil + règles : message de bienvenue qui défile dans le feed (pas une bande figée) — puis événement d'arrivée.
+  // Message d'accueil + règles (une seule fois, pas lors d'une reprise depuis le PiP).
   useEffect(() => {
-    if (phase !== 'live') return;
+    if (phase !== 'live' || restored) return;
     addComment({ name: 'Afylo', avatar: '', text: 'Bienvenue 👋 Reste respectueux · Créateurs 18+ pour passer en live, spectateurs 18+ pour les cadeaux. Amuse-toi !', system: 'welcome' });
     pushEvent(me.name, me.avatar, 'join', 'a rejoint le live');
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phase]);
-
-  // Battle PK : décompte + votes simulés des deux côtés ; désigne le gagnant à 0 s.
-  useEffect(() => {
-    if (!pk || pk.winner) return;
-    const t = setInterval(() => {
-      setPk((p) => {
-        if (!p || p.winner) return p;
-        const sec = p.sec - 1;
-        const mine = p.mine + Math.floor(Math.random() * 40);
-        const theirs = p.theirs + Math.floor(Math.random() * 45);
-        if (sec <= 0) return { ...p, sec: 0, mine, theirs, winner: mine > theirs ? 'me' : theirs > mine ? 'opp' : 'tie' };
-        return { ...p, sec, mine, theirs };
-      });
-    }, 1000);
-    return () => clearInterval(t);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [!!pk, pk?.winner]);
-
-  // Fin de PK : on retire le HUD quelques secondes après l'annonce du gagnant.
-  useEffect(() => {
-    if (!pk?.winner) return;
-    const t = setTimeout(() => setPk(null), 5200);
-    return () => clearTimeout(t);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pk?.winner]);
 
   // Flux d'événements + demandes d'intervention simulées
   useEffect(() => {
@@ -376,7 +344,6 @@ export default function Live() {
         else if (roll === 1) pushEvent(nm, av, 'join', 'a rejoint le live');
         else if (roll === 2) { pushEvent(nm, av, 'like', 'a aimé'); spawnHearts(width - 38, height - 130, 1); addLikes(1); }
         else if (roll === 3) pushEvent(nm, av, 'share', 'a partagé');
-        else if (roll === 4) spawnEmoji(width - 38, height - 130, REACTIONS[seq.current % REACTIONS.length], 2);
         else addComment({ name: nm, avatar: av, text: MSGS[seq.current % MSGS.length] });
       }
       setViewers((v) => v + (Math.round(Date.now() / 1000) % 3) - 1);
@@ -486,20 +453,9 @@ export default function Live() {
             </Pressable>
             <View style={styles.liveBadge}><View style={styles.liveDot} /><Text style={styles.liveText}>LIVE</Text></View>
             <View style={styles.viewersPill}><Ionicons name="eye" size={13} color="#fff" /><Text style={styles.viewersText}>{Math.max(1, viewers)}</Text></View>
-            {/* Compteur de j'aime → objectif Buzz (temps réel) */}
-            <View style={[styles.viewersPill, buzzReached && { backgroundColor: '#FF2D5566' }]}>
-              <Ionicons name={buzzReached ? 'flame' : 'heart'} size={13} color={buzzReached ? Afylo.gold : Afylo.live} />
-              <Text style={styles.viewersText}>{buzzReached ? likeCount : `${likeCount}/${BUZZ_GOAL}`}</Text>
-            </View>
-            {(isBuzz || buzzReached) && <BuzzBadge size="sm" />}
           </View>
           {/* Cluster droit : toujours visible (partager + fermer) */}
           <View style={styles.topRight}>
-            {isHost && !pk && (
-              <Pressable onPress={startPk} style={[styles.close, { backgroundColor: Afylo.live + 'cc' }]}>
-                <Ionicons name="flash" size={18} color="#fff" />
-              </Pressable>
-            )}
             {isHost && (
               <Pressable onPress={() => setFacing((f) => (f === 'front' ? 'back' : 'front'))} style={styles.close}>
                 <Ionicons name="camera-reverse-outline" size={20} color="#fff" />
@@ -512,45 +468,12 @@ export default function Live() {
               </Pressable>
             )}
             <Pressable onPress={share} style={styles.close}><Ionicons name="share-social" size={18} color="#fff" /></Pressable>
+            {!isHost && (
+              <Pressable onPress={minimize} style={styles.close}><Ionicons name="chevron-down" size={22} color="#fff" /></Pressable>
+            )}
             <Pressable onPress={() => (isHost ? setEndConfirm(true) : leave())} style={styles.close}><Ionicons name="close" size={24} color="#fff" /></Pressable>
           </View>
         </View>
-
-        {/* HUD Battle PK : jauge de votes hôte vs rival + minuteur */}
-        {pk && (() => {
-          const total = pk.mine + pk.theirs;
-          const myFrac = total > 0 ? pk.mine / total : 0.5;
-          const mm = Math.floor(pk.sec / 60), ss = pk.sec % 60;
-          return (
-            <View style={styles.pkWrap}>
-              <View style={styles.pkHeads}>
-                <View style={styles.pkSide}>
-                  <Avatar uri={hostAvatar} size={26} />
-                  <Text style={styles.pkName} numberOfLines={1}>{name}</Text>
-                </View>
-                <View style={styles.pkCenter}>
-                  <Text style={styles.pkVs}>VS</Text>
-                  <View style={styles.pkTimer}><Ionicons name="time" size={11} color="#fff" /><Text style={styles.pkTimerText}>{mm}:{String(ss).padStart(2, '0')}</Text></View>
-                </View>
-                <View style={[styles.pkSide, { justifyContent: 'flex-end' }]}>
-                  <Text style={[styles.pkName, { textAlign: 'right' }]} numberOfLines={1}>{pk.opp}</Text>
-                  <Avatar uri={pk.oppAvatar} size={26} />
-                </View>
-              </View>
-              <View style={styles.pkBar}>
-                <View style={[styles.pkFillMine, { flex: Math.max(0.06, myFrac) }]}><Text style={styles.pkScore}>{pk.mine}</Text></View>
-                <View style={[styles.pkFillOpp, { flex: Math.max(0.06, 1 - myFrac) }]}><Text style={[styles.pkScore, { textAlign: 'right' }]}>{pk.theirs}</Text></View>
-              </View>
-              {pk.winner && (
-                <View style={styles.pkWinner}>
-                  <Text style={styles.pkWinnerText}>
-                    {pk.winner === 'me' ? '🏆 Tu remportes la battle !' : pk.winner === 'opp' ? `${pk.opp} remporte la battle` : '🤝 Égalité !'}
-                  </Text>
-                </View>
-              )}
-            </View>
-          );
-        })()}
 
         {/* Bandeau titre du live (hôte peut le modifier d'un tap) */}
         {(liveTitle.trim().length > 0 || isHost) && (
@@ -566,33 +489,35 @@ export default function Live() {
           </Pressable>
         )}
 
-        {/* Classement des top-supporters (podium) — tap pour le détail */}
-        {supporters.length > 0 && (
-          <Pressable onPress={() => setBoardOpen(true)} style={styles.boardBar}>
-            <Ionicons name="trophy" size={14} color={Afylo.gold} />
-            <View style={styles.boardAvatars}>
-              {supporters.slice(0, 3).map((s, i) => (
-                <View key={s.name} style={[styles.boardAvatarWrap, { marginLeft: i === 0 ? 0 : -8, zIndex: 3 - i }]}>
-                  <Avatar uri={s.avatar} size={22} />
-                  <View style={[styles.boardRank, i === 0 && { backgroundColor: Afylo.gold }, i === 1 && { backgroundColor: '#C0C0C0' }, i === 2 && { backgroundColor: '#CD7F32' }]}>
-                    <Text style={styles.boardRankText}>{i + 1}</Text>
+        {/* Ligne stats : podium des top-supporters (gauche) + compteur j'aime/Buzz (droite) */}
+        <View style={styles.statsRow}>
+          {supporters.length > 0 ? (
+            <Pressable onPress={() => setBoardOpen(true)} style={styles.boardBar}>
+              <Ionicons name="trophy" size={14} color={Afylo.gold} />
+              <View style={styles.boardAvatars}>
+                {supporters.slice(0, 3).map((s, i) => (
+                  <View key={s.name} style={[styles.boardAvatarWrap, { marginLeft: i === 0 ? 0 : -8, zIndex: 3 - i }]}>
+                    <Avatar uri={s.avatar} size={22} />
+                    <View style={[styles.boardRank, i === 0 && { backgroundColor: Afylo.gold }, i === 1 && { backgroundColor: '#C0C0C0' }, i === 2 && { backgroundColor: '#CD7F32' }]}>
+                      <Text style={styles.boardRankText}>{i + 1}</Text>
+                    </View>
                   </View>
-                </View>
-              ))}
-            </View>
-            <Text style={styles.boardTopText} numberOfLines={1}>{supporters[0].name}</Text>
-            <Ionicons name="chevron-forward" size={14} color="#ffffff99" />
+                ))}
+              </View>
+              <Text style={styles.boardTopText} numberOfLines={1}>{supporters[0].name}</Text>
+              <Ionicons name="chevron-forward" size={14} color="#ffffff99" />
+            </Pressable>
+          ) : (
+            <View style={{ flex: 1 }} />
+          )}
+          {/* Compteur de j'aime → objectif Buzz. Spectateur : tap = envoyer un cœur. Hôte : affichage seul. */}
+          <Pressable onPress={isHost ? undefined : sendHeart} style={[styles.likePill, buzzReached && { backgroundColor: '#FF2D5566' }]}>
+            <Ionicons name={buzzReached ? 'flame' : 'heart'} size={15} color={buzzReached ? Afylo.gold : Afylo.live} />
+            <Text style={styles.likeText}>{buzzReached ? likeCount.toLocaleString('fr-FR') : `${likeCount.toLocaleString('fr-FR')} / ${(BUZZ_GOAL / 1000)}k`}</Text>
           </Pressable>
-        )}
+          {(isBuzz || buzzReached) && <BuzzBadge size="sm" />}
+        </View>
 
-        {/* Demandes pour rejoindre le live (hôte) — bannière visible */}
-        {isHost && requests.length > 0 && (
-          <Pressable onPress={() => setRequestsOpen(true)} style={styles.reqBanner}>
-            <Ionicons name="hand-left" size={16} color="#fff" />
-            <Text style={styles.reqBannerText} numberOfLines={1}>{requests.length} demande{requests.length > 1 ? 's' : ''} pour intervenir — appuie pour voir</Text>
-            <Ionicons name="chevron-forward" size={16} color="#fff" />
-          </Pressable>
-        )}
 
         {/* Commentaire épinglé */}
         {pinned && (
@@ -603,21 +528,31 @@ export default function Live() {
           </View>
         )}
 
-        {/* Intervenants en direct (audio = avatar, vidéo = flux) */}
-        {guests.length > 0 && (
-          <View style={styles.guestStrip}>
-            {guests.map((g) => (
-              <GuestPip
-                key={g.id}
-                g={g}
-                facing={g.local ? guestFacing : facing}
-                onFlip={g.local ? flipGuestCam : undefined}
-                onToggleCam={g.local ? toggleGuestCam : undefined}
-                onLeave={g.local ? leaveStage : undefined}
-              />
-            ))}
-          </View>
-        )}
+        {/* Intervenants en direct — grille adaptative (taille selon le nombre) */}
+        {guests.length > 0 && (() => {
+          const n = guests.length;
+          const size = n <= 1 ? 132 : n <= 2 ? 116 : n <= 4 ? 96 : n <= 6 ? 80 : 68;
+          return (
+            <View style={styles.guestStrip}>
+              {guests.map((g) => (
+                <GuestPip
+                  key={g.id}
+                  g={g}
+                  size={size}
+                  facing={g.local ? guestFacing : facing}
+                  onFlip={g.local ? flipGuestCam : undefined}
+                  onToggleCam={g.local ? toggleGuestCam : undefined}
+                  onLeave={g.local ? leaveStage : undefined}
+                  followed={!isHost && !g.local ? followedGuests.includes(g.name) : undefined}
+                  onFollow={!isHost && !g.local ? () => toggleFollowGuest(g.name) : undefined}
+                  onHostMute={isHost && !g.local ? () => hostToggleGuestMute(g.id) : undefined}
+                  onHostCam={isHost && !g.local ? () => hostToggleGuestCam(g.id) : undefined}
+                  onHostRemove={isHost && !g.local ? () => removeGuest(g.id) : undefined}
+                />
+              ))}
+            </View>
+          );
+        })()}
 
         <View style={{ flex: 1 }} />
 
@@ -627,7 +562,12 @@ export default function Live() {
           style={styles.commentsScroll}
           contentContainerStyle={styles.commentsContent}
           showsVerticalScrollIndicator={false}
-          onContentSizeChange={() => commentsRef.current?.scrollToEnd({ animated: true })}
+          scrollEventThrottle={100}
+          onScroll={(e) => {
+            const { contentOffset, contentSize, layoutMeasurement } = e.nativeEvent;
+            atBottomRef.current = contentOffset.y >= contentSize.height - layoutMeasurement.height - 60;
+          }}
+          onContentSizeChange={() => { if (atBottomRef.current) commentsRef.current?.scrollToEnd({ animated: true }); }}
           pointerEvents="box-none">
           {comments.map((c) =>
             c.system ? (
@@ -701,25 +641,13 @@ export default function Live() {
             </Pressable>
           )}
 
+          {/* Cadeau + j'aime : réservés aux spectateurs (le créateur ne like pas son propre live) */}
           {!isHost && (
             <Pressable onPress={() => setGiftOpen(true)} style={styles.circleBtn}><Ionicons name="gift" size={24} color={Afylo.gold} /></Pressable>
           )}
-          {/* Réactions volantes : ouvre un sélecteur d'emojis */}
-          <View>
-            {reactionsOpen && (
-              <View style={styles.reactionPop}>
-                {REACTIONS.map((e) => (
-                  <Pressable key={e} onPress={() => sendReaction(e)} style={styles.reactionItem}>
-                    <Text style={styles.reactionEmoji}>{e}</Text>
-                  </Pressable>
-                ))}
-              </View>
-            )}
-            <Pressable onPress={() => setReactionsOpen((v) => !v)} style={[styles.circleBtn, reactionsOpen && { backgroundColor: Afylo.violet }]}>
-              <Ionicons name="happy-outline" size={24} color="#fff" />
-            </Pressable>
-          </View>
-          <Pressable onPress={sendHeart} style={styles.circleBtn}><Ionicons name="heart" size={26} color={Afylo.live} /></Pressable>
+          {!isHost && (
+            <Pressable onPress={sendHeart} style={styles.circleBtn}><Ionicons name="heart" size={26} color={Afylo.live} /></Pressable>
+          )}
         </View>
       </SafeAreaView>
 
@@ -864,7 +792,7 @@ export default function Live() {
             ) : (
               <>
                 <Pressable style={styles.modItem} onPress={() => mod && replyTo(mod.name)}><Ionicons name="return-up-back-outline" size={20} color={Afylo.text} /><Text style={styles.modItemText}>Répondre à {mod?.name}</Text></Pressable>
-                <Pressable style={styles.modItem} onPress={() => mod && router.push({ pathname: '/creator/[id]', params: { id: mod.name, name: mod.name, avatar: mod.avatar } })}><Ionicons name="person-outline" size={20} color={Afylo.text} /><Text style={styles.modItemText}>Voir le profil</Text></Pressable>
+                <Pressable style={styles.modItem} onPress={() => mod && (setMod(null), minimizeAndGo(() => router.replace({ pathname: '/creator/[id]', params: { id: mod.name, name: mod.name, avatar: mod.avatar } })))}><Ionicons name="person-outline" size={20} color={Afylo.text} /><Text style={styles.modItemText}>Voir le profil</Text></Pressable>
                 <Pressable style={styles.modItem} onPress={reportComment}><Ionicons name="flag-outline" size={20} color={Afylo.live} /><Text style={[styles.modItemText, { color: Afylo.live }]}>Signaler</Text></Pressable>
               </>
             )}
@@ -1048,14 +976,20 @@ function ProductFilterBar({ filter, setFilter, query, setQuery }: { filter: 'all
   );
 }
 
-function GuestPip({ g, facing, onFlip, onToggleCam, onLeave }: { g: Guest; facing: 'front' | 'back'; onFlip?: () => void; onToggleCam?: () => void; onLeave?: () => void }) {
+function GuestPip({ g, size = 86, facing, onFlip, onToggleCam, onLeave, followed, onFollow, onHostMute, onHostCam, onHostRemove }: { g: Guest; size?: number; facing: 'front' | 'back'; onFlip?: () => void; onToggleCam?: () => void; onLeave?: () => void; followed?: boolean; onFollow?: () => void; onHostMute?: () => void; onHostCam?: () => void; onHostRemove?: () => void }) {
   return (
-    <View style={styles.guestPip}>
+    <View style={[styles.guestPip, { width: size, height: size * 1.35 }]}>
+      {/* Suivre l'intervenant d'un tap (spectateur) */}
+      {onFollow && (
+        <Pressable onPress={onFollow} style={[styles.guestFollow, followed && styles.guestFollowOn]} hitSlop={6}>
+          <Ionicons name={followed ? 'checkmark' : 'add'} size={13} color="#fff" />
+        </Pressable>
+      )}
       {g.mode === 'video'
         ? (g.local ? <CameraView key={facing} style={StyleSheet.absoluteFill} facing={facing} mirror={facing === 'front'} /> : <RemoteVideoPip />)
         : <AudioPip avatar={g.avatar} local={!!g.local} />}
 
-      {/* Contrôles de MON intervention (co-host) — façon TikTok */}
+      {/* Contrôles de MON intervention (co-host) */}
       {g.local && (
         <View style={styles.pipControls}>
           <Pressable onPress={onToggleCam} style={styles.pipBtn}>
@@ -1068,8 +1002,21 @@ function GuestPip({ g, facing, onFlip, onToggleCam, onLeave }: { g: Guest; facin
         </View>
       )}
 
+      {/* Droits de l'HÔTE sur un intervenant : couper micro, couper caméra, faire descendre */}
+      {onHostRemove && (
+        <View style={styles.pipControls}>
+          <Pressable onPress={onHostMute} style={[styles.pipBtn, g.muted && { backgroundColor: '#E11D48' }]}>
+            <Ionicons name={g.muted ? 'mic-off' : 'mic'} size={13} color="#fff" />
+          </Pressable>
+          <Pressable onPress={onHostCam} style={styles.pipBtn}>
+            <Ionicons name={g.mode === 'video' ? 'videocam' : 'videocam-off'} size={13} color="#fff" />
+          </Pressable>
+          <Pressable onPress={onHostRemove} style={[styles.pipBtn, { backgroundColor: '#E11D48' }]}><Ionicons name="arrow-down" size={13} color="#fff" /></Pressable>
+        </View>
+      )}
+
       <View style={styles.guestNameBar}>
-        <Ionicons name={g.mode === 'video' ? 'videocam' : 'mic'} size={9} color="#fff" />
+        <Ionicons name={g.muted ? 'mic-off' : g.mode === 'video' ? 'videocam' : 'mic'} size={9} color={g.muted ? '#FF6B81' : '#fff'} />
         <Text style={styles.guestName} numberOfLines={1}>{g.name}{g.local ? ' (toi)' : ''}</Text>
       </View>
     </View>
@@ -1234,23 +1181,11 @@ const styles = StyleSheet.create({
   reqBadgeText: { color: '#fff', fontFamily: Font.bold, fontSize: 10 },
 
   pinned: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#00000066', marginHorizontal: 12, marginTop: 10, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 12, borderWidth: 1, borderColor: '#FFD98A55' },
-  // HUD Battle PK
-  pkWrap: { marginHorizontal: 12, marginTop: 8, backgroundColor: '#00000066', borderRadius: 16, borderWidth: 1, borderColor: '#ffffff22', paddingHorizontal: 10, paddingVertical: 8, gap: 6 },
-  pkHeads: { flexDirection: 'row', alignItems: 'center' },
-  pkSide: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 6 },
-  pkName: { color: '#fff', fontFamily: Font.semibold, fontSize: 12, flexShrink: 1 },
-  pkCenter: { alignItems: 'center', paddingHorizontal: 8, gap: 3 },
-  pkVs: { color: Afylo.gold, fontFamily: Font.bold, fontSize: 13 },
-  pkTimer: { flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: '#00000088', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 8 },
-  pkTimerText: { color: '#fff', fontFamily: Font.semibold, fontSize: 11 },
-  pkBar: { flexDirection: 'row', height: 20, borderRadius: 10, overflow: 'hidden' },
-  pkFillMine: { backgroundColor: Afylo.violet, justifyContent: 'center', paddingHorizontal: 8 },
-  pkFillOpp: { backgroundColor: Afylo.live, justifyContent: 'center', paddingHorizontal: 8 },
-  pkScore: { color: '#fff', fontFamily: Font.bold, fontSize: 12 },
-  pkWinner: { backgroundColor: Afylo.gold, borderRadius: 10, paddingVertical: 6, alignItems: 'center', marginTop: 2 },
-  pkWinnerText: { color: '#12121A', fontFamily: Font.bold, fontSize: 13 },
   // Podium des top-supporters (barre + modal)
-  boardBar: { flexDirection: 'row', alignItems: 'center', gap: 8, alignSelf: 'flex-start', maxWidth: '82%', backgroundColor: '#00000066', marginHorizontal: 14, marginTop: 8, paddingLeft: 12, paddingRight: 10, height: 38, borderRadius: Radius.pill, borderWidth: 1, borderColor: '#FFD98A44' },
+  statsRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginHorizontal: 14, marginTop: 8 },
+  boardBar: { flexDirection: 'row', alignItems: 'center', gap: 8, flexShrink: 1, backgroundColor: '#00000066', paddingLeft: 12, paddingRight: 10, height: 38, borderRadius: Radius.pill, borderWidth: 1, borderColor: '#FFD98A44' },
+  likePill: { flexDirection: 'row', alignItems: 'center', gap: 5, marginLeft: 'auto', backgroundColor: '#00000088', paddingHorizontal: 12, height: 34, borderRadius: Radius.pill, borderWidth: 1, borderColor: '#ffffff22' },
+  likeText: { color: '#fff', fontFamily: Font.semibold, fontSize: 13 },
   boardAvatars: { flexDirection: 'row', alignItems: 'center' },
   boardAvatarWrap: { position: 'relative', borderWidth: 1.5, borderColor: '#12121A', borderRadius: 13 },
   boardRank: { position: 'absolute', bottom: -3, right: -3, width: 13, height: 13, borderRadius: 7, backgroundColor: '#888', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#12121A' },
@@ -1269,8 +1204,10 @@ const styles = StyleSheet.create({
   boardRowAmount: { color: Afylo.gold, fontFamily: Font.bold, fontSize: 15 },
   pinnedText: { color: '#fff', fontSize: 13, flex: 1 },
 
-  guestStrip: { flexDirection: 'row', gap: 10, paddingHorizontal: 14, marginTop: 12 },
-  guestPip: { width: 86, height: 116, borderRadius: 16, overflow: 'hidden', backgroundColor: '#111', borderWidth: 2, borderColor: Afylo.violet },
+  guestStrip: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, paddingHorizontal: 14, marginTop: 12 },
+  guestPip: { borderRadius: 16, overflow: 'hidden', backgroundColor: '#111', borderWidth: 2, borderColor: Afylo.violet },
+  guestFollow: { position: 'absolute', top: 4, right: 4, zIndex: 2, width: 22, height: 22, borderRadius: 11, backgroundColor: Afylo.violet, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#fff' },
+  guestFollowOn: { backgroundColor: '#ffffff33' },
   guestAudio: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#1a1a22' },
   audioRing: { position: 'absolute', width: 54, height: 54, borderRadius: 27, backgroundColor: Afylo.violet2 },
   buyOneBtn: { backgroundColor: Afylo.violet, borderRadius: 999, paddingHorizontal: 16, paddingVertical: 9 },
@@ -1327,9 +1264,6 @@ const styles = StyleSheet.create({
   input: { flex: 1, color: '#fff', fontSize: 15, height: '100%' },
   circleBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#00000055', alignItems: 'center', justifyContent: 'center' },
   // Sélecteur de réactions volantes (popover au-dessus du bouton)
-  reactionPop: { position: 'absolute', bottom: 52, right: -4, flexDirection: 'row', gap: 2, backgroundColor: '#000000cc', borderRadius: Radius.pill, paddingHorizontal: 6, paddingVertical: 4, borderWidth: 1, borderColor: '#ffffff22' },
-  reactionItem: { width: 34, height: 40, alignItems: 'center', justifyContent: 'center' },
-  reactionEmoji: { fontSize: 24 },
   sellBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: Afylo.violet, paddingHorizontal: 12, height: 44, borderRadius: Radius.pill, flexShrink: 0 },
   commerceBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: Afylo.violet, marginHorizontal: 12, marginBottom: 8, height: 44, borderRadius: Radius.pill },
   sellText: { color: '#fff', fontFamily: Font.semibold, fontSize: 14 },
