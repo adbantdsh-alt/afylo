@@ -76,7 +76,6 @@ export default function Live() {
   const [buyListOpen, setBuyListOpen] = useState(false); // viewer : liste des produits en vente avant le formulaire
   const [liveTitle, setLiveTitle] = useState(''); // thème/titre du live (bandeau visible)
   const [titleEdit, setTitleEdit] = useState(false);
-  const [adultGate, setAdultGate] = useState<null | 'host' | 'gift'>(null); // confirmation 18+
   const isAffil = (p: SellProduct) => p.tag.startsWith('Affiliation');
   const filteredAvailable = available
     .filter((p) => (prodFilter === 'all' ? true : prodFilter === 'affil' ? isAffil(p) : !isAffil(p)))
@@ -442,33 +441,11 @@ export default function Live() {
                 );
               })}
             </ScrollView>
-            <Pressable onPress={() => setAdultGate('host')} style={styles.startBtn}>
+            <Pressable onPress={() => setPhase('live')} style={styles.startBtn}>
               <View style={styles.startDot} />
               <Text style={styles.startText}>Démarrer le live</Text>
             </Pressable>
-            <Text style={styles.gateHint}>🔞 En passant en live, tu confirmes avoir 18 ans ou plus et respecter les règles.</Text>
           </View>
-
-          {/* Confirmation 18+ avant de passer en live */}
-          <Modal visible={adultGate === 'host'} transparent animationType="fade" onRequestClose={() => setAdultGate(null)}>
-            <View style={styles.gateOverlay}>
-              <Pressable style={StyleSheet.absoluteFill} onPress={() => setAdultGate(null)} />
-              <View style={styles.gateCard}>
-                <View style={styles.gateBadge}><Text style={{ fontSize: 26 }}>🔞</Text></View>
-                <Text style={styles.gateTitle}>Confirmation d'âge</Text>
-                <Text style={styles.gateBody}>Passer en live est réservé aux 18 ans et plus. En continuant, tu confirmes ton âge et acceptes les règles de la communauté.</Text>
-                <Pressable
-                  onPress={() => { setAdultGate(null); setPhase('live'); }}
-                  style={styles.gateConfirm}
-                >
-                  <Text style={styles.gateConfirmText}>J'ai 18 ans ou plus, continuer</Text>
-                </Pressable>
-                <Pressable onPress={() => setAdultGate(null)} style={styles.gateCancel}>
-                  <Text style={styles.gateCancelText}>Annuler</Text>
-                </Pressable>
-              </View>
-            </View>
-          </Modal>
         </SafeAreaView>
       </View>
     );
@@ -718,7 +695,7 @@ export default function Live() {
           )}
 
           {!isHost && (
-            <Pressable onPress={() => setAdultGate('gift')} style={styles.circleBtn}><Ionicons name="gift" size={24} color={Afylo.gold} /></Pressable>
+            <Pressable onPress={() => setGiftOpen(true)} style={styles.circleBtn}><Ionicons name="gift" size={24} color={Afylo.gold} /></Pressable>
           )}
           {/* Réactions volantes : ouvre un sélecteur d'emojis */}
           <View>
@@ -1017,36 +994,6 @@ export default function Live() {
         </View>
       </Modal>
 
-      {/* Confirmation 18+ (passage en live ou envoi de cadeau) */}
-      <Modal visible={!!adultGate} transparent animationType="fade" onRequestClose={() => setAdultGate(null)}>
-        <View style={styles.gateOverlay}>
-          <Pressable style={StyleSheet.absoluteFill} onPress={() => setAdultGate(null)} />
-          <View style={styles.gateCard}>
-            <View style={styles.gateBadge}><Text style={{ fontSize: 26 }}>🔞</Text></View>
-            <Text style={styles.gateTitle}>Confirmation d'âge</Text>
-            <Text style={styles.gateBody}>
-              {adultGate === 'host'
-                ? 'Passer en live est réservé aux 18 ans et plus. En continuant, tu confirmes ton âge et acceptes les règles de la communauté.'
-                : 'Envoyer un cadeau est réservé aux 18 ans et plus. En continuant, tu confirmes ton âge.'}
-            </Text>
-            <Pressable
-              onPress={() => {
-                const g = adultGate;
-                setAdultGate(null);
-                if (g === 'host') setPhase('live');
-                else if (g === 'gift') setGiftOpen(true);
-              }}
-              style={styles.gateConfirm}
-            >
-              <Text style={styles.gateConfirmText}>J'ai 18 ans ou plus, continuer</Text>
-            </Pressable>
-            <Pressable onPress={() => setAdultGate(null)} style={styles.gateCancel}>
-              <Text style={styles.gateCancelText}>Annuler</Text>
-            </Pressable>
-          </View>
-        </View>
-      </Modal>
-
       {/* Édition du titre du live (hôte) */}
       <Modal visible={titleEdit} transparent animationType="fade" onRequestClose={() => setTitleEdit(false)}>
         <View style={styles.gateOverlay}>
@@ -1336,7 +1283,6 @@ const styles = StyleSheet.create({
   titleBanner: { flexDirection: 'row', alignItems: 'center', gap: 7, alignSelf: 'flex-start', maxWidth: '82%', backgroundColor: '#00000055', marginHorizontal: 14, marginTop: 8, paddingHorizontal: 12, height: 34, borderRadius: Radius.pill, borderWidth: 1, borderColor: '#ffffff22' },
   titleBannerText: { color: '#fff', fontFamily: Font.semibold, fontSize: 13, flexShrink: 1 },
   titleInput: { backgroundColor: '#ffffff14', borderRadius: Radius.md, borderWidth: 1, borderColor: '#ffffff26', color: '#fff', fontSize: 15, paddingHorizontal: 14, height: 48, marginTop: 8 },
-  gateHint: { color: '#ffffff88', fontSize: 12, textAlign: 'center', marginTop: 10, lineHeight: 17 },
   // Modal gate 18+ / édition titre
   gateOverlay: { flex: 1, backgroundColor: '#000000aa', alignItems: 'center', justifyContent: 'center', padding: 26 },
   gateCard: { width: '100%', maxWidth: 380, backgroundColor: Afylo.bg, borderRadius: 22, padding: 22, borderWidth: 1, borderColor: Afylo.border },
