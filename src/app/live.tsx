@@ -21,7 +21,7 @@ type SellProduct = { id: string; title: string; price: string; image: string; ta
 type Comment = { id: string; name: string; avatar: string; text: string; gift?: boolean; system?: 'join' | 'like' | 'share' | 'guest' | 'sale'; product?: { title: string; price: string } };
 type GuestMode = 'audio' | 'video';
 type Guest = { id: string; name: string; avatar: string; mode: GuestMode; local?: boolean };
-type Heart = { id: number; x: number; y: number; color: string; size: number };
+type Heart = { id: number; x: number; y: number; color: string; size: number; emoji?: string };
 type Sale = { id: string; buyer: string; avatar: string; title: string; price: string; tag?: string };
 
 const PLATFORM_FEE = 0.05; // Afylo garde 5% de chaque vente
@@ -43,6 +43,7 @@ const MSGS = ['Trop belle 😍', 'Ça coûte combien ?', 'Livraison à Thiès ?'
 const GIFTS = [500, 1000, 2000, 5000];
 const BUZZ_GOAL = 10000; // j'aime à atteindre pour que le live obtienne le Buzz
 const HEART_COLORS = ['#E11D48', '#FF4D8D', '#FF7AB8', '#B8791F', '#6E80FF', '#FF5A5F', '#FF2D55'];
+const REACTIONS = ['❤️', '🔥', '😍', '👏', '😂', '🎉', '💎']; // réactions volantes (stickers)
 const SYS: Record<'join' | 'like' | 'share' | 'guest' | 'sale', { icon: keyof typeof Ionicons.glyphMap; color: string }> = {
   join: { icon: 'enter-outline', color: '#7EC8FF' },
   like: { icon: 'heart', color: Afylo.live },
@@ -119,6 +120,7 @@ export default function Live() {
   const [comments, setComments] = useState<Comment[]>([]);
   const [supporters, setSupporters] = useState<{ name: string; avatar: string; total: number }[]>([]); // classement des cadeaux
   const [boardOpen, setBoardOpen] = useState(false); // modal leaderboard
+  const [reactionsOpen, setReactionsOpen] = useState(false); // sélecteur de réactions volantes
   const [text, setText] = useState('');
   const [viewers, setViewers] = useState(128);
   const [likeCount, setLikeCount] = useState(0); // compteur de j'aime réel (objectif Buzz)
@@ -208,6 +210,19 @@ export default function Live() {
   };
   const addLikes = (n = 1) => setLikeCount((c) => c + n);
   const sendHeart = () => { spawnHearts(width - 38, height - 130, 2); addLikes(2); }; // bouton cœur (bas droite)
+  // Réactions emoji volantes (stickers) — même moteur que les cœurs.
+  const spawnEmoji = (x: number, y: number, emoji: string, count = 1) => {
+    const additions = Array.from({ length: count }, () => ({
+      id: seq.current++,
+      x: x + (Math.random() * 46 - 23),
+      y: y + (Math.random() * 20 - 10),
+      color: '#fff',
+      size: 22 + Math.random() * 20,
+      emoji,
+    }));
+    setHearts((h) => [...h.slice(-44), ...additions]);
+  };
+  const sendReaction = (emoji: string) => { spawnEmoji(width - 38, height - 130, emoji, 3); addLikes(1); setReactionsOpen(false); };
 
   // Objectif Buzz atteint → annonce visible par tous (viewers + hôte).
   useEffect(() => {
@@ -318,6 +333,7 @@ export default function Live() {
         else if (roll === 1) pushEvent(nm, av, 'join', 'a rejoint le live');
         else if (roll === 2) { pushEvent(nm, av, 'like', 'a aimé'); spawnHearts(width - 38, height - 130, 1); addLikes(1); }
         else if (roll === 3) pushEvent(nm, av, 'share', 'a partagé');
+        else if (roll === 4) spawnEmoji(width - 38, height - 130, REACTIONS[seq.current % REACTIONS.length], 2);
         else addComment({ name: nm, avatar: av, text: MSGS[seq.current % MSGS.length] });
       }
       setViewers((v) => v + (Math.round(Date.now() / 1000) % 3) - 1);
@@ -620,6 +636,21 @@ export default function Live() {
           {!isHost && (
             <Pressable onPress={() => setAdultGate('gift')} style={styles.circleBtn}><Ionicons name="gift" size={24} color={Afylo.gold} /></Pressable>
           )}
+          {/* Réactions volantes : ouvre un sélecteur d'emojis */}
+          <View>
+            {reactionsOpen && (
+              <View style={styles.reactionPop}>
+                {REACTIONS.map((e) => (
+                  <Pressable key={e} onPress={() => sendReaction(e)} style={styles.reactionItem}>
+                    <Text style={styles.reactionEmoji}>{e}</Text>
+                  </Pressable>
+                ))}
+              </View>
+            )}
+            <Pressable onPress={() => setReactionsOpen((v) => !v)} style={[styles.circleBtn, reactionsOpen && { backgroundColor: Afylo.violet }]}>
+              <Ionicons name="happy-outline" size={24} color="#fff" />
+            </Pressable>
+          </View>
           <Pressable onPress={sendHeart} style={styles.circleBtn}><Ionicons name="heart" size={26} color={Afylo.live} /></Pressable>
         </View>
       </SafeAreaView>
@@ -1099,7 +1130,9 @@ function FloatingHeart({ heart, onDone }: { heart: Heart; onDone: () => void }) 
   const scale = pop.interpolate({ inputRange: [0, 1], outputRange: [0.3, 1] });
   return (
     <Animated.View style={{ position: 'absolute', left: heart.x, top: heart.y, opacity, transform: [{ translateY }, { translateX }, { rotate }, { scale }] }}>
-      <Ionicons name="heart" size={heart.size} color={heart.color} style={styles.heartShadow} />
+      {heart.emoji
+        ? <Text style={[{ fontSize: heart.size + 4 }, styles.heartShadow]}>{heart.emoji}</Text>
+        : <Ionicons name="heart" size={heart.size} color={heart.color} style={styles.heartShadow} />}
     </Animated.View>
   );
 }
@@ -1239,6 +1272,10 @@ const styles = StyleSheet.create({
   inputBar: { flex: 1, flexDirection: 'row', alignItems: 'center', backgroundColor: '#00000066', borderRadius: Radius.pill, borderWidth: 1, borderColor: '#ffffff33', paddingHorizontal: 16, height: 44, overflow: 'hidden' },
   input: { flex: 1, color: '#fff', fontSize: 15, height: '100%' },
   circleBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#00000055', alignItems: 'center', justifyContent: 'center' },
+  // Sélecteur de réactions volantes (popover au-dessus du bouton)
+  reactionPop: { position: 'absolute', bottom: 52, right: -4, flexDirection: 'row', gap: 2, backgroundColor: '#000000cc', borderRadius: Radius.pill, paddingHorizontal: 6, paddingVertical: 4, borderWidth: 1, borderColor: '#ffffff22' },
+  reactionItem: { width: 34, height: 40, alignItems: 'center', justifyContent: 'center' },
+  reactionEmoji: { fontSize: 24 },
   sellBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: Afylo.violet, paddingHorizontal: 16, height: 44, borderRadius: Radius.pill, marginLeft: 'auto' },
   sellText: { color: '#fff', fontFamily: Font.semibold, fontSize: 14 },
   heartShadow: { textShadowColor: '#00000066', textShadowRadius: 6, textShadowOffset: { width: 0, height: 1 } },
