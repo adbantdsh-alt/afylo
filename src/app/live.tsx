@@ -117,6 +117,8 @@ export default function Live() {
   }, [isHost, params.product]);
 
   const [comments, setComments] = useState<Comment[]>([]);
+  const [supporters, setSupporters] = useState<{ name: string; avatar: string; total: number }[]>([]); // classement des cadeaux
+  const [boardOpen, setBoardOpen] = useState(false); // modal leaderboard
   const [text, setText] = useState('');
   const [viewers, setViewers] = useState(128);
   const [likeCount, setLikeCount] = useState(0); // compteur de j'aime réel (objectif Buzz)
@@ -162,6 +164,17 @@ export default function Live() {
   const showToast = (m: string) => { setToast(m); setTimeout(() => setToast((cur) => (cur === m ? null : cur)), 1700); };
   const nid = (p: string) => `${p}${seq.current++}`; // id calculé UNE fois, hors updater
   const addComment = (c: Omit<Comment, 'id'>) => { const id = nid('c'); setComments((prev) => [...prev.slice(-50), { id, ...c }]); };
+  // Enregistre un cadeau : commentaire animé + cumul dans le classement des supporters.
+  const addGift = (nm: string, av: string, amount: number) => {
+    addComment({ name: nm, avatar: av, text: `a offert ${amount.toLocaleString('fr-FR')} FCFA 🎁`, gift: true });
+    setSupporters((prev) => {
+      const i = prev.findIndex((s) => s.name === nm);
+      const next = i >= 0
+        ? prev.map((s, k) => (k === i ? { ...s, total: s.total + amount, avatar: av || s.avatar } : s))
+        : [...prev, { name: nm, avatar: av, total: amount }];
+      return next.sort((a, b) => b.total - a.total);
+    });
+  };
 
   // Auto-scroll TikTok : on colle toujours au dernier message (deux frames pour laisser le layout se poser).
   useEffect(() => {
@@ -207,7 +220,7 @@ export default function Live() {
   }, [likeCount]);
 
   const onGiftSent = (amount: number) => {
-    addComment({ name: me.name, avatar: me.avatar, text: `a offert ${amount.toLocaleString('fr-FR')} FCFA 🎁`, gift: true });
+    addGift(me.name, me.avatar, amount);
     spawnHearts(width / 2, height / 2, 8);
   };
   const share = async () => { try { await Share.share({ message: `${name} est en direct sur Afylo — rejoins !` }); } catch {} };
@@ -301,7 +314,7 @@ export default function Live() {
       const av = avatar(9 + (seq.current % 40));
       if (!blocked.includes(nm)) {
         const roll = Math.round(Date.now() / 1000) % 6;
-        if (roll === 0) addComment({ name: nm, avatar: av, text: `a offert ${GIFTS[seq.current % GIFTS.length].toLocaleString('fr-FR')} FCFA 🎁`, gift: true });
+        if (roll === 0) addGift(nm, av, GIFTS[seq.current % GIFTS.length]);
         else if (roll === 1) pushEvent(nm, av, 'join', 'a rejoint le live');
         else if (roll === 2) { pushEvent(nm, av, 'like', 'a aimé'); spawnHearts(width - 38, height - 130, 1); addLikes(1); }
         else if (roll === 3) pushEvent(nm, av, 'share', 'a partagé');
@@ -417,10 +430,11 @@ export default function Live() {
         <VideoView player={viewerPlayer} style={StyleSheet.absoluteFill} contentFit="cover" nativeControls={false} />
       )}
 
-      {/* Double-tap n'importe où = like */}
-      <Pressable style={StyleSheet.absoluteFill} onPress={onScreenTap} />
+      {/* Double-tap n'importe où = like (capteur derrière les contrôles) */}
+      <Pressable style={[StyleSheet.absoluteFill, { zIndex: 0 }]} onPress={onScreenTap} />
 
-      <SafeAreaView style={{ flex: 1 }} pointerEvents="box-none">
+      {/* Les contrôles (box-none) restent au-dessus du capteur : les zones vides laissent passer le tap-like. */}
+      <SafeAreaView style={{ flex: 1, zIndex: 1 }} pointerEvents="box-none">
         <View style={styles.top}>
           <Pressable onPress={openHostProfile} style={styles.hostPill}>
             <Avatar uri={hostAvatar} size={30} />
@@ -466,6 +480,25 @@ export default function Live() {
               {liveTitle.trim() || 'Ajouter un titre au live'}
             </Text>
             {isHost && <Ionicons name="create-outline" size={15} color="#ffffffcc" />}
+          </Pressable>
+        )}
+
+        {/* Classement des top-supporters (podium) — tap pour le détail */}
+        {supporters.length > 0 && (
+          <Pressable onPress={() => setBoardOpen(true)} style={styles.boardBar}>
+            <Ionicons name="trophy" size={14} color={Afylo.gold} />
+            <View style={styles.boardAvatars}>
+              {supporters.slice(0, 3).map((s, i) => (
+                <View key={s.name} style={[styles.boardAvatarWrap, { marginLeft: i === 0 ? 0 : -8, zIndex: 3 - i }]}>
+                  <Avatar uri={s.avatar} size={22} />
+                  <View style={[styles.boardRank, i === 0 && { backgroundColor: Afylo.gold }, i === 1 && { backgroundColor: '#C0C0C0' }, i === 2 && { backgroundColor: '#CD7F32' }]}>
+                    <Text style={styles.boardRankText}>{i + 1}</Text>
+                  </View>
+                </View>
+              ))}
+            </View>
+            <Text style={styles.boardTopText} numberOfLines={1}>{supporters[0].name}</Text>
+            <Ionicons name="chevron-forward" size={14} color="#ffffff99" />
           </Pressable>
         )}
 
@@ -842,6 +875,33 @@ export default function Live() {
       <PaymentSheet visible={payOpen} items={payProducts} onClose={() => setPayOpen(false)} />
       <GiftSheet visible={giftOpen} host={name} onClose={() => setGiftOpen(false)} onSent={onGiftSent} />
 
+      {/* Leaderboard des top-supporters */}
+      <Modal visible={boardOpen} transparent animationType="slide" onRequestClose={() => setBoardOpen(false)}>
+        <View style={styles.boardOverlay}>
+          <Pressable style={StyleSheet.absoluteFill} onPress={() => setBoardOpen(false)} />
+          <View style={styles.boardSheet}>
+            <View style={styles.grip} />
+            <View style={styles.boardHead}>
+              <Ionicons name="trophy" size={20} color={Afylo.gold} />
+              <Text style={styles.boardTitle}>Top supporters</Text>
+            </View>
+            <Text style={styles.boardSub}>Classement des cadeaux offerts pendant ce live</Text>
+            <ScrollView style={{ maxHeight: 380 }} showsVerticalScrollIndicator={false}>
+              {supporters.map((s, i) => (
+                <View key={s.name} style={styles.boardRow}>
+                  <View style={[styles.boardRowRank, i === 0 && { backgroundColor: Afylo.gold }, i === 1 && { backgroundColor: '#C0C0C0' }, i === 2 && { backgroundColor: '#CD7F32' }]}>
+                    <Text style={[styles.boardRowRankText, i > 2 && { color: Afylo.text }]}>{i + 1}</Text>
+                  </View>
+                  <Avatar uri={s.avatar} size={40} />
+                  <Text style={styles.boardRowName} numberOfLines={1}>{s.name}</Text>
+                  <Text style={styles.boardRowAmount}>{s.total.toLocaleString('fr-FR')} FCFA</Text>
+                </View>
+              ))}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
       {/* Confirmation 18+ (passage en live ou envoi de cadeau) */}
       <Modal visible={!!adultGate} transparent animationType="fade" onRequestClose={() => setAdultGate(null)}>
         <View style={styles.gateOverlay}>
@@ -1101,6 +1161,24 @@ const styles = StyleSheet.create({
   reqBadgeText: { color: '#fff', fontFamily: Font.bold, fontSize: 10 },
 
   pinned: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#00000066', marginHorizontal: 12, marginTop: 10, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 12, borderWidth: 1, borderColor: '#FFD98A55' },
+  // Podium des top-supporters (barre + modal)
+  boardBar: { flexDirection: 'row', alignItems: 'center', gap: 8, alignSelf: 'flex-start', maxWidth: '82%', backgroundColor: '#00000066', marginHorizontal: 14, marginTop: 8, paddingLeft: 12, paddingRight: 10, height: 38, borderRadius: Radius.pill, borderWidth: 1, borderColor: '#FFD98A44' },
+  boardAvatars: { flexDirection: 'row', alignItems: 'center' },
+  boardAvatarWrap: { position: 'relative', borderWidth: 1.5, borderColor: '#12121A', borderRadius: 13 },
+  boardRank: { position: 'absolute', bottom: -3, right: -3, width: 13, height: 13, borderRadius: 7, backgroundColor: '#888', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#12121A' },
+  boardRankText: { color: '#12121A', fontFamily: Font.bold, fontSize: 8 },
+  boardTopText: { color: '#fff', fontFamily: Font.semibold, fontSize: 13, flexShrink: 1 },
+  boardOverlay: { flex: 1, backgroundColor: '#00000088', justifyContent: 'flex-end' },
+  boardSheet: { backgroundColor: Afylo.bg, borderTopLeftRadius: 26, borderTopRightRadius: 26, padding: 18, paddingBottom: 28 },
+  grip: { width: 38, height: 4, borderRadius: 2, backgroundColor: Afylo.border, alignSelf: 'center', marginBottom: 14 },
+  boardHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
+  boardTitle: { ...Type.title, color: Afylo.text },
+  boardSub: { ...Type.small, color: Afylo.textDim, textAlign: 'center', marginTop: 4, marginBottom: 14 },
+  boardRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 8 },
+  boardRowRank: { width: 26, height: 26, borderRadius: 13, backgroundColor: Afylo.surface, alignItems: 'center', justifyContent: 'center' },
+  boardRowRankText: { color: '#12121A', fontFamily: Font.bold, fontSize: 13 },
+  boardRowName: { flex: 1, color: Afylo.text, fontFamily: Font.semibold, fontSize: 15 },
+  boardRowAmount: { color: Afylo.gold, fontFamily: Font.bold, fontSize: 15 },
   pinnedText: { color: '#fff', fontSize: 13, flex: 1 },
 
   guestStrip: { flexDirection: 'row', gap: 10, paddingHorizontal: 14, marginTop: 12 },
