@@ -22,6 +22,8 @@ import { CheckoutProfileProvider } from '@/lib/checkout-profile';
 import { BuzzProvider } from '@/lib/buzz';
 import { MeProvider } from '@/lib/me';
 import { PendingUploadProvider } from '@/lib/pending-upload';
+import { LivePipProvider } from '@/lib/live-pip';
+import { LivePipOverlay } from '@/components/live-pip';
 
 // Routes accessibles sans être connecté
 const PUBLIC = ['index', 'login'];
@@ -118,7 +120,10 @@ export default function RootLayout() {
                 <CheckoutProfileProvider>
                   <BuzzProvider>
                     <PendingUploadProvider>
-                      <RootNavigator />
+                      <LivePipProvider>
+                        <RootNavigator />
+                        <LivePipOverlay />
+                      </LivePipProvider>
                     </PendingUploadProvider>
                   </BuzzProvider>
                 </CheckoutProfileProvider>

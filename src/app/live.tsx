@@ -12,6 +12,7 @@ import { GiftSheet } from '@/components/gift-sheet';
 import { PaymentSheet, type PayItem } from '@/components/payment-sheet';
 import { Afylo, Font, Radius, Type } from '@/constants/brand';
 import { BuzzBadge } from '@/components/buzz-badge';
+import { useLivePip } from '@/lib/live-pip';
 import { useIsBuzz } from '@/lib/buzz';
 import { endLive, listFeedProducts, listMyProducts, setLiveViewers } from '@/lib/db';
 import { useMe } from '@/lib/me';
@@ -55,6 +56,7 @@ const SYS: Record<'join' | 'like' | 'share' | 'guest' | 'sale' | 'welcome', { ic
 
 export default function Live() {
   const router = useRouter();
+  const { openPip, closePip } = useLivePip();
   const me = useMe();
   const { width, height } = useWindowDimensions();
   const params = useLocalSearchParams<{ role?: string; name?: string; avatar?: string; liveId?: string; product?: string }>();
@@ -149,8 +151,13 @@ export default function Live() {
   const lastTap = useRef(0);
   const commentsRef = useRef<ScrollView>(null); // auto-scroll vers le dernier message
 
+  // En entrant sur un live, on retire tout mini-lecteur flottant en cours.
+  useEffect(() => { closePip(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, []);
+
   const leave = () => {
     if (isHost && liveId) endLive(liveId).catch(() => {}); // ferme le live en base
+    // Spectateur : le live continue dans un mini-lecteur flottant (PiP) au lieu de se fermer.
+    if (!isHost) openPip({ name, avatar: hostAvatar, ...(liveId ? { liveId } : {}) });
     router.canGoBack() ? router.back() : router.replace('/accueil');
   };
   const seq = useRef(0); // compteur d'ids (persiste avec l'état, pas de collision au Fast Refresh)
