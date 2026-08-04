@@ -122,6 +122,7 @@ export default function Live() {
   const [supporters, setSupporters] = useState<{ name: string; avatar: string; total: number }[]>([]); // classement des cadeaux
   const [boardOpen, setBoardOpen] = useState(false); // modal leaderboard
   const [reactionsOpen, setReactionsOpen] = useState(false); // sélecteur de réactions volantes
+  const [pk, setPk] = useState<null | { opp: string; oppAvatar: string; mine: number; theirs: number; sec: number; winner?: 'me' | 'opp' | 'tie' }>(null); // battle PK
   const [text, setText] = useState('');
   const [viewers, setViewers] = useState(128);
   const [likeCount, setLikeCount] = useState(0); // compteur de j'aime réel (objectif Buzz)
@@ -224,6 +225,15 @@ export default function Live() {
     setHearts((h) => [...h.slice(-44), ...additions]);
   };
   const sendReaction = (emoji: string) => { spawnEmoji(width - 38, height - 130, emoji, 3); addLikes(1); setReactionsOpen(false); };
+  // Battle PK : lance un duel de 3 min contre un créateur rival (simulé).
+  const PK_RIVALS = ['DJ Rimok', 'Aïcha Live', 'Le Boss', 'Mamy Style', 'Kaay Fashion'];
+  const startPk = () => {
+    if (pk) return;
+    const opp = PK_RIVALS[Math.floor(Math.random() * PK_RIVALS.length)];
+    setPk({ opp, oppAvatar: avatar(28 + Math.floor(Math.random() * 20)), mine: 0, theirs: 0, sec: 180 });
+    addComment({ name: 'Afylo', avatar: '', text: `Battle PK lancée contre ${opp} ! Soutiens ton créateur avec des cadeaux 🎁`, system: 'welcome' });
+  };
+  const addPkPoints = (n: number) => setPk((p) => (p && !p.winner ? { ...p, mine: p.mine + n } : p));
 
   // Objectif Buzz atteint → annonce visible par tous (viewers + hôte).
   useEffect(() => {
@@ -238,6 +248,7 @@ export default function Live() {
   const onGiftSent = (amount: number) => {
     addGift(me.name, me.avatar, amount);
     spawnHearts(width / 2, height / 2, 8);
+    addPkPoints(Math.max(1, Math.round(amount / 100))); // les cadeaux boostent le camp du créateur pendant un PK
   };
   const share = async () => { try { await Share.share({ message: `${name} est en direct sur Afylo — rejoins !` }); } catch {} };
   const send = () => {
@@ -321,6 +332,31 @@ export default function Live() {
     pushEvent(me.name, me.avatar, 'join', 'a rejoint le live');
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phase]);
+
+  // Battle PK : décompte + votes simulés des deux côtés ; désigne le gagnant à 0 s.
+  useEffect(() => {
+    if (!pk || pk.winner) return;
+    const t = setInterval(() => {
+      setPk((p) => {
+        if (!p || p.winner) return p;
+        const sec = p.sec - 1;
+        const mine = p.mine + Math.floor(Math.random() * 40);
+        const theirs = p.theirs + Math.floor(Math.random() * 45);
+        if (sec <= 0) return { ...p, sec: 0, mine, theirs, winner: mine > theirs ? 'me' : theirs > mine ? 'opp' : 'tie' };
+        return { ...p, sec, mine, theirs };
+      });
+    }, 1000);
+    return () => clearInterval(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [!!pk, pk?.winner]);
+
+  // Fin de PK : on retire le HUD quelques secondes après l'annonce du gagnant.
+  useEffect(() => {
+    if (!pk?.winner) return;
+    const t = setTimeout(() => setPk(null), 5200);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pk?.winner]);
 
   // Flux d'événements + demandes d'intervention simulées
   useEffect(() => {
@@ -475,6 +511,11 @@ export default function Live() {
           </View>
           {/* Cluster droit : toujours visible (partager + fermer) */}
           <View style={styles.topRight}>
+            {isHost && !pk && (
+              <Pressable onPress={startPk} style={[styles.close, { backgroundColor: Afylo.live + 'cc' }]}>
+                <Ionicons name="flash" size={18} color="#fff" />
+              </Pressable>
+            )}
             {isHost && (
               <Pressable onPress={() => setFacing((f) => (f === 'front' ? 'back' : 'front'))} style={styles.close}>
                 <Ionicons name="camera-reverse-outline" size={20} color="#fff" />
@@ -490,6 +531,42 @@ export default function Live() {
             <Pressable onPress={() => (isHost ? setEndConfirm(true) : leave())} style={styles.close}><Ionicons name="close" size={24} color="#fff" /></Pressable>
           </View>
         </View>
+
+        {/* HUD Battle PK : jauge de votes hôte vs rival + minuteur */}
+        {pk && (() => {
+          const total = pk.mine + pk.theirs;
+          const myFrac = total > 0 ? pk.mine / total : 0.5;
+          const mm = Math.floor(pk.sec / 60), ss = pk.sec % 60;
+          return (
+            <View style={styles.pkWrap}>
+              <View style={styles.pkHeads}>
+                <View style={styles.pkSide}>
+                  <Avatar uri={hostAvatar} size={26} />
+                  <Text style={styles.pkName} numberOfLines={1}>{name}</Text>
+                </View>
+                <View style={styles.pkCenter}>
+                  <Text style={styles.pkVs}>VS</Text>
+                  <View style={styles.pkTimer}><Ionicons name="time" size={11} color="#fff" /><Text style={styles.pkTimerText}>{mm}:{String(ss).padStart(2, '0')}</Text></View>
+                </View>
+                <View style={[styles.pkSide, { justifyContent: 'flex-end' }]}>
+                  <Text style={[styles.pkName, { textAlign: 'right' }]} numberOfLines={1}>{pk.opp}</Text>
+                  <Avatar uri={pk.oppAvatar} size={26} />
+                </View>
+              </View>
+              <View style={styles.pkBar}>
+                <View style={[styles.pkFillMine, { flex: Math.max(0.06, myFrac) }]}><Text style={styles.pkScore}>{pk.mine}</Text></View>
+                <View style={[styles.pkFillOpp, { flex: Math.max(0.06, 1 - myFrac) }]}><Text style={[styles.pkScore, { textAlign: 'right' }]}>{pk.theirs}</Text></View>
+              </View>
+              {pk.winner && (
+                <View style={styles.pkWinner}>
+                  <Text style={styles.pkWinnerText}>
+                    {pk.winner === 'me' ? '🏆 Tu remportes la battle !' : pk.winner === 'opp' ? `${pk.opp} remporte la battle` : '🤝 Égalité !'}
+                  </Text>
+                </View>
+              )}
+            </View>
+          );
+        })()}
 
         {/* Bandeau titre du live (hôte peut le modifier d'un tap) */}
         {(liveTitle.trim().length > 0 || isHost) && (
@@ -1203,6 +1280,21 @@ const styles = StyleSheet.create({
   reqBadgeText: { color: '#fff', fontFamily: Font.bold, fontSize: 10 },
 
   pinned: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#00000066', marginHorizontal: 12, marginTop: 10, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 12, borderWidth: 1, borderColor: '#FFD98A55' },
+  // HUD Battle PK
+  pkWrap: { marginHorizontal: 12, marginTop: 8, backgroundColor: '#00000066', borderRadius: 16, borderWidth: 1, borderColor: '#ffffff22', paddingHorizontal: 10, paddingVertical: 8, gap: 6 },
+  pkHeads: { flexDirection: 'row', alignItems: 'center' },
+  pkSide: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 6 },
+  pkName: { color: '#fff', fontFamily: Font.semibold, fontSize: 12, flexShrink: 1 },
+  pkCenter: { alignItems: 'center', paddingHorizontal: 8, gap: 3 },
+  pkVs: { color: Afylo.gold, fontFamily: Font.bold, fontSize: 13 },
+  pkTimer: { flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: '#00000088', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 8 },
+  pkTimerText: { color: '#fff', fontFamily: Font.semibold, fontSize: 11 },
+  pkBar: { flexDirection: 'row', height: 20, borderRadius: 10, overflow: 'hidden' },
+  pkFillMine: { backgroundColor: Afylo.violet, justifyContent: 'center', paddingHorizontal: 8 },
+  pkFillOpp: { backgroundColor: Afylo.live, justifyContent: 'center', paddingHorizontal: 8 },
+  pkScore: { color: '#fff', fontFamily: Font.bold, fontSize: 12 },
+  pkWinner: { backgroundColor: Afylo.gold, borderRadius: 10, paddingVertical: 6, alignItems: 'center', marginTop: 2 },
+  pkWinnerText: { color: '#12121A', fontFamily: Font.bold, fontSize: 13 },
   // Podium des top-supporters (barre + modal)
   boardBar: { flexDirection: 'row', alignItems: 'center', gap: 8, alignSelf: 'flex-start', maxWidth: '82%', backgroundColor: '#00000066', marginHorizontal: 14, marginTop: 8, paddingLeft: 12, paddingRight: 10, height: 38, borderRadius: Radius.pill, borderWidth: 1, borderColor: '#FFD98A44' },
   boardAvatars: { flexDirection: 'row', alignItems: 'center' },
