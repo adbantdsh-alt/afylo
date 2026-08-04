@@ -787,6 +787,20 @@ export async function listSavedPosts(): Promise<FeedPost[]> {
   return ((data ?? []).map((r: any) => r.post).filter(Boolean)) as FeedPost[];
 }
 
+// ---- KYC (vérification identité 18+ pour le retrait des gains) ----
+/** Soumet la vérification : nom légal + date de naissance (AAAA-MM-JJ). Marque le compte vérifié. */
+export async function submitKyc(input: { legal_name: string; birthdate: string }): Promise<void> {
+  const id = await requireUserId();
+  const { error } = await supabase.from('profiles').update({ legal_name: input.legal_name, birthdate: input.birthdate, kyc_status: 'verified' }).eq('id', id);
+  if (error) throw error;
+}
+export async function getKyc(): Promise<{ kyc_status: string; birthdate: string | null; legal_name: string | null }> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { kyc_status: 'none', birthdate: null, legal_name: null };
+  const { data } = await supabase.from('profiles').select('kyc_status,birthdate,legal_name').eq('id', user.id).maybeSingle();
+  return { kyc_status: (data as any)?.kyc_status ?? 'none', birthdate: (data as any)?.birthdate ?? null, legal_name: (data as any)?.legal_name ?? null };
+}
+
 // ---- Affiliation (produits d'autres vendeurs ajoutés à ma boutique) ----
 export async function addAffiliation(productId: string): Promise<void> {
   const reseller_id = await requireUserId();

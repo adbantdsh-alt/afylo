@@ -6,8 +6,11 @@ import { useCallback, useEffect, useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { KycSheet } from '@/components/kyc-sheet';
 import { CardsSkeleton, Skeleton } from '@/components/skeleton';
 import { Afylo, Font, Radius } from '@/constants/brand';
+import { REWARD_PER_1K_FCFA } from '@/lib/algo';
+import { getKyc } from '@/lib/db';
 import { useCheckoutProfile } from '@/lib/checkout-profile';
 import { useMe } from '@/lib/me';
 import { useReposts } from '@/lib/reposts';
@@ -25,8 +28,15 @@ export default function Portefeuille() {
   const { profile } = useCheckoutProfile();
   const [tab, setTab] = useState<Tab>('wallet');
   const [withdraw, setWithdraw] = useState(false);
+  const [kycOpen, setKycOpen] = useState(false);
+  const [kycVerified, setKycVerified] = useState(false);
   const [summary, setSummary] = useState<WalletSummary>(EMPTY_WALLET);
   const [loading, setLoading] = useState(true);
+
+  useEffect(() => { getKyc().then((k) => setKycVerified(k.kyc_status === 'verified')).catch(() => {}); }, []);
+
+  // Retrait : identité 18+ vérifiée obligatoire d'abord.
+  const tryWithdraw = () => (kycVerified ? setWithdraw(true) : setKycOpen(true));
 
   // Commissions « optimistes » des repartages Pro (affiliation générée côté client)
   const affiliateExtra = reposts.reduce((s, r) => s + (r.affiliate?.earned ?? 0), 0);
@@ -72,7 +82,7 @@ export default function Portefeuille() {
             <CardsSkeleton count={3} height={80} />
           </View>
         ) : tab === 'wallet' ? (
-          <WalletTab summary={summary} methodLabel={methodLabel} methodNumber={methodNumber} onWithdraw={() => setWithdraw(true)} />
+          <WalletTab summary={summary} methodLabel={methodLabel} methodNumber={methodNumber} onWithdraw={tryWithdraw} kycVerified={kycVerified} />
         ) : (
           <StatsTab summary={summary} />
         )}
@@ -86,13 +96,15 @@ export default function Portefeuille() {
         methodNumber={methodNumber}
         onClose={() => setWithdraw(false)}
       />
+
+      <KycSheet visible={kycOpen} onClose={() => setKycOpen(false)} onVerified={() => { setKycVerified(true); setWithdraw(true); }} />
     </View>
   );
 }
 
 /* ---------------- Portefeuille ---------------- */
 
-function WalletTab({ summary, methodLabel, methodNumber, onWithdraw }: { summary: WalletSummary; methodLabel: string; methodNumber: string; onWithdraw: () => void }) {
+function WalletTab({ summary, methodLabel, methodNumber, onWithdraw, kycVerified }: { summary: WalletSummary; methodLabel: string; methodNumber: string; onWithdraw: () => void; kycVerified: boolean }) {
   const router = useRouter();
   const { available, pending, currency, breakdown, transactions, rewardsNet } = summary;
   const net = breakdown.reduce((s, b) => s + b.value, 0);
@@ -113,9 +125,10 @@ function WalletTab({ summary, methodLabel, methodNumber, onWithdraw }: { summary
         )}
 
         <Pressable style={[styles.withdrawBtn, !canWithdraw && { opacity: 0.55 }]} disabled={!canWithdraw} onPress={onWithdraw}>
-          <Ionicons name="arrow-down-circle" size={18} color={Afylo.violet} />
-          <Text style={styles.withdrawText}>{canWithdraw ? 'Retirer' : 'Retrait dès 1 000 F'}</Text>
+          <Ionicons name={kycVerified ? 'arrow-down-circle' : 'shield-checkmark'} size={18} color={Afylo.violet} />
+          <Text style={styles.withdrawText}>{!canWithdraw ? 'Retrait dès 1 000 F' : kycVerified ? 'Retirer' : "Vérifier mon identité pour retirer"}</Text>
         </Pressable>
+        {!kycVerified && canWithdraw && <Text style={styles.kycNote}>🔒 18 ans + vérification d'identité requis avant le premier retrait.</Text>}
       </LinearGradient>
 
       {/* Creator Rewards — rémunération à la vue */}
@@ -123,7 +136,7 @@ function WalletTab({ summary, methodLabel, methodNumber, onWithdraw }: { summary
         <View style={styles.rewardsIcon}><Ionicons name="cash" size={20} color="#16A34A" /></View>
         <View style={{ flex: 1 }}>
           <Text style={styles.rewardsTitle}>Creator Rewards</Text>
-          <Text style={styles.rewardsSub}>{fmt(rewardsNet)} F ce mois · 100 F / 1 000 vues</Text>
+          <Text style={styles.rewardsSub}>{fmt(rewardsNet)} F ce mois · {REWARD_PER_1K_FCFA} F / 1 000 vues</Text>
         </View>
         <Ionicons name="chevron-forward" size={18} color={Afylo.textFaint} />
       </Pressable>
@@ -367,6 +380,7 @@ const styles = StyleSheet.create({
   pendingText: { color: '#ffffffcc', fontSize: 12, fontFamily: Font.medium },
   withdrawBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: '#fff', borderRadius: Radius.pill, paddingVertical: 13, marginTop: 18 },
   withdrawText: { color: Afylo.violet, fontFamily: Font.bold, fontSize: 15 },
+  kycNote: { color: '#ffffffcc', fontSize: 11, marginTop: 10, lineHeight: 15 },
 
   card: { backgroundColor: Afylo.surface, borderWidth: 1, borderColor: Afylo.border, borderRadius: Radius.lg, padding: 16, marginTop: 14 },
   rewardsCard: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: '#16A34A0F', borderWidth: 1, borderColor: '#16A34A33', borderRadius: Radius.lg, padding: 14, marginTop: 14 },

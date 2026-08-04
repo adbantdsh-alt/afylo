@@ -26,6 +26,9 @@ export interface Profile {
   website: string | null;
   phone: string | null;
   country: string | null;
+  birthdate: string | null;
+  kyc_status: 'none' | 'pending' | 'verified' | null;
+  legal_name: string | null;
   account_type: AccountType;
   messages_from: 'everyone' | 'followers' | 'nobody';
   is_verified: boolean;
