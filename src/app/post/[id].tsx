@@ -1,5 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
+import { useVideoPlayer, VideoView } from 'expo-video';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Dimensions, Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
@@ -108,7 +109,9 @@ function PostView({ post, liked, onLike, onOpenComments }: { post: Post; liked: 
       {/* Média à la bonne proportion */}
       {!post.textOnly && images.length > 0 && (
         <View style={{ width: W, height: mediaH, backgroundColor: '#000' }}>
-          {images.length > 1 ? (
+          {post.video ? (
+            <PostVideo uri={images[0]} width={W} height={mediaH} />
+          ) : images.length > 1 ? (
             <ScrollView horizontal pagingEnabled showsHorizontalScrollIndicator={false} onMomentumScrollEnd={(e) => setIdx(Math.round(e.nativeEvent.contentOffset.x / W))}>
               {images.map((uri, i) => <Image key={`${uri}-${i}`} source={{ uri }} style={{ width: W, height: mediaH }} contentFit={post.ratio ? 'cover' : 'contain'} />)}
             </ScrollView>
@@ -160,7 +163,25 @@ function PostView({ post, liked, onLike, onOpenComments }: { post: Post; liked: 
   );
 }
 
+/** Lecture vidéo dans le détail d'un post : autoplay muet en boucle, tap = activer/couper le son. */
+function PostVideo({ uri, width, height }: { uri: string; width: number; height: number }) {
+  const [muted, setMuted] = useState(true);
+  const player = useVideoPlayer(uri, (p) => { p.loop = true; p.muted = true; p.play(); });
+  const toggle = () => {
+    const m = !muted;
+    setMuted(m);
+    try { player.muted = m; if (!player.playing) player.play(); } catch {}
+  };
+  return (
+    <Pressable onPress={toggle} style={{ width, height }}>
+      <VideoView player={player} style={{ width, height }} contentFit="contain" nativeControls={false} />
+      <View style={styles.soundBtn}><Ionicons name={muted ? 'volume-mute' : 'volume-high'} size={16} color="#fff" /></View>
+    </Pressable>
+  );
+}
+
 const styles = StyleSheet.create({
+  soundBtn: { position: 'absolute', right: 12, bottom: 12, width: 34, height: 34, borderRadius: 17, backgroundColor: '#000000aa', alignItems: 'center', justifyContent: 'center' },
   root: { flex: 1, backgroundColor: Afylo.bg },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 12, paddingVertical: 8 },
   hbtn: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },

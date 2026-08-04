@@ -56,7 +56,7 @@ export default function PostNew() {
   // Résout la proportion des médias qui n'en ont pas encore (venus de la caméra).
   useEffect(() => {
     media.forEach((m, i) => {
-      if (m.ratio != null) return;
+      if (m.ratio != null || m.type === 'video') return; // getSize ne marche pas sur une vidéo
       RNImage.getSize(
         m.uri,
         (w, h) => setMedia((cur) => cur.map((x, idx) => (idx === i && x.uri === m.uri ? { ...x, ratio: ratioOf(w, h) } : x))),
