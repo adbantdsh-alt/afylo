@@ -110,7 +110,7 @@ export function MediaEditor({
     <View style={styles.root}>
       {/* Média + calques */}
       <View style={styles.stage} onLayout={(e) => setFrame(e.nativeEvent.layout)}>
-        {isVideo ? <EditorVideo uri={uri} muted={muted} /> : <Image source={{ uri }} style={StyleSheet.absoluteFill} contentFit="contain" />}
+        {isVideo ? <EditorVideo uri={uri} muted={muted} onToggleMute={() => setMuted((m) => !m)} /> : <Image source={{ uri }} style={StyleSheet.absoluteFill} contentFit="contain" />}
 
         {frame &&
           overlays.map((o) => (
@@ -277,16 +277,17 @@ function DraggableOverlay({ overlay, frame, onMove, onEdit, onRemove }: { overla
   );
 }
 
-function EditorVideo({ uri, muted }: { uri: string; muted: boolean }) {
+function EditorVideo({ uri, muted, onToggleMute }: { uri: string; muted: boolean; onToggleMute: () => void }) {
   const player = useVideoPlayer(uri, (p) => { p.loop = true; p.muted = true; p.play(); });
   const [playing, setPlaying] = useState(true);
   const [pos, setPos] = useState(0); // progression 0..1
+  // web : l'autoplay impose le mute jusqu'à la 1re interaction ; ensuite on respecte le choix son.
+  const [interacted, setInteracted] = useState(Platform.OS !== 'web');
   const barW = useRef(0);
 
-  // web : reste muet pour autoriser l'autoplay ; natif : reflète le choix son on/off
-  useEffect(() => { try { player.muted = Platform.OS === 'web' ? true : muted; } catch {} }, [muted, player]);
+  useEffect(() => { try { player.muted = interacted ? muted : true; } catch {} }, [muted, interacted, player]);
 
-  // Suit la progression pour le curseur (le player n'expose pas d'event fluide → polling léger).
+  // Suit la progression pour le curseur (polling léger).
   useEffect(() => {
     const t = setInterval(() => {
       try {
@@ -298,7 +299,8 @@ function EditorVideo({ uri, muted }: { uri: string; muted: boolean }) {
     return () => clearInterval(t);
   }, [player]);
 
-  const toggle = () => { try { player.playing ? player.pause() : player.play(); } catch {} };
+  const toggle = () => { setInteracted(true); try { player.playing ? player.pause() : player.play(); } catch {} };
+  const tapSound = () => { setInteracted(true); onToggleMute(); };
   const seek = (frac: number) => {
     try {
       const d = player.duration || 0;
@@ -316,16 +318,21 @@ function EditorVideo({ uri, muted }: { uri: string; muted: boolean }) {
   ).current;
 
   return (
-    <View style={StyleSheet.absoluteFill}>
-      <Pressable style={StyleSheet.absoluteFill} onPress={toggle}>
+    <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
+      {/* Vidéo dans la zone dégagée (entre la barre du haut et les contrôles du bas) → toujours visible en entier */}
+      <Pressable style={styles.videoBox} onPress={toggle}>
         <VideoView player={player} style={StyleSheet.absoluteFill} contentFit="contain" nativeControls={false} />
+        {!playing && (
+          <View style={styles.playOverlay} pointerEvents="none">
+            <View style={styles.playCircle}><Ionicons name="play" size={34} color="#fff" /></View>
+          </View>
+        )}
+        {/* Bouton son (le web démarre en muet pour l'autoplay ; un tap active le son) */}
+        <Pressable onPress={tapSound} style={styles.soundToggle} hitSlop={8}>
+          <Ionicons name={!interacted || muted ? 'volume-mute' : 'volume-high'} size={18} color="#fff" />
+        </Pressable>
       </Pressable>
-      {!playing && (
-        <View style={styles.playOverlay} pointerEvents="none">
-          <View style={styles.playCircle}><Ionicons name="play" size={34} color="#fff" /></View>
-        </View>
-      )}
-      {/* Curseur de lecture (scrubber) — visible et déplaçable avant de continuer */}
+      {/* Curseur de lecture (scrubber) — au-dessus du bouton Continuer */}
       <View style={styles.scrubWrap} pointerEvents="box-none">
         <View style={styles.scrubTrack} onLayout={(e) => (barW.current = e.nativeEvent.layout.width)} {...responder.panHandlers}>
           <View style={[styles.scrubFill, { width: `${pos * 100}%` }]} />
@@ -346,9 +353,11 @@ const clamp = (v: number, min: number, max: number) => Math.max(min, Math.min(ma
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: '#000' },
   stage: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 },
+  videoBox: { position: 'absolute', top: 64, left: 0, right: 0, bottom: 108, backgroundColor: '#000' },
+  soundToggle: { position: 'absolute', left: 12, bottom: 12, width: 38, height: 38, borderRadius: 19, backgroundColor: '#00000088', alignItems: 'center', justifyContent: 'center' },
   playOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, alignItems: 'center', justifyContent: 'center' },
   playCircle: { width: 68, height: 68, borderRadius: 34, backgroundColor: '#00000066', alignItems: 'center', justifyContent: 'center', paddingLeft: 4 },
-  scrubWrap: { position: 'absolute', left: 16, right: 16, bottom: 96, height: 24, justifyContent: 'center' },
+  scrubWrap: { position: 'absolute', left: 16, right: 16, bottom: 84, height: 24, justifyContent: 'center' },
   scrubTrack: { height: 4, borderRadius: 2, backgroundColor: '#ffffff44', justifyContent: 'center' },
   scrubFill: { position: 'absolute', left: 0, top: 0, bottom: 0, backgroundColor: '#fff', borderRadius: 2 },
   scrubThumb: { position: 'absolute', width: 14, height: 14, borderRadius: 7, backgroundColor: '#fff', marginLeft: -7, shadowColor: '#000', shadowOpacity: 0.4, shadowRadius: 3 },
