@@ -18,7 +18,7 @@ import { useMe } from '@/lib/me';
 import { avatar, photo, video } from '@/lib/mock';
 
 type SellProduct = { id: string; title: string; price: string; image: string; tag: string; priceCfa?: number; tiers?: { qty: number; price_cfa: number }[] };
-type Comment = { id: string; name: string; avatar: string; text: string; gift?: boolean; system?: 'join' | 'like' | 'share' | 'guest' | 'sale'; product?: { title: string; price: string } };
+type Comment = { id: string; name: string; avatar: string; text: string; gift?: boolean; system?: 'join' | 'like' | 'share' | 'guest' | 'sale' | 'welcome'; product?: { title: string; price: string } };
 type GuestMode = 'audio' | 'video';
 type Guest = { id: string; name: string; avatar: string; mode: GuestMode; local?: boolean };
 type Heart = { id: number; x: number; y: number; color: string; size: number; emoji?: string };
@@ -44,12 +44,13 @@ const GIFTS = [500, 1000, 2000, 5000];
 const BUZZ_GOAL = 10000; // j'aime à atteindre pour que le live obtienne le Buzz
 const HEART_COLORS = ['#E11D48', '#FF4D8D', '#FF7AB8', '#B8791F', '#6E80FF', '#FF5A5F', '#FF2D55'];
 const REACTIONS = ['❤️', '🔥', '😍', '👏', '😂', '🎉', '💎']; // réactions volantes (stickers)
-const SYS: Record<'join' | 'like' | 'share' | 'guest' | 'sale', { icon: keyof typeof Ionicons.glyphMap; color: string }> = {
+const SYS: Record<'join' | 'like' | 'share' | 'guest' | 'sale' | 'welcome', { icon: keyof typeof Ionicons.glyphMap; color: string }> = {
   join: { icon: 'enter-outline', color: '#7EC8FF' },
   like: { icon: 'heart', color: Afylo.live },
   share: { icon: 'arrow-redo', color: '#fff' },
   guest: { icon: 'mic', color: Afylo.violet2 },
   sale: { icon: 'bag-check', color: '#37D67A' },
+  welcome: { icon: 'sparkles', color: Afylo.gold },
 };
 
 export default function Live() {
@@ -313,10 +314,10 @@ export default function Live() {
     setGuests((prev) => prev.map((g) => (g.local ? { ...g, mode: g.mode === 'video' ? 'audio' : 'video' } : g)));
   };
 
-  // Message d'accueil + règles (épinglé) à l'ouverture — puis événement d'arrivée.
+  // Message d'accueil + règles : message de bienvenue qui défile dans le feed (pas une bande figée) — puis événement d'arrivée.
   useEffect(() => {
     if (phase !== 'live') return;
-    setPinned({ id: 'welcome', name: 'Afylo', avatar: me.avatar, text: 'Bienvenue ! Reste respectueux 🙏 · Créateurs 18+ pour passer en live, spectateurs 18+ pour envoyer des cadeaux. Amuse-toi en direct !' });
+    addComment({ name: 'Afylo', avatar: '', text: 'Bienvenue 👋 Reste respectueux · Créateurs 18+ pour passer en live, spectateurs 18+ pour les cadeaux. Amuse-toi !', system: 'welcome' });
     pushEvent(me.name, me.avatar, 'join', 'a rejoint le live');
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phase]);
@@ -452,37 +453,42 @@ export default function Live() {
       {/* Les contrôles (box-none) restent au-dessus du capteur : les zones vides laissent passer le tap-like. */}
       <SafeAreaView style={{ flex: 1, zIndex: 1 }} pointerEvents="box-none">
         <View style={styles.top}>
-          <Pressable onPress={openHostProfile} style={styles.hostPill}>
-            <Avatar uri={hostAvatar} size={30} />
-            <Text style={styles.hostName} numberOfLines={1}>{name}</Text>
-            {!isHost && (
-              <Pressable onPress={() => setFollowed((v) => !v)} style={[styles.followBtn, followed && { backgroundColor: '#ffffff33' }]}>
-                <Text style={styles.followText}>{followed ? '✓' : '+'}</Text>
+          {/* Cluster gauche : rétrécit / se clippe pour ne jamais pousser les boutons de droite hors écran */}
+          <View style={styles.topLeft}>
+            <Pressable onPress={openHostProfile} style={styles.hostPill}>
+              <Avatar uri={hostAvatar} size={28} />
+              <Text style={styles.hostName} numberOfLines={1}>{name}</Text>
+              {!isHost && (
+                <Pressable onPress={() => setFollowed((v) => !v)} style={[styles.followBtn, followed && { backgroundColor: '#ffffff33' }]}>
+                  <Text style={styles.followText}>{followed ? '✓' : '+'}</Text>
+                </Pressable>
+              )}
+            </Pressable>
+            <View style={styles.liveBadge}><View style={styles.liveDot} /><Text style={styles.liveText}>LIVE</Text></View>
+            <View style={styles.viewersPill}><Ionicons name="eye" size={13} color="#fff" /><Text style={styles.viewersText}>{Math.max(1, viewers)}</Text></View>
+            {/* Compteur de j'aime → objectif Buzz (temps réel) */}
+            <View style={[styles.viewersPill, buzzReached && { backgroundColor: '#FF2D5566' }]}>
+              <Ionicons name={buzzReached ? 'flame' : 'heart'} size={13} color={buzzReached ? Afylo.gold : Afylo.live} />
+              <Text style={styles.viewersText}>{buzzReached ? likeCount : `${likeCount}/${BUZZ_GOAL}`}</Text>
+            </View>
+            {(isBuzz || buzzReached) && <BuzzBadge size="sm" />}
+          </View>
+          {/* Cluster droit : toujours visible (partager + fermer) */}
+          <View style={styles.topRight}>
+            {isHost && (
+              <Pressable onPress={() => setFacing((f) => (f === 'front' ? 'back' : 'front'))} style={styles.close}>
+                <Ionicons name="camera-reverse-outline" size={20} color="#fff" />
               </Pressable>
             )}
-          </Pressable>
-          <View style={styles.liveBadge}><View style={styles.liveDot} /><Text style={styles.liveText}>EN DIRECT</Text></View>
-          <View style={styles.viewersPill}><Ionicons name="eye" size={13} color="#fff" /><Text style={styles.viewersText}>{Math.max(1, viewers)}</Text></View>
-          {/* Compteur de j'aime → objectif Buzz (temps réel) */}
-          <View style={[styles.viewersPill, buzzReached && { backgroundColor: '#FF2D5566' }]}>
-            <Ionicons name={buzzReached ? 'flame' : 'heart'} size={13} color={buzzReached ? Afylo.gold : Afylo.live} />
-            <Text style={styles.viewersText}>{buzzReached ? likeCount : `${likeCount}/${BUZZ_GOAL}`}</Text>
+            {isHost && (
+              <Pressable onPress={() => setRequestsOpen(true)} style={styles.close}>
+                <Ionicons name="people" size={19} color="#fff" />
+                {requests.length > 0 && <View style={styles.reqBadge}><Text style={styles.reqBadgeText}>{requests.length}</Text></View>}
+              </Pressable>
+            )}
+            <Pressable onPress={share} style={styles.close}><Ionicons name="share-social" size={18} color="#fff" /></Pressable>
+            <Pressable onPress={() => (isHost ? setEndConfirm(true) : leave())} style={styles.close}><Ionicons name="close" size={24} color="#fff" /></Pressable>
           </View>
-          {(isBuzz || buzzReached) && <BuzzBadge size="sm" />}
-          <View style={{ flex: 1 }} />
-          {isHost && (
-            <Pressable onPress={() => setFacing((f) => (f === 'front' ? 'back' : 'front'))} style={styles.close}>
-              <Ionicons name="camera-reverse-outline" size={20} color="#fff" />
-            </Pressable>
-          )}
-          {isHost && (
-            <Pressable onPress={() => setRequestsOpen(true)} style={styles.close}>
-              <Ionicons name="people" size={19} color="#fff" />
-              {requests.length > 0 && <View style={styles.reqBadge}><Text style={styles.reqBadgeText}>{requests.length}</Text></View>}
-            </Pressable>
-          )}
-          <Pressable onPress={share} style={styles.close}><Ionicons name="share-social" size={18} color="#fff" /></Pressable>
-          <Pressable onPress={() => (isHost ? setEndConfirm(true) : leave())} style={styles.close}><Ionicons name="close" size={24} color="#fff" /></Pressable>
         </View>
 
         {/* Bandeau titre du live (hôte peut le modifier d'un tap) */}
@@ -590,7 +596,20 @@ export default function Live() {
           )}
         </ScrollView>
 
-        {/* Barre du bas */}
+        {/* Ligne commerce (pleine largeur) : accès aux produits / ventes */}
+        {isHost ? (
+          <Pressable onPress={() => setSalesOpen(true)} style={styles.commerceBar}>
+            <Ionicons name="cart" size={18} color="#fff" />
+            <Text style={styles.sellText}>Ventes ({sales.length})</Text>
+          </Pressable>
+        ) : sell.length > 0 ? (
+          <Pressable onPress={() => setBuyListOpen(true)} style={styles.commerceBar}>
+            <Ionicons name="bag-handle" size={18} color="#fff" />
+            <Text style={styles.sellText}>Voir les produits ({sell.length})</Text>
+          </Pressable>
+        ) : null}
+
+        {/* Barre du bas : commentaire + actions */}
         <View style={styles.bottom}>
           <View style={styles.inputBar}>
             <TextInput
@@ -618,18 +637,6 @@ export default function Live() {
                 size={20}
                 color="#fff"
               />
-            </Pressable>
-          )}
-
-          {isHost ? (
-            <Pressable onPress={() => setSalesOpen(true)} style={styles.sellBtn}>
-              <Ionicons name="cart" size={18} color="#fff" />
-              <Text style={styles.sellText}>Ventes ({sales.length})</Text>
-            </Pressable>
-          ) : (
-            <Pressable onPress={() => setBuyListOpen(true)} style={styles.sellBtn}>
-              <Ionicons name="bag-handle" size={18} color="#fff" />
-              <Text style={styles.sellText}>Acheter ({sell.length})</Text>
             </Pressable>
           )}
 
@@ -1180,7 +1187,9 @@ const styles = StyleSheet.create({
   startText: { color: '#fff', fontFamily: Font.bold, fontSize: 16 },
 
   top: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 12, paddingTop: 8 },
-  hostPill: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#00000055', borderRadius: Radius.pill, paddingLeft: 4, paddingRight: 10, paddingVertical: 4, maxWidth: 170 },
+  topLeft: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 6, minWidth: 0, overflow: 'hidden' },
+  topRight: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  hostPill: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#00000055', borderRadius: Radius.pill, paddingLeft: 4, paddingRight: 8, paddingVertical: 4, flexShrink: 1, maxWidth: 150 },
   hostName: { color: '#fff', fontFamily: Font.semibold, fontSize: 13, flexShrink: 1 },
   followBtn: { backgroundColor: Afylo.violet, width: 22, height: 22, borderRadius: 11, alignItems: 'center', justifyContent: 'center' },
   followText: { color: '#fff', fontFamily: Font.bold, fontSize: 13 },
@@ -1268,7 +1277,7 @@ const styles = StyleSheet.create({
   sysRow: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingLeft: 4 },
   sysText: { color: '#ffffffcc', fontSize: 13 },
 
-  bottom: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 12, paddingBottom: 8 },
+  bottom: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, paddingBottom: 8 },
   inputBar: { flex: 1, flexDirection: 'row', alignItems: 'center', backgroundColor: '#00000066', borderRadius: Radius.pill, borderWidth: 1, borderColor: '#ffffff33', paddingHorizontal: 16, height: 44, overflow: 'hidden' },
   input: { flex: 1, color: '#fff', fontSize: 15, height: '100%' },
   circleBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#00000055', alignItems: 'center', justifyContent: 'center' },
@@ -1276,7 +1285,8 @@ const styles = StyleSheet.create({
   reactionPop: { position: 'absolute', bottom: 52, right: -4, flexDirection: 'row', gap: 2, backgroundColor: '#000000cc', borderRadius: Radius.pill, paddingHorizontal: 6, paddingVertical: 4, borderWidth: 1, borderColor: '#ffffff22' },
   reactionItem: { width: 34, height: 40, alignItems: 'center', justifyContent: 'center' },
   reactionEmoji: { fontSize: 24 },
-  sellBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: Afylo.violet, paddingHorizontal: 16, height: 44, borderRadius: Radius.pill, marginLeft: 'auto' },
+  sellBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: Afylo.violet, paddingHorizontal: 12, height: 44, borderRadius: Radius.pill, flexShrink: 0 },
+  commerceBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: Afylo.violet, marginHorizontal: 12, marginBottom: 8, height: 44, borderRadius: Radius.pill },
   sellText: { color: '#fff', fontFamily: Font.semibold, fontSize: 14 },
   heartShadow: { textShadowColor: '#00000066', textShadowRadius: 6, textShadowOffset: { width: 0, height: 1 } },
 
