@@ -4,7 +4,7 @@ import { Image } from 'expo-image';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useVideoPlayer, VideoView } from 'expo-video';
 import { useEffect, useRef, useState } from 'react';
-import { Animated, Easing, Modal, Pressable, ScrollView, Share, StyleSheet, Text, TextInput, useWindowDimensions, View } from 'react-native';
+import { Animated, Easing, Modal, Platform, Pressable, ScrollView, Share, StyleSheet, Text, TextInput, useWindowDimensions, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Avatar } from '@/components/ui-kit';
@@ -821,7 +821,7 @@ function GuestPip({ g, facing, onFlip, onToggleCam, onLeave }: { g: Guest; facin
     <View style={styles.guestPip}>
       {g.mode === 'video'
         ? (g.local ? <CameraView key={facing} style={StyleSheet.absoluteFill} facing={facing} mirror={facing === 'front'} /> : <RemoteVideoPip />)
-        : <AudioPip avatar={g.avatar} />}
+        : <AudioPip avatar={g.avatar} local={!!g.local} />}
 
       {/* Contrôles de MON intervention (co-host) — façon TikTok */}
       {g.local && (
@@ -845,21 +845,67 @@ function GuestPip({ g, facing, onFlip, onToggleCam, onLeave }: { g: Guest; facin
 }
 
 /** Tuile audio : avatar + anneau qui pulse (indique la prise de parole). */
-function AudioPip({ avatar }: { avatar: string }) {
+function AudioPip({ avatar, local }: { avatar: string; local?: boolean }) {
   const pulse = useRef(new Animated.Value(0)).current;
+
   useEffect(() => {
-    const loop = Animated.loop(
-      Animated.sequence([
-        Animated.timing(pulse, { toValue: 1, duration: 700, easing: Easing.out(Easing.ease), useNativeDriver: true }),
-        Animated.timing(pulse, { toValue: 0, duration: 700, easing: Easing.in(Easing.ease), useNativeDriver: true }),
-      ]),
-    );
-    loop.start();
-    return () => loop.stop();
-  }, [pulse]);
+    // Boucle douce (fallback : intervenants distants simulés, natif, ou micro indispo).
+    const startLoop = () => {
+      const loop = Animated.loop(
+        Animated.sequence([
+          Animated.timing(pulse, { toValue: 1, duration: 700, easing: Easing.out(Easing.ease), useNativeDriver: true }),
+          Animated.timing(pulse, { toValue: 0, duration: 700, easing: Easing.in(Easing.ease), useNativeDriver: true }),
+        ]),
+      );
+      loop.start();
+      return () => loop.stop();
+    };
+
+    // MON intervention audio sur le web → l'anneau pulse selon le VRAI niveau du micro.
+    if (!(local && Platform.OS === 'web' && typeof navigator !== 'undefined' && navigator.mediaDevices)) {
+      return startLoop();
+    }
+
+    let raf = 0, ctx: any = null, stream: MediaStream | null = null, cancelled = false, stopFallback: (() => void) | null = null;
+    let smooth = 0;
+    (async () => {
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        if (cancelled) { stream.getTracks().forEach((t) => t.stop()); return; }
+        const AC = (window as any).AudioContext || (window as any).webkitAudioContext;
+        ctx = new AC();
+        const src = ctx.createMediaStreamSource(stream);
+        const analyser = ctx.createAnalyser();
+        analyser.fftSize = 256;
+        src.connect(analyser);
+        const data = new Uint8Array(analyser.frequencyBinCount);
+        const tick = () => {
+          analyser.getByteTimeDomainData(data);
+          let sum = 0;
+          for (let i = 0; i < data.length; i++) { const v = (data[i] - 128) / 128; sum += v * v; }
+          const level = Math.min(1, Math.sqrt(sum / data.length) * 4); // volume 0..1 amplifié
+          smooth = smooth * 0.6 + level * 0.4; // lissage
+          pulse.setValue(smooth);
+          raf = requestAnimationFrame(tick);
+        };
+        tick();
+      } catch {
+        stopFallback = startLoop(); // micro refusé → boucle douce
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+      if (raf) cancelAnimationFrame(raf);
+      if (stopFallback) stopFallback();
+      try { ctx?.close(); } catch {}
+      try { stream?.getTracks().forEach((t) => t.stop()); } catch {}
+    };
+  }, [local, pulse]);
+
   return (
     <View style={styles.guestAudio}>
-      <Animated.View style={[styles.audioRing, { opacity: pulse.interpolate({ inputRange: [0, 1], outputRange: [0.15, 0.5] }), transform: [{ scale: pulse.interpolate({ inputRange: [0, 1], outputRange: [1, 1.35] }) }] }]} />
+      <Animated.View style={[styles.audioRing, { opacity: pulse.interpolate({ inputRange: [0, 1], outputRange: [0.12, 0.6] }), transform: [{ scale: pulse.interpolate({ inputRange: [0, 1], outputRange: [1, 1.55] }) }] }]} />
       <Avatar uri={avatar} size={54} ring />
     </View>
   );
