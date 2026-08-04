@@ -456,7 +456,7 @@ function PostCard({ post, isPro, myHandle, initialLiked, initialSaved, initialFo
 
       <PaymentSheet
         visible={payOpen}
-        items={post.products ?? (post.product ? [{ title: post.product.title, price: post.product.price }] : [])}
+        items={post.products ?? (post.product ? [{ title: post.product.title, price: post.product.price, priceCfa: post.product.priceCfa, tiers: post.product.tiers }] : [])}
         onClose={() => setPayOpen(false)}
       />
 

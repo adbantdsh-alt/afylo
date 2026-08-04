@@ -80,6 +80,8 @@ export function mapFeedPost(fp: FeedPost): Post {
           price: formatCfa(first.promo_cfa ?? first.price_cfa),
           priceOld: first.promo_cfa && first.promo_cfa < first.price_cfa ? formatCfa(first.price_cfa) : undefined, // prix barré si promo
           commission: pct(first.commission_pct),
+          priceCfa: first.promo_cfa ?? first.price_cfa,
+          tiers: first.quantity_tiers,
         }
       : undefined,
     products: prods.length > 1 ? prods.map((p) => ({ title: p.title, price: formatCfa(p.promo_cfa ?? p.price_cfa) })) : undefined,

@@ -7,7 +7,7 @@ import { ActivityIndicator, Linking, Modal, Pressable, ScrollView, Share, StyleS
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Avatar } from '@/components/ui-kit';
-import { PaymentSheet } from '@/components/payment-sheet';
+import { PaymentSheet, type PayItem } from '@/components/payment-sheet';
 import { ReportSheet } from '@/components/report-sheet';
 import { VerifiedBadge, verifiedKind } from '@/components/verified';
 import { Afylo, Font, Radius, Type } from '@/constants/brand';
@@ -54,7 +54,7 @@ export default function CreatorProfile() {
   const [section, setSection] = useState<Section>('posts');
   const [products, setProducts] = useState<Product[]>([]);
   const [reposts, setReposts] = useState<Repost[]>([]);
-  const [payItems, setPayItems] = useState<{ title: string; price: string }[] | null>(null);
+  const [payItems, setPayItems] = useState<PayItem[] | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
@@ -108,7 +108,7 @@ export default function CreatorProfile() {
     { key: 'reposts', icon: 'repeat' },
   ];
 
-  const buyProduct = (pr: Product) => setPayItems([{ title: pr.title, price: formatCfa(pr.promo_cfa ?? pr.price_cfa) }]);
+  const buyProduct = (pr: Product) => setPayItems([{ title: pr.title, price: formatCfa(pr.promo_cfa ?? pr.price_cfa), priceCfa: pr.promo_cfa ?? pr.price_cfa, tiers: pr.quantity_tiers }]);
 
   // ---- Menu ⋯ du profil ----
   const profileUrl = `https://afylo.app/${handle}`;

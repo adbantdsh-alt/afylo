@@ -9,7 +9,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Avatar } from '@/components/ui-kit';
 import { GiftSheet } from '@/components/gift-sheet';
-import { PaymentSheet } from '@/components/payment-sheet';
+import { PaymentSheet, type PayItem } from '@/components/payment-sheet';
 import { Afylo, Font, Radius } from '@/constants/brand';
 import { BuzzBadge } from '@/components/buzz-badge';
 import { useIsBuzz } from '@/lib/buzz';
@@ -17,7 +17,7 @@ import { endLive, listFeedProducts, listMyProducts, setLiveViewers } from '@/lib
 import { useMe } from '@/lib/me';
 import { avatar, photo, video } from '@/lib/mock';
 
-type SellProduct = { id: string; title: string; price: string; image: string; tag: string };
+type SellProduct = { id: string; title: string; price: string; image: string; tag: string; priceCfa?: number; tiers?: { qty: number; price_cfa: number }[] };
 type Comment = { id: string; name: string; avatar: string; text: string; gift?: boolean; system?: 'join' | 'like' | 'share' | 'guest' | 'sale'; product?: { title: string; price: string } };
 type GuestMode = 'audio' | 'video';
 type Guest = { id: string; name: string; avatar: string; mode: GuestMode; local?: boolean };
@@ -82,7 +82,7 @@ export default function Live() {
   useEffect(() => {
     if (isHost) return;
     listFeedProducts()
-      .then((feed) => setSell(feed.slice(0, 6).map((p) => ({ id: p.id, title: p.title, price: fmtF(p.promo_cfa ?? p.price_cfa), image: p.image_url || photo(`p-${p.id}`, 200, 200), tag: 'En vente' }))))
+      .then((feed) => setSell(feed.slice(0, 6).map((p) => ({ id: p.id, title: p.title, price: fmtF(p.promo_cfa ?? p.price_cfa), image: p.image_url || photo(`p-${p.id}`, 200, 200), tag: 'En vente', priceCfa: p.promo_cfa ?? p.price_cfa, tiers: p.quantity_tiers }))))
       .catch(() => {});
   }, [isHost]);
 
@@ -92,11 +92,11 @@ export default function Live() {
     if (!isHost) return;
     Promise.all([listMyProducts(), listFeedProducts()])
       .then(([mine, feed]) => {
-        const own = mine.map((p) => ({ id: p.id, title: p.title, price: fmtF(p.promo_cfa ?? p.price_cfa), image: p.image_url || photo(`p-${p.id}`, 200, 200), tag: 'Ma boutique' }));
+        const own = mine.map((p) => ({ id: p.id, title: p.title, price: fmtF(p.promo_cfa ?? p.price_cfa), image: p.image_url || photo(`p-${p.id}`, 200, 200), tag: 'Ma boutique', priceCfa: p.promo_cfa ?? p.price_cfa, tiers: p.quantity_tiers }));
         const affil = feed
           .filter((p) => (p.commission_pct ?? 0) > 0 && p.owner?.id !== me.id)
           .slice(0, 40)
-          .map((p) => ({ id: `aff-${p.id}`, title: p.title, price: fmtF(p.promo_cfa ?? p.price_cfa), image: p.image_url || photo(`p-${p.id}`, 200, 200), tag: `Affiliation ${p.commission_pct}%` }));
+          .map((p) => ({ id: `aff-${p.id}`, title: p.title, price: fmtF(p.promo_cfa ?? p.price_cfa), image: p.image_url || photo(`p-${p.id}`, 200, 200), tag: `Affiliation ${p.commission_pct}%`, priceCfa: p.promo_cfa ?? p.price_cfa, tiers: p.quantity_tiers }));
         setAvailable([...own, ...affil]);
       })
       .catch(() => {});
@@ -126,7 +126,7 @@ export default function Live() {
   const [giftOpen, setGiftOpen] = useState(false);
   const [sales, setSales] = useState<Sale[]>([]); // ventes reçues pendant le live (vendeur)
   const [salesOpen, setSalesOpen] = useState(false);
-  const [payProducts, setPayProducts] = useState<{ title: string; price: string }[]>([]); // panier ouvert
+  const [payProducts, setPayProducts] = useState<PayItem[]>([]); // panier ouvert
   const [linkPicker, setLinkPicker] = useState<string | null>(null); // envoie un lien produit à ce nom
   const [pinned, setPinned] = useState<Comment | null>(null);
   const [blocked, setBlocked] = useState<string[]>([]);
@@ -222,8 +222,8 @@ export default function Live() {
   const reportComment = () => { setMod(null); showToast('Merci, commentaire signalé'); };
 
   // Achat : panier complet (bouton) ou un seul produit (lien envoyé dans le chat)
-  const openBuyAll = () => { setPayProducts(sell.map((p) => ({ title: p.title, price: p.price }))); setPayOpen(true); };
-  const openBuyOne = (prod: { title: string; price: string }) => { setPayProducts([prod]); setPayOpen(true); };
+  const openBuyAll = () => { setPayProducts(sell.map((p) => ({ title: p.title, price: p.price, priceCfa: p.priceCfa, tiers: p.tiers }))); setPayOpen(true); };
+  const openBuyOne = (prod: PayItem) => { setPayProducts([prod]); setPayOpen(true); };
 
   // Vendeur : répondre en envoyant un lien de vente d'un produit
   const sendProductLink = (p: SellProduct) => {
@@ -770,7 +770,7 @@ export default function Live() {
                         <Text style={styles.pName} numberOfLines={1}>{p.title}</Text>
                         <Text style={styles.pMeta}>{p.price}</Text>
                       </View>
-                      <Pressable onPress={() => { setBuyListOpen(false); openBuyOne({ title: p.title, price: p.price }); }} style={styles.buyOneBtn}>
+                      <Pressable onPress={() => { setBuyListOpen(false); openBuyOne({ title: p.title, price: p.price, priceCfa: p.priceCfa, tiers: p.tiers }); }} style={styles.buyOneBtn}>
                         <Text style={styles.buyOneText}>Acheter</Text>
                       </Pressable>
                     </View>

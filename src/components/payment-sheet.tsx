@@ -24,13 +24,15 @@ const MOBILE: Record<string, { id: string; name: string; color: string }[]> = {
 
 type Status = 'form' | 'processing' | 'done';
 
+export type PayItem = { title: string; price: string; priceCfa?: number; tiers?: { qty: number; price_cfa: number }[] };
+
 export function PaymentSheet({
   visible,
   items,
   onClose,
 }: {
   visible: boolean;
-  items: { title: string; price: string }[];
+  items: PayItem[];
   onClose: () => void;
 }) {
   const { profile, isComplete, setProfile } = useCheckoutProfile();
@@ -42,16 +44,27 @@ export function PaymentSheet({
   const [remember, setRemember] = useState(true);
   const [status, setStatus] = useState<Status>('form');
   const [chosen, setChosen] = useState<number | null>(items.length > 1 ? null : 0);
+  const [qtyIndex, setQtyIndex] = useState(0); // palier de quantité sélectionné
 
   // Réaligne sur le profil enregistré à chaque ouverture
   useEffect(() => {
-    if (visible) { setName(profile.name); setPhone(profile.phone); setAddress(profile.address); setMethod(profile.preferred); setStatus('form'); setChosen(items.length > 1 ? null : 0); }
+    if (visible) { setName(profile.name); setPhone(profile.phone); setAddress(profile.address); setMethod(profile.preferred); setStatus('form'); setChosen(items.length > 1 ? null : 0); setQtyIndex(0); }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [visible]);
+  useEffect(() => { setQtyIndex(0); }, [chosen]);
 
   const item = items[chosen ?? 0] ?? { title: 'Produit', price: '' };
   const title = item.title;
-  const price = item.price;
+  // Paliers de quantité (prix par lot) : options {qty → prix total du lot}
+  const tierOpts = (() => {
+    if (!item.tiers?.length && !item.priceCfa) return [] as { qty: number; price_cfa: number }[];
+    const map = new Map<number, number>();
+    if (item.priceCfa) map.set(1, item.priceCfa);
+    (item.tiers ?? []).forEach((t) => { if (t.qty > 0 && t.price_cfa > 0) map.set(t.qty, t.price_cfa); });
+    return [...map.entries()].map(([qty, price_cfa]) => ({ qty, price_cfa })).sort((a, b) => a.qty - b.qty);
+  })();
+  const effective = tierOpts.length ? tierOpts[Math.min(qtyIndex, tierOpts.length - 1)] : null;
+  const price = effective ? `${effective.price_cfa.toLocaleString('fr-FR')} FCFA` : item.price;
   const methods = [...(MOBILE[country] ?? MOBILE['Sénégal']), { id: 'card', name: 'Carte bancaire', color: Afylo.violet }];
   const methodName = methods.find((m) => m.id === method)?.name ?? 'l\'opérateur';
   const cardReady = method !== 'card' || !!profile.card;
@@ -123,6 +136,21 @@ export function PaymentSheet({
                 <Text style={styles.productTitle} numberOfLines={1}>{title}</Text>
                 <Text style={styles.productPrice}>{price}</Text>
               </View>
+
+              {/* Paliers de quantité (prix par lot) */}
+              {tierOpts.length > 1 && (
+                <>
+                  <Text style={styles.section}>Quantité (offre par lot)</Text>
+                  <View style={styles.qtyRow}>
+                    {tierOpts.map((o, i) => (
+                      <Pressable key={o.qty} onPress={() => setQtyIndex(i)} style={[styles.qtyChip, i === qtyIndex && styles.qtyChipOn]}>
+                        <Text style={[styles.qtyChipTop, i === qtyIndex && { color: '#fff' }]}>{o.qty} unité{o.qty > 1 ? 's' : ''}</Text>
+                        <Text style={[styles.qtyChipPrice, i === qtyIndex && { color: '#fff' }]}>{o.price_cfa.toLocaleString('fr-FR')} F</Text>
+                      </Pressable>
+                    ))}
+                  </View>
+                </>
+              )}
 
               {/* Identité enregistrée (achat 1-clic) */}
               {isComplete && (
@@ -214,6 +242,11 @@ const styles = StyleSheet.create({
   chooseIcon: { width: 36, height: 36, borderRadius: 10, backgroundColor: '#3E5BFF14', alignItems: 'center', justifyContent: 'center' },
   chooseTitle: { ...Type.body, fontFamily: Font.semibold, color: Afylo.text, flex: 1 },
   choosePrice: { ...Type.body, fontFamily: Font.bold, color: Afylo.violet },
+  qtyRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 14 },
+  qtyChip: { alignItems: 'center', paddingHorizontal: 16, paddingVertical: 9, borderRadius: Radius.md, backgroundColor: Afylo.surface, borderWidth: 1.5, borderColor: Afylo.border, minWidth: 90 },
+  qtyChipOn: { backgroundColor: Afylo.violet, borderColor: Afylo.violet },
+  qtyChipTop: { ...Type.caption, color: Afylo.textDim },
+  qtyChipPrice: { ...Type.body, fontFamily: Font.bold, color: Afylo.text, marginTop: 1 },
   methods: { gap: 8, marginBottom: 12 },
   method: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: Afylo.surface, borderRadius: Radius.md, borderWidth: 1, borderColor: Afylo.border, padding: 10 },
   methodDot: { width: 30, height: 30, borderRadius: 15, alignItems: 'center', justifyContent: 'center' },
