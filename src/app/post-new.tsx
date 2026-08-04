@@ -316,7 +316,14 @@ export default function PostNew() {
 
 function StageVideo({ uri }: { uri: string }) {
   const player = useVideoPlayer(uri, (p) => { p.loop = true; p.muted = true; p.play(); });
-  return <VideoView player={player} style={StyleSheet.absoluteFill} contentFit="cover" nativeControls={false} />;
+  const [playing, setPlaying] = useState(true);
+  const toggle = () => { try { player.playing ? player.pause() : player.play(); setPlaying(player.playing); } catch {} };
+  return (
+    <Pressable style={StyleSheet.absoluteFill} onPress={toggle}>
+      <VideoView player={player} style={StyleSheet.absoluteFill} contentFit="contain" nativeControls={false} />
+      {!playing && <View style={styles.videoPlay} pointerEvents="none"><Ionicons name="play" size={30} color="#fff" /></View>}
+    </Pressable>
+  );
 }
 
 const styles = StyleSheet.create({
@@ -326,6 +333,7 @@ const styles = StyleSheet.create({
   title: { color: Afylo.text, fontSize: 18, fontFamily: Font.bold },
 
   stage: { aspectRatio: 4 / 5, borderRadius: Radius.lg, backgroundColor: '#000', overflow: 'hidden' },
+  videoPlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, alignItems: 'center', justifyContent: 'center' },
   counter: { position: 'absolute', top: 10, right: 10, backgroundColor: '#000000AA', borderRadius: Radius.pill, paddingHorizontal: 10, paddingVertical: 4 },
   counterText: { color: '#fff', fontSize: 12, fontFamily: Font.bold },
   stageActions: { position: 'absolute', bottom: 10, left: 10, flexDirection: 'row', gap: 8 },

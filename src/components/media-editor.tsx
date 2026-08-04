@@ -2,7 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { SaveFormat, manipulateAsync } from 'expo-image-manipulator';
 import { useVideoPlayer, VideoView } from 'expo-video';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Animated, Image as RNImage, LayoutRectangle, Modal, PanResponder, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -279,9 +279,61 @@ function DraggableOverlay({ overlay, frame, onMove, onEdit, onRemove }: { overla
 
 function EditorVideo({ uri, muted }: { uri: string; muted: boolean }) {
   const player = useVideoPlayer(uri, (p) => { p.loop = true; p.muted = true; p.play(); });
+  const [playing, setPlaying] = useState(true);
+  const [pos, setPos] = useState(0); // progression 0..1
+  const barW = useRef(0);
+
   // web : reste muet pour autoriser l'autoplay ; natif : reflète le choix son on/off
-  player.muted = Platform.OS === 'web' ? true : muted;
-  return <VideoView player={player} style={StyleSheet.absoluteFill} contentFit="contain" nativeControls={false} />;
+  useEffect(() => { try { player.muted = Platform.OS === 'web' ? true : muted; } catch {} }, [muted, player]);
+
+  // Suit la progression pour le curseur (le player n'expose pas d'event fluide → polling léger).
+  useEffect(() => {
+    const t = setInterval(() => {
+      try {
+        const d = player.duration || 0;
+        setPos(d > 0 ? Math.min(1, (player.currentTime || 0) / d) : 0);
+        setPlaying(player.playing);
+      } catch {}
+    }, 150);
+    return () => clearInterval(t);
+  }, [player]);
+
+  const toggle = () => { try { player.playing ? player.pause() : player.play(); } catch {} };
+  const seek = (frac: number) => {
+    try {
+      const d = player.duration || 0;
+      if (d > 0) player.currentTime = Math.max(0, Math.min(d, frac * d));
+      setPos(Math.max(0, Math.min(1, frac)));
+    } catch {}
+  };
+  const responder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: () => true,
+      onPanResponderGrant: (e) => barW.current > 0 && seek(e.nativeEvent.locationX / barW.current),
+      onPanResponderMove: (e) => barW.current > 0 && seek(e.nativeEvent.locationX / barW.current),
+    }),
+  ).current;
+
+  return (
+    <View style={StyleSheet.absoluteFill}>
+      <Pressable style={StyleSheet.absoluteFill} onPress={toggle}>
+        <VideoView player={player} style={StyleSheet.absoluteFill} contentFit="contain" nativeControls={false} />
+      </Pressable>
+      {!playing && (
+        <View style={styles.playOverlay} pointerEvents="none">
+          <View style={styles.playCircle}><Ionicons name="play" size={34} color="#fff" /></View>
+        </View>
+      )}
+      {/* Curseur de lecture (scrubber) — visible et déplaçable avant de continuer */}
+      <View style={styles.scrubWrap} pointerEvents="box-none">
+        <View style={styles.scrubTrack} onLayout={(e) => (barW.current = e.nativeEvent.layout.width)} {...responder.panHandlers}>
+          <View style={[styles.scrubFill, { width: `${pos * 100}%` }]} />
+          <View style={[styles.scrubThumb, { left: `${pos * 100}%` }]} />
+        </View>
+      </View>
+    </View>
+  );
 }
 
 async function getSize(uri: string): Promise<{ width: number; height: number }> {
@@ -293,7 +345,13 @@ const clamp = (v: number, min: number, max: number) => Math.max(min, Math.min(ma
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: '#000' },
-  stage: { ...StyleSheet.absoluteFillObject },
+  stage: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 },
+  playOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, alignItems: 'center', justifyContent: 'center' },
+  playCircle: { width: 68, height: 68, borderRadius: 34, backgroundColor: '#00000066', alignItems: 'center', justifyContent: 'center', paddingLeft: 4 },
+  scrubWrap: { position: 'absolute', left: 16, right: 16, bottom: 96, height: 24, justifyContent: 'center' },
+  scrubTrack: { height: 4, borderRadius: 2, backgroundColor: '#ffffff44', justifyContent: 'center' },
+  scrubFill: { position: 'absolute', left: 0, top: 0, bottom: 0, backgroundColor: '#fff', borderRadius: 2 },
+  scrubThumb: { position: 'absolute', width: 14, height: 14, borderRadius: 7, backgroundColor: '#fff', marginLeft: -7, shadowColor: '#000', shadowOpacity: 0.4, shadowRadius: 3 },
   top: { position: 'absolute', top: 0, left: 0, right: 0, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, gap: 8 },
   topIcon: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#00000055', alignItems: 'center', justifyContent: 'center' },
   soundChip: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, alignSelf: 'center', backgroundColor: '#00000088', borderRadius: Radius.pill, height: 40, paddingHorizontal: 14, maxWidth: 240, marginHorizontal: 'auto' },
@@ -328,7 +386,7 @@ const styles = StyleSheet.create({
   linkChip: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#0A84FFdd', borderRadius: Radius.pill, paddingHorizontal: 12, paddingVertical: 6 },
   overlayX: { position: 'absolute', top: -10, right: -10, width: 20, height: 20, borderRadius: 10, backgroundColor: '#000000AA', alignItems: 'center', justifyContent: 'center' },
 
-  editorSheet: { ...StyleSheet.absoluteFillObject, backgroundColor: '#000000E6' },
+  editorSheet: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: '#000000E6' },
   editorTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, height: 48 },
   editorCancel: { color: '#fff', fontSize: 16, fontFamily: Font.medium },
   editorOk: { backgroundColor: Afylo.violet, borderRadius: Radius.pill, paddingHorizontal: 18, paddingVertical: 8 },
