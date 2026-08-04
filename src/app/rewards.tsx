@@ -4,9 +4,14 @@ import { useRouter } from 'expo-router';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { useEffect, useState } from 'react';
+
 import { Afylo, Font, Radius } from '@/constants/brand';
-import { checkEligibility, isEligible, PAYOUT_MIN_FCFA, REWARD_PER_1K_FCFA, viewsEarning } from '@/lib/algo';
-import { creatorRewards } from '@/lib/mock';
+import { checkEligibility, isEligible, PAYOUT_MIN_FCFA, REWARD_PER_1K_FCFA, viewsEarning, type RewardsEligibility } from '@/lib/algo';
+import { getMyProfile } from '@/lib/db';
+import { isEligibleCountry } from '@/lib/geo';
+import { useMe } from '@/lib/me';
+import { EMPTY_WALLET, getWalletSummary } from '@/lib/wallet';
 
 const fmt = (n: number) => Math.round(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
 
@@ -20,7 +25,7 @@ const NOT_ELIGIBLE = [
 ];
 const QUALIFIED = [
   'Provient d\'un utilisateur réel',
-  'Regardée ≥ 8 s ou 30 % de la durée',
+  'Regardée ≥ 10 s ou 30 % de la durée',
   'Interaction naturelle avec la plateforme',
   'Ni bot, ni VPN frauduleux, ni ferme à clics',
   'Les relectures du même utilisateur ne comptent pas',
@@ -36,7 +41,27 @@ const OTHER = [
 
 export default function Rewards() {
   const router = useRouter();
-  const r = creatorRewards;
+  const me = useMe();
+  const [wallet, setWallet] = useState(EMPTY_WALLET);
+  const [country, setCountry] = useState<string | null>(null);
+
+  useEffect(() => {
+    getWalletSummary(me.id).then(setWallet).catch(() => {});
+    getMyProfile().then((p) => setCountry(p?.country ?? null)).catch(() => {});
+  }, [me.id]);
+
+  // Éligibilité RÉELLE : abonnés + pays + vues (les vues "qualifiées" précises = comptage serveur).
+  const views = wallet.reach.views;
+  const eligibility: RewardsEligibility = {
+    followers: wallet.reach.followers,
+    videos30d: wallet.reach.posts,
+    qualifiedViews30d: views,
+    age18: false, // vérifié au retrait (KYC) — voir Portefeuille
+    kyc: false,
+    hasPayout: false,
+    countryEligible: isEligibleCountry(country),
+  };
+  const r = { eligibility, qualifiedViews30d: views, qualifiedViewsTotal: views, totalEarnedFcfa: viewsEarning(views) };
   const earned = viewsEarning(r.qualifiedViews30d);
   const eligible = isEligible(r.eligibility);
   const checks = checkEligibility(r.eligibility);

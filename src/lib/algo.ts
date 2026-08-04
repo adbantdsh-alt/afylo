@@ -65,12 +65,14 @@ export function rankPosts(posts: Post[], ctx: FeedCtx = {}): Post[] {
  *  Afylo Creator Rewards — rémunération des créateurs à la vue
  * ------------------------------------------------------------------ */
 
-/** Barème officiel : 100 FCFA pour 1 000 vues qualifiées. */
-export const REWARD_PER_1K_FCFA = 100;
+/** Barème officiel : 50 FCFA pour 1 000 vues qualifiées (RPM). */
+export const REWARD_PER_1K_FCFA = 50;
+/** Nombre d'abonnés minimum pour être éligible à la monétisation. */
+export const MONETIZATION_MIN_FOLLOWERS = 10_000;
 /** Seuil minimum de paiement. */
 export const PAYOUT_MIN_FCFA = 10_000;
-/** Une vue compte à partir de 8 s OU 30 % de la durée regardée. */
-export const QUALIFY_MIN_SECONDS = 8;
+/** Une vue compte à partir de 10 s OU 30 % de la durée regardée. */
+export const QUALIFY_MIN_SECONDS = 10;
 export const QUALIFY_MIN_PCT = 0.3;
 
 /** Détermine si une vue est « qualifiée » (donc rémunérable). */
@@ -98,6 +100,7 @@ export type RewardsEligibility = {
   age18: boolean;
   kyc: boolean;
   hasPayout: boolean; // XaalisPay / moyen compatible
+  countryEligible?: boolean; // pays africain éligible
 };
 export type EligibilityCheck = { key: string; label: string; ok: boolean; value: string; need: string };
 
@@ -105,10 +108,11 @@ export type EligibilityCheck = { key: string; label: string; ok: boolean; value:
 export function checkEligibility(e: RewardsEligibility): EligibilityCheck[] {
   const fmt = (n: number) => n.toLocaleString('fr-FR');
   return [
-    { key: 'followers', label: 'Abonnés', ok: e.followers >= 5000, value: fmt(e.followers), need: '5 000 min' },
+    { key: 'followers', label: 'Abonnés', ok: e.followers >= MONETIZATION_MIN_FOLLOWERS, value: fmt(e.followers), need: `${fmt(MONETIZATION_MIN_FOLLOWERS)} min` },
+    { key: 'country', label: 'Pays africain éligible', ok: e.countryEligible !== false, value: e.countryEligible === false ? 'Non' : 'Oui', need: 'Requis' },
     { key: 'videos', label: 'Vidéos originales (30 j)', ok: e.videos30d >= 10, value: `${e.videos30d}`, need: '10 min' },
     { key: 'views', label: 'Vues qualifiées (30 j)', ok: e.qualifiedViews30d >= 50000, value: fmt(e.qualifiedViews30d), need: '50 000 min' },
-    { key: 'age', label: '18 ans ou plus', ok: e.age18, value: e.age18 ? 'Oui' : 'Non', need: 'Requis' },
+    { key: 'age', label: '18 ans ou plus (retrait)', ok: e.age18, value: e.age18 ? 'Oui' : 'Non', need: 'Requis' },
     { key: 'kyc', label: "Vérification d'identité (KYC)", ok: e.kyc, value: e.kyc ? 'Validée' : 'À faire', need: 'Requis' },
     { key: 'payout', label: 'Moyen de paiement', ok: e.hasPayout, value: e.hasPayout ? 'Configuré' : 'À ajouter', need: 'XaalisPay/…' },
   ];
