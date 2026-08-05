@@ -3,7 +3,7 @@ import { Image } from 'expo-image';
 import { SaveFormat, manipulateAsync } from 'expo-image-manipulator';
 import { useVideoPlayer, VideoView } from 'expo-video';
 import { useEffect, useRef, useState } from 'react';
-import { Animated, Image as RNImage, LayoutRectangle, Modal, PanResponder, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Animated, Image as RNImage, LayoutRectangle, Modal, PanResponder, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, useWindowDimensions, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { SoundPicker } from '@/components/sound-picker';
@@ -278,9 +278,12 @@ function DraggableOverlay({ overlay, frame, onMove, onEdit, onRemove }: { overla
 }
 
 function EditorVideo({ uri, muted, onToggleMute }: { uri: string; muted: boolean; onToggleMute: () => void }) {
+  const { width: W, height: H } = useWindowDimensions();
   const player = useVideoPlayer(uri, (p) => { p.loop = true; p.muted = true; p.play(); });
   const [playing, setPlaying] = useState(true);
   const [pos, setPos] = useState(0); // progression 0..1
+  const [aspect, setAspect] = useState(9 / 16); // proportion réelle de la vidéo (défaut portrait)
+  const [soundOn, setSoundOn] = useState(false); // reflète l'état son réel du player (pour l'icône)
   // web : l'autoplay impose le mute jusqu'à la 1re interaction ; ensuite on respecte le choix son.
   const [interacted, setInteracted] = useState(Platform.OS !== 'web');
   const barW = useRef(0);
@@ -294,13 +297,33 @@ function EditorVideo({ uri, muted, onToggleMute }: { uri: string; muted: boolean
         const d = player.duration || 0;
         setPos(d > 0 ? Math.min(1, (player.currentTime || 0) / d) : 0);
         setPlaying(player.playing);
+        setSoundOn(!player.muted);
       } catch {}
     }, 150);
     return () => clearInterval(t);
   }, [player]);
 
+  // Web : expo-video ne dimensionne pas toujours la <video> → on lit sa vraie proportion
+  // et on force l'élément à remplir son cadre en "contain" (sinon il s'affiche recadré/zoomé).
+  useEffect(() => {
+    if (Platform.OS !== 'web' || typeof document === 'undefined') return;
+    const apply = () => {
+      const el = document.querySelector('video') as HTMLVideoElement | null;
+      if (el) {
+        el.style.width = '100%';
+        el.style.height = '100%';
+        el.style.objectFit = 'contain';
+        if (el.videoWidth > 0 && el.videoHeight > 0) setAspect(el.videoWidth / el.videoHeight);
+      }
+    };
+    apply();
+    const t = setInterval(apply, 300);
+    return () => clearInterval(t);
+  }, []);
+
   const toggle = () => { setInteracted(true); try { player.playing ? player.pause() : player.play(); } catch {} };
-  const tapSound = () => { setInteracted(true); onToggleMute(); };
+  // 1er tap (web muet par autoplay) → active le son sans inverser le réglage ; ensuite bascule muet/son.
+  const tapSound = () => { if (!interacted) { setInteracted(true); return; } onToggleMute(); };
   const seek = (frac: number) => {
     try {
       const d = player.duration || 0;
@@ -317,19 +340,26 @@ function EditorVideo({ uri, muted, onToggleMute }: { uri: string; muted: boolean
     }),
   ).current;
 
+  // Cadre vidéo de taille EXPLICITE (calculée depuis la fenêtre + proportion) → la vidéo tient
+  // toujours entière dans la zone dégagée, indépendamment des aléas de layout d'expo-video.
+  const TOP = 60, BOTTOM = 104;
+  const availH = Math.max(120, H - TOP - BOTTOM);
+  const frameW = Math.min(W, availH * aspect);
+  const frameH = frameW / aspect;
+  const left = (W - frameW) / 2;
+  const top = TOP + (availH - frameH) / 2;
+
   return (
     <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
-      {/* Vidéo dans la zone dégagée (entre la barre du haut et les contrôles du bas) → toujours visible en entier */}
-      <Pressable style={styles.videoBox} onPress={toggle}>
+      <Pressable onPress={toggle} style={{ position: 'absolute', left, top, width: frameW, height: frameH, backgroundColor: '#000', overflow: 'hidden', borderRadius: 8 }}>
         <VideoView player={player} style={StyleSheet.absoluteFill} contentFit="contain" nativeControls={false} />
         {!playing && (
           <View style={styles.playOverlay} pointerEvents="none">
             <View style={styles.playCircle}><Ionicons name="play" size={34} color="#fff" /></View>
           </View>
         )}
-        {/* Bouton son (le web démarre en muet pour l'autoplay ; un tap active le son) */}
         <Pressable onPress={tapSound} style={styles.soundToggle} hitSlop={8}>
-          <Ionicons name={!interacted || muted ? 'volume-mute' : 'volume-high'} size={18} color="#fff" />
+          <Ionicons name={soundOn ? 'volume-high' : 'volume-mute'} size={18} color="#fff" />
         </Pressable>
       </Pressable>
       {/* Curseur de lecture (scrubber) — au-dessus du bouton Continuer */}
