@@ -3,7 +3,7 @@ import { Image } from 'expo-image';
 import { useVideoPlayer, VideoView } from 'expo-video';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Dimensions, Linking, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Dimensions, Linking, PanResponder, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Avatar } from '@/components/ui-kit';
@@ -166,39 +166,96 @@ function PostView({ post, liked, onLike, onOpenComments }: { post: Post; liked: 
 /** Lecture vidéo dans le détail d'un post : autoplay muet en boucle, tap = activer/couper le son. */
 function PostVideo({ uri, width, initialRatio }: { uri: string; width: number; initialRatio?: number | null }) {
   const [muted, setMuted] = useState(true);
-  // Hauteur = largeur / proportion réelle → le cadre épouse la vidéo (ni bandes ni rognage).
+  const [userPaused, setUserPaused] = useState(false);
+  const [inView, setInView] = useState(Platform.OS !== 'web');
+  const [playing, setPlaying] = useState(false);
+  const [pos, setPos] = useState(0); // progression 0..1
   const [height, setHeight] = useState(() => Math.round(width / (initialRatio || 0.8)));
   const boxRef = useRef<View>(null);
-  const player = useVideoPlayer(uri, (p) => { p.loop = true; p.muted = true; p.play(); });
-  const toggle = () => {
-    const m = !muted;
-    setMuted(m);
-    try { player.muted = m; if (!player.playing) player.play(); } catch {}
-  };
-  // Web : mesure la vraie proportion de la vidéo et adapte la hauteur du cadre + remplit l'élément.
+  const barW = useRef(0);
+  const player = useVideoPlayer(uri, (p) => { p.loop = true; p.muted = true; });
+
+  // Visibilité (web) : la vidéo joue quand elle est à l'écran, se met en pause (et coupe le son)
+  // dès qu'on scrolle au-delà.
   useEffect(() => {
-    if (Platform.OS !== 'web') return;
-    const apply = () => {
-      const el = (boxRef.current as any)?.querySelector?.('video') as HTMLVideoElement | null;
-      if (el) {
-        el.style.width = '100%'; el.style.height = '100%'; el.style.objectFit = 'cover';
-        if (el.videoWidth > 0 && el.videoHeight > 0) setHeight(Math.round(width * el.videoHeight / el.videoWidth));
+    if (Platform.OS !== 'web' || typeof IntersectionObserver === 'undefined') return;
+    const node = boxRef.current as any;
+    if (!node?.getBoundingClientRect) return;
+    const io = new IntersectionObserver(
+      (entries) => { const e = entries[0]; setInView(!!e && e.isIntersecting && e.intersectionRatio >= 0.5); },
+      { threshold: [0, 0.5, 1] },
+    );
+    io.observe(node);
+    return () => io.disconnect();
+  }, []);
+
+  // Lecture effective = visible ET non mis en pause par l'utilisateur.
+  useEffect(() => {
+    try { if (inView && !userPaused) player.play(); else player.pause(); } catch {}
+  }, [inView, userPaused, player]);
+
+  // Progression (curseur) + taille réelle de la vidéo (web) + état lecture.
+  useEffect(() => {
+    const t = setInterval(() => {
+      try {
+        const d = player.duration || 0;
+        setPos(d > 0 ? Math.min(1, (player.currentTime || 0) / d) : 0);
+        setPlaying(player.playing);
+      } catch {}
+      if (Platform.OS === 'web') {
+        const el = (boxRef.current as any)?.querySelector?.('video') as HTMLVideoElement | null;
+        if (el) {
+          el.style.width = '100%'; el.style.height = '100%'; el.style.objectFit = 'cover';
+          if (el.videoWidth > 0 && el.videoHeight > 0) setHeight(Math.round(width * el.videoHeight / el.videoWidth));
+        }
       }
-    };
-    apply();
-    const t = setInterval(apply, 400);
+    }, 200);
     return () => clearInterval(t);
-  }, [width]);
+  }, [player, width]);
+
+  const tapPlay = () => setUserPaused((v) => !v);
+  const toggleMute = () => setMuted((m) => { const nm = !m; try { player.muted = nm; } catch {} return nm; });
+  const seek = (frac: number) => {
+    try { const d = player.duration || 0; if (d > 0) player.currentTime = Math.max(0, Math.min(d, frac * d)); setPos(Math.max(0, Math.min(1, frac))); } catch {}
+  };
+  const responder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: () => true,
+      onPanResponderGrant: (e) => barW.current > 0 && seek(e.nativeEvent.locationX / barW.current),
+      onPanResponderMove: (e) => barW.current > 0 && seek(e.nativeEvent.locationX / barW.current),
+    }),
+  ).current;
+
   return (
-    <Pressable ref={boxRef} onPress={toggle} style={{ width, height, overflow: 'hidden', backgroundColor: '#000' }}>
+    <View ref={boxRef} style={{ width, height, overflow: 'hidden', backgroundColor: '#000' }}>
       <VideoView player={player} style={{ width, height }} contentFit="cover" nativeControls={false} />
-      <View style={styles.soundBtn}><Ionicons name={muted ? 'volume-mute' : 'volume-high'} size={16} color="#fff" /></View>
-    </Pressable>
+      {/* Zone de tap = lecture/pause */}
+      <Pressable onPress={tapPlay} style={StyleSheet.absoluteFill} />
+      {(userPaused || !playing) && (
+        <View style={styles.playOverlay} pointerEvents="none"><View style={styles.playCircle}><Ionicons name="play" size={30} color="#fff" /></View></View>
+      )}
+      {/* Bouton son */}
+      <Pressable onPress={toggleMute} style={styles.soundBtn} hitSlop={8}><Ionicons name={muted ? 'volume-mute' : 'volume-high'} size={16} color="#fff" /></Pressable>
+      {/* Curseur de lecture (scrubber) — avancer / reculer */}
+      <View style={styles.vScrubWrap} pointerEvents="box-none">
+        <View style={styles.vScrubTrack} onLayout={(e) => (barW.current = e.nativeEvent.layout.width)} {...responder.panHandlers}>
+          <View style={[styles.vScrubFill, { width: `${pos * 100}%` }]} />
+          <View style={[styles.vScrubThumb, { left: `${pos * 100}%` }]} />
+        </View>
+      </View>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  soundBtn: { position: 'absolute', right: 12, bottom: 12, width: 34, height: 34, borderRadius: 17, backgroundColor: '#000000aa', alignItems: 'center', justifyContent: 'center' },
+  soundBtn: { position: 'absolute', right: 12, bottom: 22, width: 34, height: 34, borderRadius: 17, backgroundColor: '#000000aa', alignItems: 'center', justifyContent: 'center' },
+  playOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, alignItems: 'center', justifyContent: 'center' },
+  playCircle: { width: 60, height: 60, borderRadius: 30, backgroundColor: '#00000066', alignItems: 'center', justifyContent: 'center', paddingLeft: 4 },
+  vScrubWrap: { position: 'absolute', left: 10, right: 10, bottom: 6, height: 16, justifyContent: 'center' },
+  vScrubTrack: { height: 3, borderRadius: 2, backgroundColor: '#ffffff55', justifyContent: 'center' },
+  vScrubFill: { position: 'absolute', left: 0, top: 0, bottom: 0, backgroundColor: '#fff', borderRadius: 2 },
+  vScrubThumb: { position: 'absolute', width: 12, height: 12, borderRadius: 6, backgroundColor: '#fff', marginLeft: -6 },
   root: { flex: 1, backgroundColor: Afylo.bg },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 12, paddingVertical: 8 },
   hbtn: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
