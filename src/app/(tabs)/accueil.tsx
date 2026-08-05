@@ -1,9 +1,9 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { useVideoPlayer, VideoView } from 'expo-video';
-import { useFocusEffect, useRouter } from 'expo-router';
+import { useFocusEffect, useNavigation, useRouter } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Animated, Dimensions, Linking, Modal, Platform, Pressable, ScrollView, Share, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Animated, Dimensions, Linking, Modal, Platform, Pressable, RefreshControl, ScrollView, Share, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Avatar, IconButton } from '@/components/ui-kit';
@@ -95,16 +95,28 @@ export default function Feed() {
       .then(([n, convos]) => setUnread(n + convos.reduce((s, c) => s + c.unread, 0)))
       .catch(() => {});
   }, [showTabBar]));
+  const scrollRef = useRef<ScrollView>(null);
+  const [refreshing, setRefreshing] = useState(false);
+  const navigation = useNavigation();
+  // Chargement du réseau réel (exclut les comptes de démonstration). `manual` = tiré pour actualiser.
+  const reload = useCallback((manual?: boolean) => {
+    if (manual) setRefreshing(true);
+    Promise.all([
+      listFeed().then((rows) => setFeed(mapFeed(rows ?? []).filter((p) => !isSeedHandle(p.handle)))).catch(() => {}),
+      listMyLikedPostIds().then(setLikedIds).catch(() => {}),
+      listSavedPostIds().then(setSavedIds).catch(() => {}),
+      myFollowingIds().then((ids) => setFollowingIds(new Set(ids))).catch(() => {}),
+      listBlockedIds().then(setBlockedIds).catch(() => {}),
+    ]).finally(() => { setLoading(false); if (manual) setRefreshing(false); });
+  }, []);
+  useEffect(() => { reload(); }, [feedVersion, reload]);
+  // Re-tap sur l'onglet Accueil (déjà actif) → remonte en haut + actualise.
   useEffect(() => {
-    // Vrai réseau : uniquement les posts de Supabase (aucune donnée fictive).
-    // Se recharge aussi quand une publication en tâche de fond se termine (feedVersion).
-    // On exclut les comptes de démonstration seedés → uniquement les vraies publications.
-    listFeed().then((rows) => setFeed(mapFeed(rows ?? []).filter((p) => !isSeedHandle(p.handle)))).catch(() => {}).finally(() => setLoading(false));
-    listMyLikedPostIds().then(setLikedIds).catch(() => {});
-    listSavedPostIds().then(setSavedIds).catch(() => {});
-    myFollowingIds().then((ids) => setFollowingIds(new Set(ids))).catch(() => {});
-    listBlockedIds().then(setBlockedIds).catch(() => {});
-  }, [feedVersion]);
+    const unsub = (navigation as any).addListener?.('tabPress', () => {
+      if ((navigation as any).isFocused?.()) { scrollRef.current?.scrollTo({ y: 0, animated: true }); reload(true); }
+    });
+    return unsub;
+  }, [navigation, reload]);
 
   return (
     <View style={styles.root}>
@@ -128,7 +140,12 @@ export default function Feed() {
         </View>
       </SafeAreaView>
 
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 110 }}>
+      <ScrollView
+        ref={scrollRef}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: 110 }}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => reload(true)} tintColor={Afylo.violet} colors={[Afylo.violet]} />}
+      >
         {/* Lives en direct */}
         <ScrollView
           horizontal

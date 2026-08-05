@@ -80,7 +80,8 @@ export default function Trend() {
   const [followingIds, setFollowingIds] = useState<string[]>([]);
   useEffect(() => {
     listFeed()
-      .then((rows) => setRealPosts(mapFeed(rows ?? []).filter((p) => !isSeedHandle(p.handle)).map((p, i) => ({ ...p, niche: NICHES[i % NICHES.length], _real: true } as any))))
+      // Trend/Buzz/Abonnements = uniquement des VIDÉOS (pas d'image ni de carrousel) + pas de comptes démo.
+      .then((rows) => setRealPosts(mapFeed(rows ?? []).filter((p) => p.video && !isSeedHandle(p.handle)).map((p, i) => ({ ...p, niche: NICHES[i % NICHES.length], _real: true } as any))))
       .catch(() => {});
     myFollowingIds().then(setFollowingIds).catch(() => {});
   }, []);
