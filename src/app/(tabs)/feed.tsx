@@ -3,7 +3,7 @@ import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Modal, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { BuzzBadge } from '@/components/buzz-badge';
@@ -13,8 +13,9 @@ import { VerifiedBadge, verifiedKind } from '@/components/verified';
 import { useBuzz } from '@/lib/buzz';
 import { Afylo, Font, Radius, Type } from '@/constants/brand';
 import { useAuthGate } from '@/lib/auth-gate';
-import { followUser, listCreators, listFeedProducts, listLiveNow, myFollowingIds, unfollowUser, type FeedProduct, type LiveRow } from '@/lib/db';
+import { followUser, listCreators, listFeedProducts, listLiveNow, myFollowingIds, startLive, unfollowUser, type FeedProduct, type LiveRow } from '@/lib/db';
 import { hashId } from '@/lib/feed-map';
+import { useMe } from '@/lib/me';
 import { face } from '@/lib/mock';
 import { useHideOnScroll } from '@/lib/tabbar';
 import { formatCfa, type Profile } from '@/types/db';
@@ -26,6 +27,8 @@ export default function Feed() {
   const router = useRouter();
   const scroll = useHideOnScroll();
   const gate = useAuthGate();
+  const me = useMe();
+  const [confirmLive, setConfirmLive] = useState(false); // confirmation avant de passer en direct
   const [lives, setLives] = useState<LiveRow[]>([]);
   const [products, setProducts] = useState<FeedProduct[]>([]);
   const [creators, setCreators] = useState<Profile[]>([]);
@@ -47,7 +50,13 @@ export default function Feed() {
 
   const join = (l: LiveRow) =>
     router.push({ pathname: '/live', params: { role: 'viewer', liveId: l.id, name: l.host?.display_name ?? l.host?.handle ?? 'Créateur', avatar: l.host?.avatar_url ?? '' } });
-  const goLive = () => { if (gate('passer en live')) router.push('/creer'); };
+  // « Passer en live » → confirmation simple (évite les lives involontaires), puis lancement direct du live.
+  const goLive = () => { if (gate('passer en live')) setConfirmLive(true); };
+  const doGoLive = async () => {
+    setConfirmLive(false);
+    const live = await startLive({ title: `Live · ${me.name}`, kind: me.isPro ? 'sell' : 'simple', thumbnail_url: me.avatar }).catch(() => null);
+    router.push({ pathname: '/live', params: { role: 'host', liveId: live?.id ?? '', name: me.name, avatar: me.avatar } });
+  };
   const buy = (p: FeedProduct) => { if (gate('acheter')) setPayItems([{ title: p.title, price: formatCfa(p.promo_cfa ?? p.price_cfa) }]); };
   const openCreator = (c: { handle?: string | null; id: string; display_name?: string | null; avatar_url?: string | null }) =>
     (c.handle || c.id) && router.push({ pathname: '/creator/[id]', params: { id: c.handle ?? c.id, name: c.display_name ?? '', avatar: c.avatar_url ?? '' } });
@@ -181,6 +190,19 @@ export default function Feed() {
       )}
 
       <PaymentSheet visible={!!payItems} items={payItems ?? []} onClose={() => setPayItems(null)} />
+
+      {/* Confirmation avant de passer en direct (évite les lives involontaires) */}
+      <Modal visible={confirmLive} transparent animationType="fade" onRequestClose={() => setConfirmLive(false)}>
+        <Pressable style={styles.confirmOverlay} onPress={() => setConfirmLive(false)}>
+          <Pressable style={styles.confirmCard} onPress={(e) => e.stopPropagation?.()}>
+            <View style={styles.confirmIcon}><Ionicons name="radio" size={26} color="#fff" /></View>
+            <Text style={styles.confirmTitle}>Passer en direct ?</Text>
+            <Text style={styles.confirmSub}>Tu vas démarrer un live maintenant, visible par ta communauté.</Text>
+            <Pressable onPress={doGoLive} style={styles.confirmGo}><Text style={styles.confirmGoText}>Oui, passer en live</Text></Pressable>
+            <Pressable onPress={() => setConfirmLive(false)} style={styles.confirmCancel}><Text style={styles.confirmCancelText}>Annuler</Text></Pressable>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </View>
   );
 }
@@ -246,6 +268,15 @@ const styles = StyleSheet.create({
   segLine: { position: 'absolute', bottom: -1, left: 0, right: 0, height: 2, borderRadius: 2, backgroundColor: Afylo.text },
   goLiveBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: Afylo.live, borderRadius: Radius.pill, paddingHorizontal: 12, height: 36 },
   goLiveText: { color: '#fff', fontFamily: Font.bold, fontSize: 12 },
+  confirmOverlay: { flex: 1, backgroundColor: '#000000aa', alignItems: 'center', justifyContent: 'center', padding: 26 },
+  confirmCard: { width: '100%', maxWidth: 360, backgroundColor: Afylo.bg, borderRadius: 22, padding: 22, alignItems: 'center', borderWidth: 1, borderColor: Afylo.border },
+  confirmIcon: { width: 56, height: 56, borderRadius: 28, backgroundColor: Afylo.live, alignItems: 'center', justifyContent: 'center', marginBottom: 10 },
+  confirmTitle: { ...Type.title, color: Afylo.text, textAlign: 'center' },
+  confirmSub: { ...Type.body, color: Afylo.textDim, textAlign: 'center', marginTop: 6, marginBottom: 18, lineHeight: 21 },
+  confirmGo: { width: '100%', height: 50, borderRadius: Radius.pill, backgroundColor: Afylo.live, alignItems: 'center', justifyContent: 'center' },
+  confirmGoText: { color: '#fff', fontFamily: Font.bold, fontSize: 16 },
+  confirmCancel: { height: 46, alignItems: 'center', justifyContent: 'center', marginTop: 4 },
+  confirmCancelText: { color: Afylo.textDim, fontFamily: Font.semibold, fontSize: 14 },
 
   hero: { marginHorizontal: 16, marginTop: 12, borderRadius: Radius.xl, padding: 20 },
   heroTitle: { color: '#fff', fontSize: 22, fontFamily: Font.bold },

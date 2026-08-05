@@ -102,6 +102,8 @@ export default function Trend() {
   }, [tab, notInterested, realPosts, followingIds]);
 
   const notInterestedIn = (id: string) => setNotInterested((prev) => [...prev, id]);
+  const scrollRef = useRef<ScrollView>(null);
+  const [autoScroll, setAutoScroll] = useState(false); // défilement auto vers le reel suivant à la fin
 
   // Swipe horizontal entre les onglets (Abonnements ↔ Trend ↔ Buzz). On ne capte que les gestes
   // clairement horizontaux → le scroll vertical des reels reste intact.
@@ -122,6 +124,7 @@ export default function Trend() {
   return (
     <View style={styles.root} {...tabSwipe.panHandlers}>
       <ScrollView
+        ref={scrollRef}
         key={tab}
         pagingEnabled
         showsVerticalScrollIndicator={false}
@@ -130,7 +133,19 @@ export default function Trend() {
         onMomentumScrollEnd={(e) => setActive(Math.round(e.nativeEvent.contentOffset.y / height))}
         {...scroll}>
         {shown.map((r, i) => (
-          <Reel key={r.id} post={r} index={i} active={i === active} height={height} width={width} showBuzz={tab === 'buzz' && i === 0} onNotInterested={() => notInterestedIn(r.id)} />
+          <Reel
+            key={r.id}
+            post={r}
+            index={i}
+            active={i === active}
+            height={height}
+            width={width}
+            showBuzz={tab === 'buzz' && i === 0}
+            onNotInterested={() => notInterestedIn(r.id)}
+            autoScroll={autoScroll}
+            onToggleAutoScroll={() => setAutoScroll((v) => !v)}
+            onEnded={() => { if (i < shown.length - 1) scrollRef.current?.scrollTo({ y: (i + 1) * height, animated: true }); }}
+          />
         ))}
         {shown.length === 0 && (
           <View style={{ height, width, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 30 }}>
@@ -163,13 +178,17 @@ export default function Trend() {
   );
 }
 
-function Reel({ post, index, active, height, width, showBuzz, onNotInterested }: { post: Post; index: number; active: boolean; height: number; width: number; showBuzz?: boolean; onNotInterested: () => void }) {
+function Reel({ post, index, active, height, width, showBuzz, onNotInterested, autoScroll, onToggleAutoScroll, onEnded }: { post: Post; index: number; active: boolean; height: number; width: number; showBuzz?: boolean; onNotInterested: () => void; autoScroll?: boolean; onToggleAutoScroll?: () => void; onEnded?: () => void }) {
   const router = useRouter();
   const gate = useAuthGate();
 
   // Vraie vidéo publiée → on lit son URL réelle ; sinon (démo, ou vrai post image) on garde le mock/rien.
   const isReal = !!(post as any)._real;
   const videoSrc = post.video ? post.image : isReal ? null : video(index);
+  const endedRef = useRef(false);
+  const autoScrollRef = useRef(autoScroll); autoScrollRef.current = autoScroll;
+  const activeRef = useRef(active); activeRef.current = active;
+  const onEndedRef = useRef(onEnded); onEndedRef.current = onEnded;
   const player = useVideoPlayer(videoSrc, (p) => {
     p.loop = true;
     p.muted = true;
@@ -179,11 +198,13 @@ function Reel({ post, index, active, height, width, showBuzz, onNotInterested }:
     if (active && videoSrc) player.play();
     else player.pause();
   }, [active, player, videoSrc]);
+  // Défilement auto : la vidéo ne boucle pas ; à la fin on passe au reel suivant.
+  useEffect(() => { try { player.loop = !autoScroll; } catch {} endedRef.current = false; }, [autoScroll, player, active]);
   // Web : la <video> de CE reel remplit sa zone en gardant sa proportion (contain → média entier,
   // espace noir en haut/bas pour le texte, on ne recadre pas).
   useEffect(() => {
     if (Platform.OS !== 'web' || !videoSrc) return;
-    const apply = () => { const el = (boxRef.current as any)?.querySelector?.('video') as HTMLVideoElement | null; if (el) { el.style.width = '100%'; el.style.height = '100%'; el.style.objectFit = 'contain'; } };
+    const apply = () => { const el = (boxRef.current as any)?.querySelector?.('video') as HTMLVideoElement | null; if (el) { el.style.width = '100%'; el.style.height = '100%'; el.style.objectFit = 'cover'; } };
     apply(); const t = setInterval(apply, 400); return () => clearInterval(t);
   }, [videoSrc]);
   const [liked, setLiked] = useState(false);
@@ -208,7 +229,15 @@ function Reel({ post, index, active, height, width, showBuzz, onNotInterested }:
   const barW = useRef(0);
   useEffect(() => {
     if (!videoSrc) return;
-    const t = setInterval(() => { try { const d = player.duration || 0; setPos(d > 0 ? Math.min(1, (player.currentTime || 0) / d) : 0); } catch {} }, 250);
+    const t = setInterval(() => {
+      try {
+        const d = player.duration || 0;
+        const ct = player.currentTime || 0;
+        setPos(d > 0 ? Math.min(1, ct / d) : 0);
+        // Défilement auto : à la fin de la vidéo, on passe au reel suivant (une seule fois).
+        if (autoScrollRef.current && activeRef.current && d > 0 && ct >= d - 0.4 && !endedRef.current) { endedRef.current = true; onEndedRef.current?.(); }
+      } catch {}
+    }, 250);
     return () => clearInterval(t);
   }, [player, videoSrc]);
   const seek = (frac: number) => { try { const d = player.duration || 0; if (d > 0) player.currentTime = Math.max(0, Math.min(d, frac * d)); setPos(Math.max(0, Math.min(1, frac))); } catch {} };
@@ -234,10 +263,10 @@ function Reel({ post, index, active, height, width, showBuzz, onNotInterested }:
     <View style={{ height, width, backgroundColor: '#000' }}>
       {/* Zone média : s'arrête au-dessus d'une bande noire (texte + curseur) façon TikTok. Média entier, sans rognage. */}
       <View style={styles.reelMedia}>
-        {!post.video && <Image source={{ uri: post.image }} style={StyleSheet.absoluteFill} contentFit="contain" transition={200} />}
+        {!post.video && <Image source={{ uri: post.image }} style={StyleSheet.absoluteFill} contentFit="cover" transition={200} />}
         {videoSrc && (
           <View ref={boxRef} style={StyleSheet.absoluteFill} pointerEvents="none">
-            <VideoView player={player} style={StyleSheet.absoluteFill} contentFit="contain" nativeControls={false} />
+            <VideoView player={player} style={StyleSheet.absoluteFill} contentFit="cover" nativeControls={false} />
           </View>
         )}
         <LinearGradient colors={['#00000000', '#00000000', '#00000088']} style={StyleSheet.absoluteFill} pointerEvents="none" />
@@ -325,7 +354,7 @@ function Reel({ post, index, active, height, width, showBuzz, onNotInterested }:
               <OptItem icon="download-outline" label="Télécharger" onPress={() => setOptionsOpen(false)} />
               <OptItem icon="heart-dislike-outline" label="Pas intéressé" onPress={() => { onNotInterested(); setOptionsOpen(false); }} />
               <OptItem icon="flag-outline" label="Signaler" onPress={() => { setOptionsOpen(false); setReportOpen(true); }} />
-              <OptItem icon="storefront-outline" label="La boutique" onPress={() => { setOptionsOpen(false); router.push({ pathname: '/creator/[id]', params: { id: post.handle, name: post.name, avatar: post.avatar } }); }} />
+              <OptItem icon="storefront-outline" label="La boutique" onPress={() => { setOptionsOpen(false); router.push({ pathname: '/creator/[id]', params: { id: post.handle, name: post.name, avatar: post.avatar, section: 'boutique' } }); }} />
             </View>
 
             <View style={styles.optRow}>
@@ -344,9 +373,10 @@ function Reel({ post, index, active, height, width, showBuzz, onNotInterested }:
               <Ionicons name="headset-outline" size={20} color={Afylo.text} />
               <Text style={styles.optLineText}>Son en arrière-plan</Text>
             </Pressable>
-            <Pressable style={styles.optLine} onPress={() => setOptionsOpen(false)}>
-              <Ionicons name="musical-notes-outline" size={20} color={Afylo.text} />
-              <Text style={styles.optLineText}>Lien avec la publication</Text>
+            <Pressable style={styles.optLine} onPress={() => onToggleAutoScroll?.()}>
+              <Ionicons name="play-forward-outline" size={20} color={Afylo.text} />
+              <Text style={[styles.optLineText, { flex: 1 }]}>Défilement automatique</Text>
+              <Ionicons name={autoScroll ? 'toggle' : 'toggle-outline'} size={32} color={autoScroll ? Afylo.violet : Afylo.textFaint} />
             </Pressable>
           </View>
         </Pressable>

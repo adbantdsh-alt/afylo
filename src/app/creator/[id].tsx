@@ -45,13 +45,13 @@ function EmptyTab({ icon, text }: { icon: keyof typeof Ionicons.glyphMap; text: 
 export default function CreatorProfile() {
   const router = useRouter();
   const me = useMe();
-  const params = useLocalSearchParams<{ id: string; name?: string; avatar?: string }>();
+  const params = useLocalSearchParams<{ id: string; name?: string; avatar?: string; section?: string }>();
   const [data, setData] = useState<CreatorData | null>(null);
   const [loading, setLoading] = useState(true);
   const [followed, setFollowed] = useState(false);
   const [busy, setBusy] = useState(false);
   const [bump, setBump] = useState(0); // ajustement optimiste du nombre d'abonnés
-  const [section, setSection] = useState<Section>('posts');
+  const [section, setSection] = useState<Section>((params.section as Section) || 'posts');
   const [products, setProducts] = useState<Product[]>([]);
   const [reposts, setReposts] = useState<Repost[]>([]);
   const [payItems, setPayItems] = useState<PayItem[] | null>(null);
