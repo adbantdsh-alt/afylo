@@ -70,13 +70,12 @@ export default function PostViewer() {
           <Text style={styles.emptyText}>Aucune publication.</Text>
         </View>
       ) : (
-        <ScrollView ref={scrollRef} showsVerticalScrollIndicator={false}>
+        <ScrollView ref={scrollRef} style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 30 }} showsVerticalScrollIndicator={false}>
           {posts.map((p) => (
             <View key={p.id} onLayout={(e) => { positions.current[p.id] = e.nativeEvent.layout.y; tryScroll(); }}>
               <PostView post={p} liked={likedIds.has(p.id)} onLike={onLike} onOpenComments={() => router.push({ pathname: '/comments/[id]', params: { id: p.id, image: p.image, name: p.name } })} />
             </View>
           ))}
-          <View style={{ height: 30 }} />
         </ScrollView>
       )}
     </View>
@@ -107,11 +106,12 @@ function PostView({ post, liked, onLike, onOpenComments }: { post: Post; liked: 
       </View>
 
       {/* Média à la bonne proportion */}
-      {!post.textOnly && images.length > 0 && (
+      {!post.textOnly && images.length > 0 && post.video ? (
+        // Vidéo : se dimensionne à sa vraie proportion → plein cadre, ni rognage ni bandes noires.
+        <PostVideo uri={images[0]} width={W} initialRatio={post.ratio} />
+      ) : !post.textOnly && images.length > 0 && (
         <View style={{ width: W, height: mediaH, backgroundColor: '#000' }}>
-          {post.video ? (
-            <PostVideo uri={images[0]} width={W} height={mediaH} />
-          ) : images.length > 1 ? (
+          {images.length > 1 ? (
             <ScrollView horizontal pagingEnabled showsHorizontalScrollIndicator={false} onMomentumScrollEnd={(e) => setIdx(Math.round(e.nativeEvent.contentOffset.x / W))}>
               {images.map((uri, i) => <Image key={`${uri}-${i}`} source={{ uri }} style={{ width: W, height: mediaH }} contentFit={post.ratio ? 'cover' : 'contain'} />)}
             </ScrollView>
@@ -164,8 +164,10 @@ function PostView({ post, liked, onLike, onOpenComments }: { post: Post; liked: 
 }
 
 /** Lecture vidéo dans le détail d'un post : autoplay muet en boucle, tap = activer/couper le son. */
-function PostVideo({ uri, width, height }: { uri: string; width: number; height: number }) {
+function PostVideo({ uri, width, initialRatio }: { uri: string; width: number; initialRatio?: number | null }) {
   const [muted, setMuted] = useState(true);
+  // Hauteur = largeur / proportion réelle → le cadre épouse la vidéo (ni bandes ni rognage).
+  const [height, setHeight] = useState(() => Math.round(width / (initialRatio || 0.8)));
   const boxRef = useRef<View>(null);
   const player = useVideoPlayer(uri, (p) => { p.loop = true; p.muted = true; p.play(); });
   const toggle = () => {
@@ -173,18 +175,20 @@ function PostVideo({ uri, width, height }: { uri: string; width: number; height:
     setMuted(m);
     try { player.muted = m; if (!player.playing) player.play(); } catch {}
   };
-  // Web : force la <video> de CE post à remplir son cadre (le conteneur est déjà à la bonne
-  // proportion → la vidéo remplit sans bandes ni recadrage).
+  // Web : mesure la vraie proportion de la vidéo et adapte la hauteur du cadre + remplit l'élément.
   useEffect(() => {
     if (Platform.OS !== 'web') return;
     const apply = () => {
       const el = (boxRef.current as any)?.querySelector?.('video') as HTMLVideoElement | null;
-      if (el) { el.style.width = '100%'; el.style.height = '100%'; el.style.objectFit = 'cover'; }
+      if (el) {
+        el.style.width = '100%'; el.style.height = '100%'; el.style.objectFit = 'cover';
+        if (el.videoWidth > 0 && el.videoHeight > 0) setHeight(Math.round(width * el.videoHeight / el.videoWidth));
+      }
     };
     apply();
     const t = setInterval(apply, 400);
     return () => clearInterval(t);
-  }, []);
+  }, [width]);
   return (
     <Pressable ref={boxRef} onPress={toggle} style={{ width, height, overflow: 'hidden', backgroundColor: '#000' }}>
       <VideoView player={player} style={{ width, height }} contentFit="cover" nativeControls={false} />
