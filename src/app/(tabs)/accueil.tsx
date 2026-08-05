@@ -20,7 +20,7 @@ import { VerifiedBadge } from '@/components/verified';
 import { Afylo, Font, Radius, Type } from '@/constants/brand';
 import { useAuthGate } from '@/lib/auth-gate';
 import { blockUser, createTextPost, deletePost, followUser, likePost, listBlockedIds, listConversations, listFeed, listMyLikedPostIds, listSavedPostIds, myFollowingIds, savePost, unfollowUser, unlikePost, unsavePost, unreadNotifCount, updatePostCaption } from '@/lib/db';
-import { mapFeed } from '@/lib/feed-map';
+import { mapFeed, isSeedHandle } from '@/lib/feed-map';
 import { usePendingUpload } from '@/lib/pending-upload';
 import { useMe } from '@/lib/me';
 import { useReposts } from '@/lib/reposts';
@@ -98,7 +98,8 @@ export default function Feed() {
   useEffect(() => {
     // Vrai réseau : uniquement les posts de Supabase (aucune donnée fictive).
     // Se recharge aussi quand une publication en tâche de fond se termine (feedVersion).
-    listFeed().then((rows) => setFeed(mapFeed(rows ?? []))).catch(() => {}).finally(() => setLoading(false));
+    // On exclut les comptes de démonstration seedés → uniquement les vraies publications.
+    listFeed().then((rows) => setFeed(mapFeed(rows ?? []).filter((p) => !isSeedHandle(p.handle)))).catch(() => {}).finally(() => setLoading(false));
     listMyLikedPostIds().then(setLikedIds).catch(() => {});
     listSavedPostIds().then(setSavedIds).catch(() => {});
     myFollowingIds().then((ids) => setFollowingIds(new Set(ids))).catch(() => {});
@@ -346,13 +347,14 @@ function PostCard({ post, isPro, myHandle, initialLiked, initialSaved, initialFo
 
       {/* Média — plein cadre, sans arrondi. Double-tap = j'aime (masqué pour les posts texte) */}
       {!post.textOnly && (
-        <Pressable style={[styles.media, (post.video ? videoAspect ?? post.ratio : post.ratio) ? { aspectRatio: (post.video ? videoAspect ?? post.ratio : post.ratio)! } : null]} onPress={onMediaTap}>
+        <Pressable style={[styles.media, (videoAspect ?? post.ratio) ? { aspectRatio: videoAspect ?? post.ratio! } : null]} onPress={onMediaTap}>
           {post.video ? (
             <FeedVideo uri={post.image} onAspect={setVideoAspect} />
           ) : post.images && post.images.length > 1 ? (
             <PostCarousel images={post.images} blur={post.sensitive && !revealed ? 30 : 0} />
           ) : (
-            <Image source={{ uri: post.image }} style={styles.mediaImg} contentFit="cover" transition={250} blurRadius={post.sensitive && !revealed ? 30 : 0} />
+            // Respecte la proportion réelle de l'image (mesurée à la charge) → pas d'étirement/recadrage.
+            <Image source={{ uri: post.image }} style={styles.mediaImg} contentFit="cover" transition={250} blurRadius={post.sensitive && !revealed ? 30 : 0} onLoad={(e) => { const s: any = e?.source; if (s?.width && s?.height && !post.ratio) setVideoAspect(s.width / s.height); }} />
           )}
           {post.overlays && post.overlays.length > 0 && !(post.sensitive && !revealed) && <PostOverlays overlays={post.overlays} />}
           {post.sensitive && !revealed && (

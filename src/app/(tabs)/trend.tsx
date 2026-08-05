@@ -17,7 +17,7 @@ import { RepostSheet } from '@/components/repost-sheet';
 import { Afylo, Font, Radius, Type } from '@/constants/brand';
 import { NICHES, rankPosts } from '@/lib/algo';
 import { listFeed, myFollowingIds } from '@/lib/db';
-import { mapFeed } from '@/lib/feed-map';
+import { mapFeed, isSeedHandle } from '@/lib/feed-map';
 import { useAuthGate } from '@/lib/auth-gate';
 import { useMe } from '@/lib/me';
 import { useReposts } from '@/lib/reposts';
@@ -80,7 +80,7 @@ export default function Trend() {
   const [followingIds, setFollowingIds] = useState<string[]>([]);
   useEffect(() => {
     listFeed()
-      .then((rows) => setRealPosts(mapFeed(rows ?? []).map((p, i) => ({ ...p, niche: NICHES[i % NICHES.length], _real: true } as any))))
+      .then((rows) => setRealPosts(mapFeed(rows ?? []).filter((p) => !isSeedHandle(p.handle)).map((p, i) => ({ ...p, niche: NICHES[i % NICHES.length], _real: true } as any))))
       .catch(() => {});
     myFollowingIds().then(setFollowingIds).catch(() => {});
   }, []);
@@ -163,10 +163,11 @@ function Reel({ post, index, active, height, width, showBuzz, onNotInterested }:
     if (active && videoSrc) player.play();
     else player.pause();
   }, [active, player, videoSrc]);
-  // Web : remplit la <video> de CE reel (sinon zoom/rognage à taille naturelle).
+  // Web : la <video> de CE reel remplit sa zone en gardant sa proportion (contain → média entier,
+  // espace noir en haut/bas pour le texte, on ne recadre pas).
   useEffect(() => {
     if (Platform.OS !== 'web' || !videoSrc) return;
-    const apply = () => { const el = (boxRef.current as any)?.querySelector?.('video') as HTMLVideoElement | null; if (el) { el.style.width = '100%'; el.style.height = '100%'; el.style.objectFit = 'cover'; } };
+    const apply = () => { const el = (boxRef.current as any)?.querySelector?.('video') as HTMLVideoElement | null; if (el) { el.style.width = '100%'; el.style.height = '100%'; el.style.objectFit = 'contain'; } };
     apply(); const t = setInterval(apply, 400); return () => clearInterval(t);
   }, [videoSrc]);
   const [liked, setLiked] = useState(false);
@@ -213,10 +214,10 @@ function Reel({ post, index, active, height, width, showBuzz, onNotInterested }:
 
   return (
     <View style={{ height, width, backgroundColor: '#000' }}>
-      {!post.video && <Image source={{ uri: post.image }} style={StyleSheet.absoluteFill} contentFit="cover" transition={200} />}
+      {!post.video && <Image source={{ uri: post.image }} style={StyleSheet.absoluteFill} contentFit="contain" transition={200} />}
       {videoSrc && (
         <View ref={boxRef} style={StyleSheet.absoluteFill} pointerEvents="none">
-          <VideoView player={player} style={StyleSheet.absoluteFill} contentFit="cover" nativeControls={false} />
+          <VideoView player={player} style={StyleSheet.absoluteFill} contentFit="contain" nativeControls={false} />
         </View>
       )}
       <LinearGradient colors={['#00000000', '#00000000', '#000000CC']} style={StyleSheet.absoluteFill} />
@@ -377,10 +378,10 @@ const styles = StyleSheet.create({
   buzzBanner: { position: 'absolute', top: 44, left: 0, right: 0, alignItems: 'center' },
   buzzChip: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#FF2D55', paddingHorizontal: 14, paddingVertical: 7, borderRadius: Radius.pill },
   buzzChipText: { color: '#fff', fontFamily: Font.bold, fontSize: 13 },
-  reelScrubWrap: { position: 'absolute', left: 12, right: 12, bottom: 74, height: 18, justifyContent: 'center' },
-  reelScrubTrack: { height: 3, borderRadius: 2, backgroundColor: '#ffffff55', justifyContent: 'center' },
-  reelScrubFill: { position: 'absolute', left: 0, top: 0, bottom: 0, backgroundColor: '#fff', borderRadius: 2 },
-  reelScrubThumb: { position: 'absolute', width: 12, height: 12, borderRadius: 6, backgroundColor: '#fff', marginLeft: -6 },
+  reelScrubWrap: { position: 'absolute', left: 14, right: 14, bottom: 70, height: 16, justifyContent: 'center' },
+  reelScrubTrack: { height: 2, borderRadius: 1, backgroundColor: '#ffffff2E', justifyContent: 'center' },
+  reelScrubFill: { position: 'absolute', left: 0, top: 0, bottom: 0, backgroundColor: '#ffffffcc', borderRadius: 1 },
+  reelScrubThumb: { position: 'absolute', width: 9, height: 9, borderRadius: 5, backgroundColor: '#fff', marginLeft: -4.5 },
   speedTag: { position: 'absolute', top: 90, alignSelf: 'center', backgroundColor: '#000000AA', paddingHorizontal: 10, paddingVertical: 3, borderRadius: Radius.pill },
   speedTagText: { color: '#fff', fontFamily: Font.bold, fontSize: 12 },
 

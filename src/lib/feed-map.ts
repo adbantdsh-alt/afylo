@@ -48,6 +48,9 @@ export function hashId(s: string): number {
 const byHash = <T extends { id: string }>(a: T, b: T) => hashId(a.id) - hashId(b.id);
 
 /** FeedPost (DB) → carte de l'accueil. */
+/** Reconnaît un compte de démonstration seedé : handle "prenom.nom<i>" (ex. fatou.sow23). */
+export const isSeedHandle = (h?: string | null) => !!h && /^@?[a-zà-ÿ]+\.[a-zà-ÿ]+\d+$/i.test(h.trim());
+
 export function mapFeedPost(fp: FeedPost): Post {
   const a = fp.author;
   const prods = (fp.post_products ?? []).map((pp) => pp.product).filter(Boolean);
