@@ -346,9 +346,9 @@ function PostCard({ post, isPro, myHandle, initialLiked, initialSaved, initialFo
       </View>
 
       {/* Média — plein cadre, sans arrondi. Double-tap = j'aime (masqué pour les posts texte) */}
-      {/* Feed social : hauteur plafonnée à 4:5 (comme Instagram) — un 9:16 n'occupe plus tout l'écran ; format complet au détail. */}
+      {/* Média à sa vraie proportion (pas de rognage). */}
       {!post.textOnly && (
-        <Pressable style={[styles.media, { aspectRatio: Math.max(0.8, videoAspect ?? post.ratio ?? 1) }]} onPress={onMediaTap}>
+        <Pressable style={[styles.media, (videoAspect ?? post.ratio) ? { aspectRatio: videoAspect ?? post.ratio! } : null]} onPress={onMediaTap}>
           {post.video ? (
             <FeedVideo uri={post.image} onAspect={setVideoAspect} />
           ) : post.images && post.images.length > 1 ? (

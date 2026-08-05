@@ -103,8 +103,24 @@ export default function Trend() {
 
   const notInterestedIn = (id: string) => setNotInterested((prev) => [...prev, id]);
 
+  // Swipe horizontal entre les onglets (Abonnements ↔ Trend ↔ Buzz). On ne capte que les gestes
+  // clairement horizontaux → le scroll vertical des reels reste intact.
+  const tabRef = useRef(tab);
+  tabRef.current = tab;
+  const tabSwipe = useRef(
+    PanResponder.create({
+      onMoveShouldSetPanResponder: (_, g) => Math.abs(g.dx) > 26 && Math.abs(g.dx) > Math.abs(g.dy) * 1.7,
+      onPanResponderRelease: (_, g) => {
+        const order: TabKey[] = ['abonnements', 'trend', 'buzz'];
+        const i = order.indexOf(tabRef.current);
+        if (g.dx <= -40 && i < order.length - 1) setTab(order[i + 1]);
+        else if (g.dx >= 40 && i > 0) setTab(order[i - 1]);
+      },
+    }),
+  ).current;
+
   return (
-    <View style={styles.root}>
+    <View style={styles.root} {...tabSwipe.panHandlers}>
       <ScrollView
         key={tab}
         pagingEnabled
@@ -171,6 +187,8 @@ function Reel({ post, index, active, height, width, showBuzz, onNotInterested }:
     apply(); const t = setInterval(apply, 400); return () => clearInterval(t);
   }, [videoSrc]);
   const [liked, setLiked] = useState(false);
+  const [muted, setMuted] = useState(true); // autoplay muet ; bouton pour réactiver le son
+  const toggleMute = () => setMuted((m) => { const nm = !m; try { player.muted = nm; } catch {} return nm; });
   const [saved, setSaved] = useState(false);
   const [repostOpen, setRepostOpen] = useState(false);
   const { addRepost, hasReposted } = useReposts();
@@ -214,24 +232,34 @@ function Reel({ post, index, active, height, width, showBuzz, onNotInterested }:
 
   return (
     <View style={{ height, width, backgroundColor: '#000' }}>
-      {!post.video && <Image source={{ uri: post.image }} style={StyleSheet.absoluteFill} contentFit="contain" transition={200} />}
-      {videoSrc && (
-        <View ref={boxRef} style={StyleSheet.absoluteFill} pointerEvents="none">
-          <VideoView player={player} style={StyleSheet.absoluteFill} contentFit="contain" nativeControls={false} />
-        </View>
-      )}
-      <LinearGradient colors={['#00000000', '#00000000', '#000000CC']} style={StyleSheet.absoluteFill} />
-      <Pressable style={StyleSheet.absoluteFill} onPress={onTap} onLongPress={() => setOptionsOpen(true)} delayLongPress={250} />
+      {/* Zone média : s'arrête au-dessus d'une bande noire (texte + curseur) façon TikTok. Média entier, sans rognage. */}
+      <View style={styles.reelMedia}>
+        {!post.video && <Image source={{ uri: post.image }} style={StyleSheet.absoluteFill} contentFit="contain" transition={200} />}
+        {videoSrc && (
+          <View ref={boxRef} style={StyleSheet.absoluteFill} pointerEvents="none">
+            <VideoView player={player} style={StyleSheet.absoluteFill} contentFit="contain" nativeControls={false} />
+          </View>
+        )}
+        <LinearGradient colors={['#00000000', '#00000000', '#00000088']} style={StyleSheet.absoluteFill} pointerEvents="none" />
+        <Pressable style={StyleSheet.absoluteFill} onPress={onTap} onLongPress={() => setOptionsOpen(true)} delayLongPress={250} />
+      </View>
       {speed !== 1 && <View style={styles.speedTag}><Text style={styles.speedTagText}>{speed}×</Text></View>}
 
-      {/* Curseur de temps (scrubber) — avancer / reculer */}
+      {/* Curseur de temps (scrubber) — dans la bande noire du bas, déplaçable (grande zone de touch) */}
       {videoSrc && (
-        <View style={styles.reelScrubWrap} pointerEvents="box-none">
-          <View style={styles.reelScrubTrack} onLayout={(e) => (barW.current = e.nativeEvent.layout.width)} {...scrubResponder.panHandlers}>
+        <View style={styles.reelScrubWrap} onLayout={(e) => (barW.current = e.nativeEvent.layout.width)} {...scrubResponder.panHandlers}>
+          <View style={styles.reelScrubTrack}>
             <View style={[styles.reelScrubFill, { width: `${pos * 100}%` }]} />
-            <View style={[styles.reelScrubThumb, { left: `${pos * 100}%` }]} />
           </View>
+          <View style={[styles.reelScrubThumb, { left: `${pos * 100}%` }]} />
         </View>
+      )}
+
+      {/* Bouton son : les reels sont muets par défaut (autoplay) — tap pour réactiver le son */}
+      {videoSrc && (
+        <Pressable onPress={toggleMute} style={styles.reelSound} hitSlop={8}>
+          <Ionicons name={muted ? 'volume-mute' : 'volume-high'} size={18} color="#fff" />
+        </Pressable>
       )}
 
       {/* Rail d'actions à droite */}
@@ -378,10 +406,12 @@ const styles = StyleSheet.create({
   buzzBanner: { position: 'absolute', top: 44, left: 0, right: 0, alignItems: 'center' },
   buzzChip: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#FF2D55', paddingHorizontal: 14, paddingVertical: 7, borderRadius: Radius.pill },
   buzzChipText: { color: '#fff', fontFamily: Font.bold, fontSize: 13 },
-  reelScrubWrap: { position: 'absolute', left: 14, right: 14, bottom: 70, height: 16, justifyContent: 'center' },
-  reelScrubTrack: { height: 2, borderRadius: 1, backgroundColor: '#ffffff2E', justifyContent: 'center' },
-  reelScrubFill: { position: 'absolute', left: 0, top: 0, bottom: 0, backgroundColor: '#ffffffcc', borderRadius: 1 },
-  reelScrubThumb: { position: 'absolute', width: 9, height: 9, borderRadius: 5, backgroundColor: '#fff', marginLeft: -4.5 },
+  reelMedia: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 96, backgroundColor: '#000' },
+  reelSound: { position: 'absolute', left: 14, bottom: 96, width: 38, height: 38, borderRadius: 19, backgroundColor: '#00000088', alignItems: 'center', justifyContent: 'center' },
+  reelScrubWrap: { position: 'absolute', left: 12, right: 12, bottom: 62, height: 24, justifyContent: 'center' },
+  reelScrubTrack: { height: 2.5, borderRadius: 2, backgroundColor: '#ffffff3A', overflow: 'hidden' },
+  reelScrubFill: { position: 'absolute', left: 0, top: 0, bottom: 0, backgroundColor: '#ffffffdd', borderRadius: 2 },
+  reelScrubThumb: { position: 'absolute', top: '50%', width: 11, height: 11, borderRadius: 6, backgroundColor: '#fff', marginLeft: -5.5, marginTop: -5.5 },
   speedTag: { position: 'absolute', top: 90, alignSelf: 'center', backgroundColor: '#000000AA', paddingHorizontal: 10, paddingVertical: 3, borderRadius: Radius.pill },
   speedTagText: { color: '#fff', fontFamily: Font.bold, fontSize: 12 },
 
