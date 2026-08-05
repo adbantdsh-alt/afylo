@@ -3,7 +3,7 @@ import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useVideoPlayer, VideoView } from 'expo-video';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Image as RNImage, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -12,7 +12,7 @@ import { SoundPicker } from '@/components/sound-picker';
 import { Avatar, PillButton } from '@/components/ui-kit';
 import { Afylo, Font, Radius } from '@/constants/brand';
 import { useAuth } from '@/lib/auth';
-import { listMyProducts, searchProfiles } from '@/lib/db';
+import { listMyProducts, listMyAffiliatedProducts, searchProfiles } from '@/lib/db';
 import { clampRatio } from '@/lib/feed-map';
 import { face, photo } from '@/lib/mock';
 import { classifyText } from '@/lib/moderation';
@@ -50,8 +50,10 @@ export default function PostNew() {
 
   const [caption, setCaption] = useState('');
   const [products, setProducts] = useState<Product[]>([]);
+  const [affProducts, setAffProducts] = useState<any[]>([]); // produits affiliés (revendus)
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [loadingProducts, setLoadingProducts] = useState(false);
+  const [prodOpen, setProdOpen] = useState(false); // section produits rétractable (repliée par défaut)
   const [error, setError] = useState<string | null>(null);
 
   // Résout la proportion des médias qui n'en ont pas encore (venus de la caméra).
@@ -77,8 +79,17 @@ export default function PostNew() {
   useEffect(() => {
     if (!session) return;
     setLoadingProducts(true);
-    listMyProducts().then(setProducts).finally(() => setLoadingProducts(false));
+    Promise.all([
+      listMyProducts().then(setProducts).catch(() => {}),
+      listMyAffiliatedProducts().then(setAffProducts).catch(() => {}),
+    ]).finally(() => setLoadingProducts(false));
   }, [session]);
+
+  // Produits créés + affiliés fusionnés (un flag distingue les affiliés).
+  const allProducts = useMemo(
+    () => [...products.map((p) => ({ ...p, _aff: false })), ...affProducts.map((p) => ({ ...p, _aff: true }))],
+    [products, affProducts],
+  );
 
   // Récupère les suggestions de mentions quand on tape « @… »
   const onCaptionChange = (text: string) => {
@@ -265,43 +276,52 @@ export default function PostNew() {
           )}
 
           {/* ---- Produits (interrupteurs) ---- */}
-          <View style={styles.sectionRow}>
+          {/* En-tête rétractable */}
+          <Pressable onPress={() => setProdOpen((v) => !v)} style={styles.sectionRow}>
             <Ionicons name="pricetags" size={18} color={Afylo.violet} />
             <Text style={styles.section}>Attacher des produits</Text>
             <Text style={styles.count}>{selected.size}/{MAX_PRODUCTS}</Text>
-          </View>
-          <Text style={styles.sectionHint}>Les produits liés affichent un bouton « Acheter » sur ta publication.</Text>
+            <Ionicons name={prodOpen ? 'chevron-up' : 'chevron-down'} size={18} color={Afylo.textDim} />
+          </Pressable>
 
-          {loadingProducts && <ActivityIndicator color={Afylo.violet} style={{ marginTop: 16 }} />}
+          {prodOpen && (
+            <>
+              <Text style={styles.sectionHint}>Les produits liés affichent un bouton « Acheter » sur ta publication. Tu peux attacher tes produits ou ceux que tu revends (affiliés).</Text>
 
-          {session && !loadingProducts && products.length === 0 && (
-            <Pressable onPress={() => router.push('/product-new')} style={styles.emptyProducts}>
-              <Ionicons name="add-circle-outline" size={20} color={Afylo.violet} />
-              <Text style={styles.emptyProductsText}>Aucun produit — crée-en un d'abord</Text>
-            </Pressable>
-          )}
+              {loadingProducts && <ActivityIndicator color={Afylo.violet} style={{ marginTop: 16 }} />}
 
-          <View style={styles.prodList}>
-            {products.map((p) => {
-              const on = selected.has(p.id);
-              return (
-                <Pressable key={p.id} onPress={() => toggle(p.id)} style={[styles.prodChip, on && styles.prodChipOn]}>
-                  <Image source={{ uri: p.image_url || photo(`p-${p.id}`, 100, 100) }} style={styles.prodThumb} contentFit="cover" />
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.prodTitle} numberOfLines={1}>{p.title}</Text>
-                    <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 6 }}>
-                      <Text style={styles.prodPrice}>{(p.promo_cfa ?? p.price_cfa).toLocaleString('fr-FR')} F</Text>
-                      {p.promo_cfa && p.promo_cfa < p.price_cfa ? <Text style={styles.prodPriceOld}>{p.price_cfa.toLocaleString('fr-FR')} F</Text> : null}
-                    </View>
-                  </View>
-                  {/* Interrupteur ON/OFF */}
-                  <View style={[styles.switch, on && styles.switchOn]}>
-                    <View style={[styles.knob, on && styles.knobOn]} />
-                  </View>
+              {session && !loadingProducts && allProducts.length === 0 && (
+                <Pressable onPress={() => router.push('/product-new')} style={styles.emptyProducts}>
+                  <Ionicons name="add-circle-outline" size={20} color={Afylo.violet} />
+                  <Text style={styles.emptyProductsText}>Aucun produit — crée-en un ou affilie-toi d'abord</Text>
                 </Pressable>
-              );
-            })}
-          </View>
+              )}
+
+              <View style={styles.prodList}>
+                {allProducts.map((p) => {
+                  const on = selected.has(p.id);
+                  return (
+                    <Pressable key={p.id} onPress={() => toggle(p.id)} style={[styles.prodChip, on && styles.prodChipOn]}>
+                      <Image source={{ uri: p.image_url || photo(`p-${p.id}`, 100, 100) }} style={styles.prodThumb} contentFit="cover" />
+                      <View style={{ flex: 1 }}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                          <Text style={styles.prodTitle} numberOfLines={1}>{p.title}</Text>
+                          {p._aff && <View style={styles.affBadge}><Text style={styles.affBadgeText}>Affilié</Text></View>}
+                        </View>
+                        <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 6 }}>
+                          <Text style={styles.prodPrice}>{(p.promo_cfa ?? p.price_cfa).toLocaleString('fr-FR')} F</Text>
+                          {p.promo_cfa && p.promo_cfa < p.price_cfa ? <Text style={styles.prodPriceOld}>{p.price_cfa.toLocaleString('fr-FR')} F</Text> : null}
+                        </View>
+                      </View>
+                      <View style={[styles.switch, on && styles.switchOn]}>
+                        <View style={[styles.knob, on && styles.knobOn]} />
+                      </View>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            </>
+          )}
 
           {error && <Text style={styles.error}>{error}</Text>}
 
@@ -391,7 +411,9 @@ const styles = StyleSheet.create({
   prodChip: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: Afylo.surface, borderRadius: Radius.md, padding: 8, borderWidth: 1.5, borderColor: Afylo.border },
   prodChipOn: { borderColor: Afylo.violet, backgroundColor: '#FBEBE0' },
   prodThumb: { width: 44, height: 44, borderRadius: 8, backgroundColor: Afylo.surfaceAlt },
-  prodTitle: { color: Afylo.text, fontSize: 14, fontWeight: '700' },
+  prodTitle: { color: Afylo.text, fontSize: 14, fontWeight: '700', flexShrink: 1 },
+  affBadge: { backgroundColor: Afylo.violet + '22', paddingHorizontal: 7, paddingVertical: 2, borderRadius: 6 },
+  affBadgeText: { color: Afylo.violet, fontSize: 10, fontWeight: '800' },
   prodPrice: { color: Afylo.gold, fontSize: 13, fontWeight: '800', marginTop: 1 },
   prodPriceOld: { color: Afylo.textFaint, fontSize: 11, fontWeight: '600', textDecorationLine: 'line-through' },
   switch: { width: 46, height: 28, borderRadius: 14, backgroundColor: Afylo.surfaceAlt, borderWidth: 1, borderColor: Afylo.border, padding: 3, justifyContent: 'center' },

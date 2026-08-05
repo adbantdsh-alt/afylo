@@ -1,4 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
+import { useAudioPlayer } from 'expo-audio';
 import { Image } from 'expo-image';
 import { SaveFormat, manipulateAsync } from 'expo-image-manipulator';
 import { useVideoPlayer, VideoView } from 'expo-video';
@@ -64,6 +65,15 @@ export function MediaEditor({
   const [busy, setBusy] = useState(false);
 
   const isVideo = media.type === 'video';
+
+  // Son ajouté : joué EN BOUCLE par-dessus l'audio original de la vidéo (mixage, on ne coupe pas la vidéo).
+  const soundPlayer = useAudioPlayer(sound?.audio ? { uri: sound.audio } : null);
+  useEffect(() => {
+    if (!sound?.audio) return;
+    try { soundPlayer.loop = true; soundPlayer.seekTo(0); soundPlayer.play(); } catch {}
+    return () => { try { soundPlayer.pause(); } catch {} };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sound?.audio]);
 
   const addText = () => setDraft({ id: null, text: '', color: '#FFFFFF', kind: 'text', url: '' });
   const addLink = () => setDraft({ id: null, text: '', color: '#0A84FF', kind: 'link', url: '' });

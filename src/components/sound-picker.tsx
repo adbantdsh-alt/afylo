@@ -1,5 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useAudioPlayer, useAudioPlayerStatus } from 'expo-audio';
+import * as DocumentPicker from 'expo-document-picker';
 import { Image } from 'expo-image';
 import { useEffect, useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
@@ -30,6 +31,17 @@ export function SoundPicker({ visible, onSelect, onClose }: { visible: boolean; 
 
   const close = () => { setPreviewId(null); onClose(); };
 
+  // Importer un son depuis le téléphone (fichier audio local).
+  const importLocal = async () => {
+    try {
+      const res = await DocumentPicker.getDocumentAsync({ type: 'audio/*', copyToCacheDirectory: true });
+      if (res.canceled || !res.assets?.[0]) return;
+      const a = res.assets[0];
+      const name = (a.name || 'Mon son').replace(/\.[^.]+$/, '');
+      onSelect({ id: `local-${Date.now()}`, title: name, artist: 'Depuis mon téléphone', cover: '', duration: '', uses: '', audio: a.uri });
+    } catch {}
+  };
+
   return (
     <Modal visible={visible} animationType="slide" onRequestClose={close}>
       <View style={styles.root}>
@@ -46,6 +58,15 @@ export function SoundPicker({ visible, onSelect, onClose }: { visible: boolean; 
         </SafeAreaView>
 
         <ScrollView contentContainerStyle={{ padding: 12 }} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+          {/* Importer un son depuis le téléphone */}
+          <Pressable onPress={importLocal} style={styles.importBtn}>
+            <View style={styles.importIcon}><Ionicons name="cloud-upload-outline" size={20} color={Afylo.violet} /></View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.name}>Importer depuis mon téléphone</Text>
+              <Text style={styles.meta}>Choisis un fichier audio de ton appareil</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color={Afylo.textDim} />
+          </Pressable>
           {!q && <Text style={styles.section}>Sons populaires · appuie sur ▶ pour écouter</Text>}
           {list.map((s) => {
             const playing = previewId === s.id;
@@ -80,10 +101,12 @@ const styles = StyleSheet.create({
   searchBox: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: Afylo.surfaceAlt, borderRadius: Radius.pill, paddingHorizontal: 14, height: 44, marginHorizontal: 12, marginBottom: 6 },
   searchInput: { flex: 1, ...Type.body, fontSize: 15, color: Afylo.text, height: '100%' },
   section: { ...Type.small, fontFamily: Font.semibold, color: Afylo.textDim, marginBottom: 8, marginLeft: 4 },
+  importBtn: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 10, paddingHorizontal: 4, marginBottom: 6, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: Afylo.border },
+  importIcon: { width: 44, height: 44, borderRadius: 10, backgroundColor: Afylo.violet + '18', alignItems: 'center', justifyContent: 'center' },
   row: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 8 },
   coverWrap: { width: 52, height: 52, borderRadius: 10, overflow: 'hidden' },
   cover: { width: 52, height: 52, backgroundColor: Afylo.surfaceAlt },
-  playOverlay: { ...StyleSheet.absoluteFillObject, alignItems: 'center', justifyContent: 'center', backgroundColor: '#00000055' },
+  playOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, alignItems: 'center', justifyContent: 'center', backgroundColor: '#00000055' },
   name: { ...Type.body, fontFamily: Font.semibold, color: Afylo.text },
   meta: { ...Type.caption, color: Afylo.textDim, marginTop: 2 },
   bar: { height: 3, borderRadius: 2, backgroundColor: Afylo.surfaceAlt, marginTop: 6, overflow: 'hidden' },
