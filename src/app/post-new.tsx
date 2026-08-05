@@ -157,7 +157,8 @@ export default function PostNew() {
     publishInBackground({
       media: media.map((m) => ({ uri: m.uri, type: m.type })),
       caption: finalCaption || undefined,
-      aspect_ratio: media[0].ratio ?? null,
+      // Vidéo : on stocke la vraie proportion mesurée → le post s'affiche à sa taille (pas de bandes noires).
+      aspect_ratio: (media[0].type === 'video' ? videoAspect ?? media[0].ratio : media[0].ratio) ?? null,
       productIds: [...selected],
       overlays,
       muted,

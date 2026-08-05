@@ -3,7 +3,7 @@ import { Image } from 'expo-image';
 import { useVideoPlayer, VideoView } from 'expo-video';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Dimensions, Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Dimensions, Linking, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Avatar } from '@/components/ui-kit';
@@ -166,15 +166,28 @@ function PostView({ post, liked, onLike, onOpenComments }: { post: Post; liked: 
 /** Lecture vidéo dans le détail d'un post : autoplay muet en boucle, tap = activer/couper le son. */
 function PostVideo({ uri, width, height }: { uri: string; width: number; height: number }) {
   const [muted, setMuted] = useState(true);
+  const boxRef = useRef<View>(null);
   const player = useVideoPlayer(uri, (p) => { p.loop = true; p.muted = true; p.play(); });
   const toggle = () => {
     const m = !muted;
     setMuted(m);
     try { player.muted = m; if (!player.playing) player.play(); } catch {}
   };
+  // Web : force la <video> de CE post à remplir son cadre (le conteneur est déjà à la bonne
+  // proportion → la vidéo remplit sans bandes ni recadrage).
+  useEffect(() => {
+    if (Platform.OS !== 'web') return;
+    const apply = () => {
+      const el = (boxRef.current as any)?.querySelector?.('video') as HTMLVideoElement | null;
+      if (el) { el.style.width = '100%'; el.style.height = '100%'; el.style.objectFit = 'cover'; }
+    };
+    apply();
+    const t = setInterval(apply, 400);
+    return () => clearInterval(t);
+  }, []);
   return (
-    <Pressable onPress={toggle} style={{ width, height }}>
-      <VideoView player={player} style={{ width, height }} contentFit="contain" nativeControls={false} />
+    <Pressable ref={boxRef} onPress={toggle} style={{ width, height, overflow: 'hidden', backgroundColor: '#000' }}>
+      <VideoView player={player} style={{ width, height }} contentFit="cover" nativeControls={false} />
       <View style={styles.soundBtn}><Ionicons name={muted ? 'volume-mute' : 'volume-high'} size={16} color="#fff" /></View>
     </Pressable>
   );

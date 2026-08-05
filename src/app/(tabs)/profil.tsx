@@ -1,8 +1,9 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
+import { useVideoPlayer, VideoView } from 'expo-video';
 import { useFocusEffect, useRouter } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
-import { Linking, Modal, Pressable, ScrollView, Share, StyleSheet, Text, TextInput, View } from 'react-native';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { Linking, Modal, Platform, Pressable, ScrollView, Share, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AccountSwitcher } from '@/components/account-switcher';
@@ -421,8 +422,12 @@ function PostsGrid({ posts, onView, onManage }: { posts: MyPost[]; onView: (p: M
   return (
     <View style={styles.mediaGrid}>
       {posts.map((p) => (
-        <Pressable key={p.id} style={styles.cell} onPress={() => onView(p)}>
-          <Image source={{ uri: p.thumbnail_url || p.media_url || undefined }} style={StyleSheet.absoluteFill} contentFit="cover" transition={200} />
+        <Pressable key={p.id} style={[styles.cell, { overflow: 'hidden' }]} onPress={() => onView(p)}>
+          {p.kind === 'video' && !p.thumbnail_url ? (
+            <GridVideoThumb uri={p.media_url!} />
+          ) : (
+            <Image source={{ uri: p.thumbnail_url || p.media_url || undefined }} style={StyleSheet.absoluteFill} contentFit="cover" transition={200} />
+          )}
           {/* 3 points = options (le tap sur la cellule ouvre le post) */}
           <Pressable hitSlop={8} onPress={() => onManage(p)} style={styles.cellMenu}><Ionicons name="ellipsis-horizontal" size={15} color="#fff" /></Pressable>
           {p.kind === 'video' && (
@@ -433,6 +438,27 @@ function PostsGrid({ posts, onView, onManage }: { posts: MyPost[]; onView: (p: M
           )}
         </Pressable>
       ))}
+    </View>
+  );
+}
+
+/** Vignette vidéo de la grille : lit la vidéo en muet/boucle pour afficher un aperçu (sinon case vide). */
+function GridVideoThumb({ uri }: { uri: string }) {
+  const boxRef = useRef<View>(null);
+  const player = useVideoPlayer(uri, (p) => { p.loop = true; p.muted = true; p.play(); });
+  useEffect(() => {
+    if (Platform.OS !== 'web') return;
+    const apply = () => {
+      const el = (boxRef.current as any)?.querySelector?.('video') as HTMLVideoElement | null;
+      if (el) { el.style.width = '100%'; el.style.height = '100%'; el.style.objectFit = 'cover'; }
+    };
+    apply();
+    const t = setInterval(apply, 500);
+    return () => clearInterval(t);
+  }, []);
+  return (
+    <View ref={boxRef} style={StyleSheet.absoluteFill} pointerEvents="none">
+      <VideoView player={player} style={StyleSheet.absoluteFill} contentFit="cover" nativeControls={false} />
     </View>
   );
 }

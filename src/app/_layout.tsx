@@ -8,7 +8,7 @@ import {
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
-import { ActivityIndicator, View } from 'react-native';
+import { ActivityIndicator, Platform, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { Afylo, isDark } from '@/constants/brand';
@@ -99,6 +99,18 @@ export default function RootLayout() {
     Inter_600SemiBold,
     Inter_700Bold,
   });
+
+  // Web : neutralise l'erreur bénigne "removeChild ... not a child" émise par expo-video/react-native-web
+  // au démontage de certaines vidéos (asynchrone, sans impact) pour ne pas polluer l'overlay d'erreurs.
+  useEffect(() => {
+    if (Platform.OS !== 'web' || typeof window === 'undefined') return;
+    const onRej = (e: any) => {
+      const msg = e?.reason?.message || String(e?.reason || '');
+      if (msg.includes('removeChild') && msg.includes('not a child')) { e.preventDefault?.(); e.stopImmediatePropagation?.(); }
+    };
+    window.addEventListener('unhandledrejection', onRej);
+    return () => window.removeEventListener('unhandledrejection', onRej);
+  }, []);
 
   // Ne jamais bloquer le site si une police échoue à charger.
   if (!fontsLoaded && !fontError) {
