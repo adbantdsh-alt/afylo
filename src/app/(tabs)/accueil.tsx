@@ -3,7 +3,7 @@ import { Image } from 'expo-image';
 import { useVideoPlayer, VideoView } from 'expo-video';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Animated, Dimensions, Linking, Modal, Pressable, ScrollView, Share, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Animated, Dimensions, Linking, Modal, Platform, Pressable, ScrollView, Share, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Avatar, IconButton } from '@/components/ui-kit';
@@ -261,6 +261,7 @@ function PostCard({ post, isPro, myHandle, initialLiked, initialSaved, initialFo
   const { addRepost, hasReposted } = useReposts();
   const [followed, setFollowed] = useState(!!initialFollowed);
   useEffect(() => { setFollowed(!!initialFollowed); }, [initialFollowed]);
+  const [videoAspect, setVideoAspect] = useState<number | null>(null); // vraie proportion vidéo (web)
   const [liked, setLiked] = useState(!!initialLiked);
   useEffect(() => { setLiked(!!initialLiked); }, [initialLiked]);
   const [bought, setBought] = useState(false);
@@ -345,9 +346,9 @@ function PostCard({ post, isPro, myHandle, initialLiked, initialSaved, initialFo
 
       {/* Média — plein cadre, sans arrondi. Double-tap = j'aime (masqué pour les posts texte) */}
       {!post.textOnly && (
-        <Pressable style={[styles.media, post.ratio ? { aspectRatio: post.ratio } : null]} onPress={onMediaTap}>
+        <Pressable style={[styles.media, (post.video ? videoAspect ?? post.ratio : post.ratio) ? { aspectRatio: (post.video ? videoAspect ?? post.ratio : post.ratio)! } : null]} onPress={onMediaTap}>
           {post.video ? (
-            <FeedVideo uri={post.image} />
+            <FeedVideo uri={post.image} onAspect={setVideoAspect} />
           ) : post.images && post.images.length > 1 ? (
             <PostCarousel images={post.images} blur={post.sensitive && !revealed ? 30 : 0} />
           ) : (
@@ -502,9 +503,28 @@ function PostOverlays({ overlays }: { overlays: NonNullable<Post['overlays']> })
 }
 
 /** Lecture vidéo dans le feed (muette, en boucle). */
-function FeedVideo({ uri }: { uri: string }) {
+function FeedVideo({ uri, onAspect }: { uri: string; onAspect?: (r: number) => void }) {
+  const boxRef = useRef<View>(null);
   const player = useVideoPlayer(uri, (p) => { p.loop = true; p.muted = true; p.play(); });
-  return <VideoView player={player} style={styles.mediaImg} contentFit="cover" nativeControls={false} />;
+  // Web : remplit l'élément dans son cadre + remonte la vraie proportion (sinon vidéo zoomée/rognée).
+  useEffect(() => {
+    if (Platform.OS !== 'web') return;
+    const apply = () => {
+      const el = (boxRef.current as any)?.querySelector?.('video') as HTMLVideoElement | null;
+      if (el) {
+        el.style.width = '100%'; el.style.height = '100%'; el.style.objectFit = 'cover';
+        if (el.videoWidth > 0 && el.videoHeight > 0) onAspect?.(el.videoWidth / el.videoHeight);
+      }
+    };
+    apply();
+    const t = setInterval(apply, 400);
+    return () => clearInterval(t);
+  }, [onAspect]);
+  return (
+    <View ref={boxRef} style={StyleSheet.absoluteFill} pointerEvents="none">
+      <VideoView player={player} style={StyleSheet.absoluteFill} contentFit="cover" nativeControls={false} />
+    </View>
+  );
 }
 
 /** Carrousel plein cadre (plusieurs médias) avec points de pagination. */

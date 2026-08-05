@@ -3,7 +3,7 @@ import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Modal, Pressable, ScrollView, Share, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { Modal, Platform, Pressable, ScrollView, Share, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useVideoPlayer, VideoView } from 'expo-video';
 
@@ -16,6 +16,8 @@ import { ReportSheet } from '@/components/report-sheet';
 import { RepostSheet } from '@/components/repost-sheet';
 import { Afylo, Font, Radius, Type } from '@/constants/brand';
 import { NICHES, rankPosts } from '@/lib/algo';
+import { listFeed } from '@/lib/db';
+import { mapFeed } from '@/lib/feed-map';
 import { useAuthGate } from '@/lib/auth-gate';
 import { useMe } from '@/lib/me';
 import { useReposts } from '@/lib/reposts';
@@ -73,6 +75,15 @@ export default function Trend() {
   const [tab, setTab] = useState<TabKey>('trend');
   const [active, setActive] = useState(0);
   const [notInterested, setNotInterested] = useState<string[]>([]);
+  // Vraies publications du réseau (Supabase) → recommandées dans le feed comme sur TikTok.
+  const [realPosts, setRealPosts] = useState<(Post & { niche: string })[]>([]);
+  useEffect(() => {
+    listFeed()
+      .then((rows) => setRealPosts(mapFeed(rows ?? []).map((p, i) => ({ ...p, niche: NICHES[i % NICHES.length], _real: true } as any))))
+      .catch(() => {});
+  }, []);
+  // Vraies publications d'abord, puis le catalogue de démo pour le volume.
+  const ALL = useMemo(() => [...realPosts, ...REELS], [realPosts]);
 
   const TABS = [
     { key: 'abonnements' as TabKey, label: 'Abonnements' },
@@ -81,11 +92,12 @@ export default function Trend() {
   ];
 
   const shown = useMemo(() => {
-    if (tab === 'abonnements') return rankPosts(REELS, { following: FOLLOWING, notInterested }).filter((p) => FOLLOWING.includes(p.handle));
+    if (tab === 'abonnements') return rankPosts(ALL, { following: FOLLOWING, notInterested }).filter((p) => FOLLOWING.includes(p.handle));
     // Buzz : ce qui buzze réellement — classé par engagement (commentaires/likes/vues)
-    if (tab === 'buzz') return REELS.filter((p) => !notInterested.includes(p.id)).sort((a, b) => buzzScore(b) - buzzScore(a));
-    return rankPosts(REELS, { notInterested }); // Trend général (algo viralité)
-  }, [tab, notInterested]);
+    if (tab === 'buzz') return ALL.filter((p) => !notInterested.includes(p.id)).sort((a, b) => buzzScore(b) - buzzScore(a));
+    // Trend général : les vraies publications récentes d'abord, puis l'algo de viralité.
+    return [...realPosts.filter((p) => !notInterested.includes(p.id)), ...rankPosts(REELS, { notInterested })];
+  }, [tab, notInterested, ALL, realPosts]);
 
   const notInterestedIn = (id: string) => setNotInterested((prev) => [...prev, id]);
 
@@ -137,14 +149,24 @@ function Reel({ post, index, active, height, width, showBuzz, onNotInterested }:
   const router = useRouter();
   const gate = useAuthGate();
 
-  const player = useVideoPlayer(video(index), (p) => {
+  // Vraie vidéo publiée → on lit son URL réelle ; sinon (démo, ou vrai post image) on garde le mock/rien.
+  const isReal = !!(post as any)._real;
+  const videoSrc = post.video ? post.image : isReal ? null : video(index);
+  const player = useVideoPlayer(videoSrc, (p) => {
     p.loop = true;
     p.muted = true;
   });
+  const boxRef = useRef<View>(null);
   useEffect(() => {
-    if (active) player.play();
+    if (active && videoSrc) player.play();
     else player.pause();
-  }, [active, player]);
+  }, [active, player, videoSrc]);
+  // Web : remplit la <video> de CE reel (sinon zoom/rognage à taille naturelle).
+  useEffect(() => {
+    if (Platform.OS !== 'web' || !videoSrc) return;
+    const apply = () => { const el = (boxRef.current as any)?.querySelector?.('video') as HTMLVideoElement | null; if (el) { el.style.width = '100%'; el.style.height = '100%'; el.style.objectFit = 'cover'; } };
+    apply(); const t = setInterval(apply, 400); return () => clearInterval(t);
+  }, [videoSrc]);
   const [liked, setLiked] = useState(false);
   const [saved, setSaved] = useState(false);
   const [repostOpen, setRepostOpen] = useState(false);
@@ -173,8 +195,12 @@ function Reel({ post, index, active, height, width, showBuzz, onNotInterested }:
 
   return (
     <View style={{ height, width, backgroundColor: '#000' }}>
-      <Image source={{ uri: post.image }} style={StyleSheet.absoluteFill} contentFit="cover" transition={200} />
-      <VideoView player={player} style={StyleSheet.absoluteFill} contentFit="cover" nativeControls={false} />
+      {!post.video && <Image source={{ uri: post.image }} style={StyleSheet.absoluteFill} contentFit="cover" transition={200} />}
+      {videoSrc && (
+        <View ref={boxRef} style={StyleSheet.absoluteFill} pointerEvents="none">
+          <VideoView player={player} style={StyleSheet.absoluteFill} contentFit="cover" nativeControls={false} />
+        </View>
+      )}
       <LinearGradient colors={['#00000000', '#00000000', '#000000CC']} style={StyleSheet.absoluteFill} />
       <Pressable style={StyleSheet.absoluteFill} onPress={onTap} onLongPress={() => setOptionsOpen(true)} delayLongPress={250} />
       {speed !== 1 && <View style={styles.speedTag}><Text style={styles.speedTagText}>{speed}×</Text></View>}
