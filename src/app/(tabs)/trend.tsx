@@ -3,7 +3,7 @@ import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Modal, Platform, Pressable, ScrollView, Share, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { Modal, PanResponder, Platform, Pressable, ScrollView, Share, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useVideoPlayer, VideoView } from 'expo-video';
 
@@ -16,7 +16,7 @@ import { ReportSheet } from '@/components/report-sheet';
 import { RepostSheet } from '@/components/repost-sheet';
 import { Afylo, Font, Radius, Type } from '@/constants/brand';
 import { NICHES, rankPosts } from '@/lib/algo';
-import { listFeed } from '@/lib/db';
+import { listFeed, myFollowingIds } from '@/lib/db';
 import { mapFeed } from '@/lib/feed-map';
 import { useAuthGate } from '@/lib/auth-gate';
 import { useMe } from '@/lib/me';
@@ -75,15 +75,15 @@ export default function Trend() {
   const [tab, setTab] = useState<TabKey>('trend');
   const [active, setActive] = useState(0);
   const [notInterested, setNotInterested] = useState<string[]>([]);
-  // Vraies publications du réseau (Supabase) → recommandées dans le feed comme sur TikTok.
+  // UNIQUEMENT les vraies publications du réseau (Supabase) — plus aucune donnée fictive.
   const [realPosts, setRealPosts] = useState<(Post & { niche: string })[]>([]);
+  const [followingIds, setFollowingIds] = useState<string[]>([]);
   useEffect(() => {
     listFeed()
       .then((rows) => setRealPosts(mapFeed(rows ?? []).map((p, i) => ({ ...p, niche: NICHES[i % NICHES.length], _real: true } as any))))
       .catch(() => {});
+    myFollowingIds().then(setFollowingIds).catch(() => {});
   }, []);
-  // Vraies publications d'abord, puis le catalogue de démo pour le volume.
-  const ALL = useMemo(() => [...realPosts, ...REELS], [realPosts]);
 
   const TABS = [
     { key: 'abonnements' as TabKey, label: 'Abonnements' },
@@ -92,12 +92,14 @@ export default function Trend() {
   ];
 
   const shown = useMemo(() => {
-    if (tab === 'abonnements') return rankPosts(ALL, { following: FOLLOWING, notInterested }).filter((p) => FOLLOWING.includes(p.handle));
-    // Buzz : ce qui buzze réellement — classé par engagement (commentaires/likes/vues)
-    if (tab === 'buzz') return ALL.filter((p) => !notInterested.includes(p.id)).sort((a, b) => buzzScore(b) - buzzScore(a));
-    // Trend général : les vraies publications récentes d'abord, puis l'algo de viralité.
-    return [...realPosts.filter((p) => !notInterested.includes(p.id)), ...rankPosts(REELS, { notInterested })];
-  }, [tab, notInterested, ALL, realPosts]);
+    const live = realPosts.filter((p) => !notInterested.includes(p.id));
+    // Abonnements : publications des créateurs que tu suis, classées par l'algo Afylo.
+    if (tab === 'abonnements') return rankPosts(live.filter((p) => p.authorId && followingIds.includes(p.authorId)), { notInterested });
+    // Buzz : ce qui buzze réellement — engagement (commentaires/likes/vues).
+    if (tab === 'buzz') return [...live].sort((a, b) => buzzScore(b) - buzzScore(a));
+    // Trend : algo de recommandation Afylo (viralité + fraîcheur).
+    return rankPosts(live, { notInterested });
+  }, [tab, notInterested, realPosts, followingIds]);
 
   const notInterestedIn = (id: string) => setNotInterested((prev) => [...prev, id]);
 
@@ -182,6 +184,22 @@ function Reel({ post, index, active, height, width, showBuzz, onNotInterested }:
   const [speed, setSpeed] = useState(1);
   const lastTap = useRef(0);
 
+  // Curseur de temps (scrubber) : suivi + seek.
+  const [pos, setPos] = useState(0);
+  const barW = useRef(0);
+  useEffect(() => {
+    if (!videoSrc) return;
+    const t = setInterval(() => { try { const d = player.duration || 0; setPos(d > 0 ? Math.min(1, (player.currentTime || 0) / d) : 0); } catch {} }, 250);
+    return () => clearInterval(t);
+  }, [player, videoSrc]);
+  const seek = (frac: number) => { try { const d = player.duration || 0; if (d > 0) player.currentTime = Math.max(0, Math.min(d, frac * d)); setPos(Math.max(0, Math.min(1, frac))); } catch {} };
+  const scrubResponder = useRef(PanResponder.create({
+    onStartShouldSetPanResponder: () => true,
+    onMoveShouldSetPanResponder: () => true,
+    onPanResponderGrant: (e) => barW.current > 0 && seek(e.nativeEvent.locationX / barW.current),
+    onPanResponderMove: (e) => barW.current > 0 && seek(e.nativeEvent.locationX / barW.current),
+  })).current;
+
   const changeSpeed = (s: number) => { setSpeed(s); try { player.playbackRate = s; } catch {} };
   const onTap = () => { const now = Date.now(); if (now - lastTap.current < 300 && gate('aimer')) setLiked(true); lastTap.current = now; };
 
@@ -204,6 +222,16 @@ function Reel({ post, index, active, height, width, showBuzz, onNotInterested }:
       <LinearGradient colors={['#00000000', '#00000000', '#000000CC']} style={StyleSheet.absoluteFill} />
       <Pressable style={StyleSheet.absoluteFill} onPress={onTap} onLongPress={() => setOptionsOpen(true)} delayLongPress={250} />
       {speed !== 1 && <View style={styles.speedTag}><Text style={styles.speedTagText}>{speed}×</Text></View>}
+
+      {/* Curseur de temps (scrubber) — avancer / reculer */}
+      {videoSrc && (
+        <View style={styles.reelScrubWrap} pointerEvents="box-none">
+          <View style={styles.reelScrubTrack} onLayout={(e) => (barW.current = e.nativeEvent.layout.width)} {...scrubResponder.panHandlers}>
+            <View style={[styles.reelScrubFill, { width: `${pos * 100}%` }]} />
+            <View style={[styles.reelScrubThumb, { left: `${pos * 100}%` }]} />
+          </View>
+        </View>
+      )}
 
       {/* Rail d'actions à droite */}
       <View style={styles.rail}>
@@ -349,6 +377,10 @@ const styles = StyleSheet.create({
   buzzBanner: { position: 'absolute', top: 44, left: 0, right: 0, alignItems: 'center' },
   buzzChip: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#FF2D55', paddingHorizontal: 14, paddingVertical: 7, borderRadius: Radius.pill },
   buzzChipText: { color: '#fff', fontFamily: Font.bold, fontSize: 13 },
+  reelScrubWrap: { position: 'absolute', left: 12, right: 12, bottom: 74, height: 18, justifyContent: 'center' },
+  reelScrubTrack: { height: 3, borderRadius: 2, backgroundColor: '#ffffff55', justifyContent: 'center' },
+  reelScrubFill: { position: 'absolute', left: 0, top: 0, bottom: 0, backgroundColor: '#fff', borderRadius: 2 },
+  reelScrubThumb: { position: 'absolute', width: 12, height: 12, borderRadius: 6, backgroundColor: '#fff', marginLeft: -6 },
   speedTag: { position: 'absolute', top: 90, alignSelf: 'center', backgroundColor: '#000000AA', paddingHorizontal: 10, paddingVertical: 3, borderRadius: Radius.pill },
   speedTagText: { color: '#fff', fontFamily: Font.bold, fontSize: 12 },
 

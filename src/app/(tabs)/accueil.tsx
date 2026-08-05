@@ -505,24 +505,24 @@ function PostOverlays({ overlays }: { overlays: NonNullable<Post['overlays']> })
 /** Lecture vidéo dans le feed (muette, en boucle). */
 function FeedVideo({ uri, onAspect }: { uri: string; onAspect?: (r: number) => void }) {
   const boxRef = useRef<View>(null);
+  const [pos, setPos] = useState(0); // progression 0..1 (curseur de temps)
   const player = useVideoPlayer(uri, (p) => { p.loop = true; p.muted = true; p.play(); });
-  // Web : remplit l'élément dans son cadre + remonte la vraie proportion (sinon vidéo zoomée/rognée).
+  // Autoplay muet garanti + web: remplit l'élément + remonte la vraie proportion + suit le temps.
   useEffect(() => {
-    if (Platform.OS !== 'web') return;
-    const apply = () => {
-      const el = (boxRef.current as any)?.querySelector?.('video') as HTMLVideoElement | null;
-      if (el) {
-        el.style.width = '100%'; el.style.height = '100%'; el.style.objectFit = 'cover';
-        if (el.videoWidth > 0 && el.videoHeight > 0) onAspect?.(el.videoWidth / el.videoHeight);
+    const t = setInterval(() => {
+      try { const d = player.duration || 0; setPos(d > 0 ? Math.min(1, (player.currentTime || 0) / d) : 0); if (!player.playing) player.play(); } catch {}
+      if (Platform.OS === 'web') {
+        const el = (boxRef.current as any)?.querySelector?.('video') as HTMLVideoElement | null;
+        if (el) { el.style.width = '100%'; el.style.height = '100%'; el.style.objectFit = 'cover'; if (el.videoWidth > 0 && el.videoHeight > 0) onAspect?.(el.videoWidth / el.videoHeight); }
       }
-    };
-    apply();
-    const t = setInterval(apply, 400);
+    }, 300);
     return () => clearInterval(t);
-  }, [onAspect]);
+  }, [player, onAspect]);
   return (
     <View ref={boxRef} style={StyleSheet.absoluteFill} pointerEvents="none">
       <VideoView player={player} style={StyleSheet.absoluteFill} contentFit="cover" nativeControls={false} />
+      {/* Curseur de temps (barre de progression) */}
+      <View style={styles.feedProgress}><View style={[styles.feedProgressFill, { width: `${pos * 100}%` }]} /></View>
     </View>
   );
 }
@@ -650,7 +650,9 @@ const styles = StyleSheet.create({
   composeCount: { color: Afylo.textFaint, fontSize: 13, textAlign: 'right', paddingHorizontal: 16, paddingBottom: 8 },
   textPost: { color: Afylo.text, fontSize: 20, lineHeight: 28, marginBottom: 12 },
   media: { aspectRatio: 1, backgroundColor: Afylo.surfaceAlt, alignItems: 'center', justifyContent: 'center' },
-  mediaImg: { ...StyleSheet.absoluteFillObject },
+  mediaImg: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 },
+  feedProgress: { position: 'absolute', left: 0, right: 0, bottom: 0, height: 3, backgroundColor: '#ffffff33' },
+  feedProgressFill: { position: 'absolute', left: 0, top: 0, bottom: 0, backgroundColor: '#fff' },
   uploadBar: { flexDirection: 'row', alignItems: 'center', gap: 12, marginHorizontal: 12, marginBottom: 8, padding: 10, backgroundColor: Afylo.surface, borderRadius: Radius.md, borderWidth: 1, borderColor: Afylo.border },
   uploadThumb: { width: 46, height: 46, borderRadius: 8, backgroundColor: Afylo.surfaceAlt },
   uploadTitle: { color: Afylo.text, fontSize: 14, fontFamily: Font.semibold },
