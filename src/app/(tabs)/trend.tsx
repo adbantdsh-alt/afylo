@@ -255,12 +255,6 @@ function Reel({ post, index, active, height, width, showBuzz, onNotInterested }:
         </View>
       )}
 
-      {/* Bouton son : les reels sont muets par défaut (autoplay) — tap pour réactiver le son */}
-      {videoSrc && (
-        <Pressable onPress={toggleMute} style={styles.reelSound} hitSlop={8}>
-          <Ionicons name={muted ? 'volume-mute' : 'volume-high'} size={18} color="#fff" />
-        </Pressable>
-      )}
 
       {/* Rail d'actions à droite */}
       <View style={styles.rail}>
@@ -277,6 +271,8 @@ function Reel({ post, index, active, height, width, showBuzz, onNotInterested }:
         <Action icon="chatbubble-ellipses" label={post.comments} onPress={openComments} />
         <Action icon={saved ? 'bookmark' : 'bookmark-outline'} label="Enreg." color={saved ? Afylo.gold : '#fff'} onPress={save} />
         <Action icon="repeat" label={reposted ? 'Republié' : 'Republier'} color={reposted ? Afylo.green : '#fff'} onPress={republish} />
+        {/* Son : au-dessus de Partager (n'écrase plus le badge Acheter en bas) */}
+        {videoSrc && <Action icon={muted ? 'volume-mute' : 'volume-high'} label={muted ? 'Muet' : 'Son'} color={muted ? '#fff' : Afylo.violet2} onPress={toggleMute} />}
         <Action icon="arrow-redo" label="Partager" onPress={sharePost} />
       </View>
 
@@ -407,7 +403,6 @@ const styles = StyleSheet.create({
   buzzChip: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#FF2D55', paddingHorizontal: 14, paddingVertical: 7, borderRadius: Radius.pill },
   buzzChipText: { color: '#fff', fontFamily: Font.bold, fontSize: 13 },
   reelMedia: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 96, backgroundColor: '#000' },
-  reelSound: { position: 'absolute', left: 14, bottom: 96, width: 38, height: 38, borderRadius: 19, backgroundColor: '#00000088', alignItems: 'center', justifyContent: 'center' },
   reelScrubWrap: { position: 'absolute', left: 12, right: 12, bottom: 62, height: 24, justifyContent: 'center' },
   reelScrubTrack: { height: 2.5, borderRadius: 2, backgroundColor: '#ffffff3A', overflow: 'hidden' },
   reelScrubFill: { position: 'absolute', left: 0, top: 0, bottom: 0, backgroundColor: '#ffffffdd', borderRadius: 2 },
