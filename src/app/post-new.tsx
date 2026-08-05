@@ -44,6 +44,7 @@ export default function PostNew() {
   })();
   const [media, setMedia] = useState<Media[]>(seed);
   const [active, setActive] = useState(0);
+  const [videoAspect, setVideoAspect] = useState<number | null>(null); // vraie proportion de la vidéo (web)
   const [cropOpen, setCropOpen] = useState(false);
   const { publish: publishInBackground } = usePendingUpload();
 
@@ -171,9 +172,9 @@ export default function PostNew() {
         <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 40 }} keyboardShouldPersistTaps="handled">
           {/* ---- Média / carrousel ---- */}
           {current ? (
-            <View style={[styles.stage, { aspectRatio: current.ratio ?? 0.8 }]}>
+            <View style={[styles.stage, { aspectRatio: current.type === 'video' ? (videoAspect ?? current.ratio ?? 0.5625) : (current.ratio ?? 0.8) }]}>
               {current.type === 'video' ? (
-                <StageVideo uri={current.uri} />
+                <StageVideo uri={current.uri} onAspect={setVideoAspect} />
               ) : (
                 <Image source={{ uri: current.uri }} style={StyleSheet.absoluteFill} contentFit="cover" />
               )}
@@ -314,12 +315,27 @@ export default function PostNew() {
   );
 }
 
-function StageVideo({ uri }: { uri: string }) {
+function StageVideo({ uri, onAspect }: { uri: string; onAspect?: (r: number) => void }) {
   const player = useVideoPlayer(uri, (p) => { p.loop = true; p.muted = true; p.play(); });
   const [playing, setPlaying] = useState(true);
   const toggle = () => { try { player.playing ? player.pause() : player.play(); setPlaying(player.playing); } catch {} };
+  // Web : expo-video ne redimensionne pas toujours la <video> → on force le remplissage en "contain"
+  // (sinon recadrage/zoom) et on remonte la vraie proportion pour cadrer le stage.
+  useEffect(() => {
+    if (Platform.OS !== 'web' || typeof document === 'undefined') return;
+    const apply = () => {
+      const el = document.querySelector('#afylo-stage-video video') as HTMLVideoElement | null;
+      if (el) {
+        el.style.width = '100%'; el.style.height = '100%'; el.style.objectFit = 'contain';
+        if (el.videoWidth > 0 && el.videoHeight > 0) onAspect?.(el.videoWidth / el.videoHeight);
+      }
+    };
+    apply();
+    const t = setInterval(apply, 300);
+    return () => clearInterval(t);
+  }, [onAspect]);
   return (
-    <Pressable style={StyleSheet.absoluteFill} onPress={toggle}>
+    <Pressable nativeID="afylo-stage-video" style={StyleSheet.absoluteFill} onPress={toggle}>
       <VideoView player={player} style={StyleSheet.absoluteFill} contentFit="contain" nativeControls={false} />
       {!playing && <View style={styles.videoPlay} pointerEvents="none"><Ionicons name="play" size={30} color="#fff" /></View>}
     </Pressable>

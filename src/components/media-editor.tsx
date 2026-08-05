@@ -308,7 +308,8 @@ function EditorVideo({ uri, muted, onToggleMute }: { uri: string; muted: boolean
   useEffect(() => {
     if (Platform.OS !== 'web' || typeof document === 'undefined') return;
     const apply = () => {
-      const el = document.querySelector('video') as HTMLVideoElement | null;
+      // Cible UNIQUEMENT la vidéo de l'éditeur (les vidéos du feed restent montées en arrière-plan).
+      const el = document.querySelector('#afylo-editor-video video') as HTMLVideoElement | null;
       if (el) {
         el.style.width = '100%';
         el.style.height = '100%';
@@ -351,7 +352,7 @@ function EditorVideo({ uri, muted, onToggleMute }: { uri: string; muted: boolean
 
   return (
     <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
-      <Pressable onPress={toggle} style={{ position: 'absolute', left, top, width: frameW, height: frameH, backgroundColor: '#000', overflow: 'hidden', borderRadius: 8 }}>
+      <Pressable nativeID="afylo-editor-video" onPress={toggle} style={{ position: 'absolute', left, top, width: frameW, height: frameH, backgroundColor: '#000', overflow: 'hidden', borderRadius: 8 }}>
         <VideoView player={player} style={StyleSheet.absoluteFill} contentFit="contain" nativeControls={false} />
         {!playing && (
           <View style={styles.playOverlay} pointerEvents="none">
