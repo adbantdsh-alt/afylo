@@ -15,7 +15,7 @@ import { Afylo, Font, Radius, Type } from '@/constants/brand';
 import { BuzzBadge } from '@/components/buzz-badge';
 import { useLivePip, saveLiveSnapshot, takeLiveSnapshot, clearLiveSnapshot } from '@/lib/live-pip';
 import { useIsBuzz } from '@/lib/buzz';
-import { endLive, listFeedProducts, listMyProducts, setLiveViewers } from '@/lib/db';
+import { endLive, followUser, listFeedProducts, listMyProducts, setLiveViewers, unfollowUser } from '@/lib/db';
 import { useMe } from '@/lib/me';
 import { avatar, photo, video } from '@/lib/mock';
 
@@ -59,7 +59,7 @@ export default function Live() {
   const { openPip, closePip } = useLivePip();
   const me = useMe();
   const { width, height } = useWindowDimensions();
-  const params = useLocalSearchParams<{ role?: string; name?: string; avatar?: string; liveId?: string; product?: string }>();
+  const params = useLocalSearchParams<{ role?: string; name?: string; avatar?: string; liveId?: string; product?: string; hostId?: string }>();
   const isHost = params.role !== 'viewer';
   const liveId = params.liveId || null;
   const isBuzz = useIsBuzz(liveId);
@@ -138,8 +138,26 @@ export default function Live() {
   const [hearts, setHearts] = useState<Heart[]>([]);
   const [pops, setPops] = useState<{ id: number; x: number; y: number }[]>([]);
   const [followed, setFollowed] = useState(() => restored?.followed ?? false);
-  const [followedGuests, setFollowedGuests] = useState<string[]>([]); // intervenants suivis
-  const toggleFollowGuest = (n: string) => setFollowedGuests((prev) => (prev.includes(n) ? prev.filter((x) => x !== n) : [...prev, n]));
+  const [followedGuests, setFollowedGuests] = useState<string[]>([]); // intervenants suivis (par nom)
+  // Suivi persistant : on tente la vraie API si l'id ressemble à un UUID (vrais comptes) ; sinon l'UI optimiste + toast suffit.
+  const isUuid = (v?: string) => !!v && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v);
+  const persistFollow = (id: string | undefined, wasFollowed: boolean) => {
+    if (!isUuid(id)) return; // comptes simulés : pas d'écriture en base
+    (wasFollowed ? unfollowUser(id!) : followUser(id!)).catch(() => {});
+  };
+  // Suivre / ne plus suivre l'hôte, en 1 clic.
+  const toggleFollowHost = () => {
+    setFollowed((v) => { persistFollow(params.hostId, v); showToast(v ? `Tu ne suis plus ${name}` : `Tu suis ${name} ✓`); return !v; });
+  };
+  // Suivre / ne plus suivre un intervenant, en 1 clic.
+  const toggleFollowGuest = (g: { id: string; name: string }) => {
+    setFollowedGuests((prev) => {
+      const was = prev.includes(g.name);
+      persistFollow(g.id, was);
+      showToast(was ? `Tu ne suis plus ${g.name}` : `Tu suis ${g.name} ✓`);
+      return was ? prev.filter((x) => x !== g.name) : [...prev, g.name];
+    });
+  };
   const [payOpen, setPayOpen] = useState(false);
   const [giftOpen, setGiftOpen] = useState(false);
   const [sales, setSales] = useState<Sale[]>([]); // ventes reçues pendant le live (vendeur)
@@ -336,7 +354,8 @@ export default function Live() {
       if (!r?.granted) showToast('Caméra refusée — audio activé');
     }
     const finalMode: GuestMode = mode === 'video' && !permission?.granted ? 'audio' : mode;
-    setGuests((prev) => [...prev, { id: 'me', name: me.name, avatar: me.avatar, mode: finalMode, local: true }]);
+    // On retire un éventuel doublon local (ex. restauré depuis le PiP) avant d'ajouter, pour garder des clés uniques.
+    setGuests((prev) => [...prev.filter((g) => !g.local && g.id !== 'me'), { id: 'me', name: me.name, avatar: me.avatar, mode: finalMode, local: true }]);
     setRequested('live');
     setChooser(false);
     pushEvent(me.name, me.avatar, 'guest', finalMode === 'video' ? 'tu interviens en vidéo 📹' : 'tu interviens en audio 🎤');
@@ -512,12 +531,16 @@ export default function Live() {
             <Pressable onPress={openHostProfile} style={styles.hostPill}>
               <Avatar uri={hostAvatar} size={28} />
               <Text style={styles.hostName} numberOfLines={1}>{name}</Text>
-              {!isHost && (
-                <Pressable onPress={() => setFollowed((v) => !v)} style={[styles.followBtn, followed && { backgroundColor: '#ffffff33' }]}>
-                  <Text style={styles.followText}>{followed ? '✓' : '+'}</Text>
-                </Pressable>
-              )}
             </Pressable>
+            {/* Suivre l'hôte en 1 clic — bouton séparé pour ne pas ouvrir le profil par erreur */}
+            {!isHost && (
+              <Pressable onPress={toggleFollowHost} hitSlop={6} style={[styles.followPill, followed && styles.followPillOn]}>
+                {followed
+                  ? <Ionicons name="checkmark" size={13} color="#fff" />
+                  : <Ionicons name="add" size={14} color="#fff" />}
+                <Text style={styles.followPillText}>{followed ? 'Suivi' : 'Suivre'}</Text>
+              </Pressable>
+            )}
             <View style={styles.liveBadge}><View style={styles.liveDot} /><Text style={styles.liveText}>LIVE</Text></View>
             <View style={styles.viewersPill}><Ionicons name="eye" size={13} color="#fff" /><Text style={styles.viewersText}>{Math.max(1, viewers)}</Text></View>
           </View>
@@ -611,12 +634,13 @@ export default function Live() {
           </View>
         )}
 
-        {/* Intervenants en direct — grille adaptative (taille selon le nombre) */}
+        {/* Intervenants en direct — colonne verticale à droite (façon TikTok) : l'hôte reste plein écran et visible.
+            La taille des tuiles se réduit quand il y en a beaucoup. */}
         {guests.length > 0 && (() => {
           const n = guests.length;
-          const size = n <= 1 ? 132 : n <= 2 ? 116 : n <= 4 ? 96 : n <= 6 ? 80 : 68;
+          const size = n <= 2 ? 96 : n <= 4 ? 84 : n <= 6 ? 74 : 64;
           return (
-            <View style={styles.guestStrip}>
+            <View style={styles.guestRail} pointerEvents="box-none">
               {guests.map((g) => (
                 <GuestPip
                   key={g.id}
@@ -627,7 +651,7 @@ export default function Live() {
                   onToggleCam={g.local ? toggleGuestCam : undefined}
                   onLeave={g.local ? leaveStage : undefined}
                   followed={!isHost && !g.local ? followedGuests.includes(g.name) : undefined}
-                  onFollow={!isHost && !g.local ? () => toggleFollowGuest(g.name) : undefined}
+                  onFollow={!isHost && !g.local ? () => toggleFollowGuest({ id: g.id, name: g.name }) : undefined}
                   onHostMute={isHost && !g.local ? () => (g.muted ? hostAskGuestMic(g.id) : hostCutGuestMic(g.id)) : undefined}
                   onHostCam={isHost && !g.local ? () => (g.mode === 'video' ? hostCutGuestCam(g.id) : hostAskGuestCam(g.id)) : undefined}
                   onHostRemove={isHost && !g.local ? () => removeGuest(g.id) : undefined}
@@ -1287,10 +1311,13 @@ const styles = StyleSheet.create({
   top: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 12, paddingTop: 8 },
   topLeft: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 6, minWidth: 0, overflow: 'hidden' },
   topRight: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  hostPill: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#00000055', borderRadius: Radius.pill, paddingLeft: 4, paddingRight: 8, paddingVertical: 4, flexShrink: 1, maxWidth: 150 },
+  hostPill: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#00000055', borderRadius: Radius.pill, paddingLeft: 4, paddingRight: 8, paddingVertical: 4, flexShrink: 1, maxWidth: 118 },
   hostName: { color: '#fff', fontFamily: Font.semibold, fontSize: 13, flexShrink: 1 },
   followBtn: { backgroundColor: Afylo.violet, width: 22, height: 22, borderRadius: 11, alignItems: 'center', justifyContent: 'center' },
   followText: { color: '#fff', fontFamily: Font.bold, fontSize: 13 },
+  followPill: { flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: Afylo.violet, paddingLeft: 6, paddingRight: 9, height: 24, borderRadius: 12, flexShrink: 0 },
+  followPillOn: { backgroundColor: '#ffffff2e' },
+  followPillText: { color: '#fff', fontFamily: Font.bold, fontSize: 11.5 },
   liveBadge: { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: Afylo.live, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 },
   liveDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#fff' },
   liveText: { color: '#fff', fontFamily: Font.bold, fontSize: 10 },
@@ -1324,7 +1351,7 @@ const styles = StyleSheet.create({
   boardRowAmount: { color: Afylo.gold, fontFamily: Font.bold, fontSize: 15 },
   pinnedText: { color: '#fff', fontSize: 13, flex: 1 },
 
-  guestStrip: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, paddingHorizontal: 14, marginTop: 12 },
+  guestRail: { position: 'absolute', right: 10, top: 150, flexDirection: 'column', alignItems: 'flex-end', gap: 8, zIndex: 3 },
   guestPip: { borderRadius: 16, overflow: 'hidden', backgroundColor: '#111', borderWidth: 2, borderColor: Afylo.violet },
   guestFollow: { position: 'absolute', top: 4, right: 4, zIndex: 2, width: 22, height: 22, borderRadius: 11, backgroundColor: Afylo.violet, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#fff' },
   guestFollowOn: { backgroundColor: '#ffffff33' },
@@ -1385,7 +1412,7 @@ const styles = StyleSheet.create({
 
   commentsScroll: { maxHeight: 260, marginBottom: 8 },
   commentsContent: { paddingHorizontal: 12, gap: 8, paddingTop: 20 },
-  comment: { flexDirection: 'row', alignItems: 'flex-end', gap: 8, maxWidth: '86%' },
+  comment: { flexDirection: 'row', alignItems: 'flex-end', gap: 8, maxWidth: '72%' },
   commentBubble: { backgroundColor: '#00000066', borderRadius: 16, paddingHorizontal: 12, paddingVertical: 7 },
   commentName: { color: '#ffffffcc', fontFamily: Font.semibold, fontSize: 13 },
   commentText: { color: '#fff', fontSize: 14, lineHeight: 19 },
