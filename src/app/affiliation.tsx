@@ -171,9 +171,20 @@ export default function Affiliation() {
           </>
         )}
         <Text style={styles.count}>{list.length} produit{list.length > 1 ? 's' : ''} à revendre</Text>
-        {list.map((p) => (
-          <ProductRow key={p.id} p={p} copied={copiedId === p.id} resold={affiliatedIds.has(p.id)} onCopy={() => copyLink(p)} onSellLive={() => sellLive(p)} onResell={() => toggleResell(p)} />
-        ))}
+        <View style={styles.grid}>
+          {list.map((p) => (
+            <GridCard
+              key={p.id}
+              p={p}
+              copied={copiedId === p.id}
+              resold={affiliatedIds.has(p.id)}
+              onOpen={() => router.push({ pathname: '/product/[id]', params: { id: p.id } })}
+              onCopy={() => copyLink(p)}
+              onSellLive={() => sellLive(p)}
+              onResell={() => toggleResell(p)}
+            />
+          ))}
+        </View>
         {list.length === 0 && <Text style={styles.empty}>Aucun produit à revendre pour l'instant.</Text>}
       </ScrollView>
     </View>
@@ -188,50 +199,44 @@ function Chip({ label, active, onPress, subtle }: { label: string; active: boole
   );
 }
 
-function ProductRow({ p, copied, resold, onCopy, onSellLive, onResell }: { p: AffItem; copied: boolean; resold: boolean; onCopy: () => void; onSellLive: () => void; onResell: () => void }) {
+/** Carte compacte (grille 2 colonnes). Tap sur l'image/titre → fiche produit. */
+function GridCard({ p, copied, resold, onOpen, onCopy, onSellLive, onResell }: { p: AffItem; copied: boolean; resold: boolean; onOpen: () => void; onCopy: () => void; onSellLive: () => void; onResell: () => void }) {
   const earn = Math.round(((p.promo ?? p.price) * p.commission) / 100);
   return (
-    <View style={styles.card}>
-      <Image source={{ uri: p.image }} style={styles.cardImg} contentFit="cover" transition={200} />
-      <View style={styles.commissionBadge}>
-        <Text style={styles.commissionText}>{p.commission}%</Text>
-      </View>
-
-      <View style={styles.cardBody}>
-        <Text style={styles.cardTitle} numberOfLines={1}>{p.title}</Text>
-        <Text style={styles.cardMeta} numberOfLines={1}>{p.seller}</Text>
-
-        <View style={styles.priceRow}>
-          {p.promo ? (
-            <>
-              <Text style={styles.promo}>{p.promo.toLocaleString('fr-FR')} F</Text>
-              <Text style={styles.priceStrike}>{p.price.toLocaleString('fr-FR')} F</Text>
-            </>
-          ) : (
-            <Text style={styles.price}>{p.price.toLocaleString('fr-FR')} F</Text>
-          )}
+    <View style={styles.gcard}>
+      {/* Zone cliquable → fiche produit (image + infos). Séparée des boutons pour éviter les doubles taps. */}
+      <Pressable onPress={onOpen}>
+        <View style={styles.gImgWrap}>
+          <Image source={{ uri: p.image }} style={styles.gImg} contentFit="cover" transition={200} />
+          <View style={styles.commissionBadge}><Text style={styles.commissionText}>{p.commission}%</Text></View>
         </View>
-
-        <Text style={styles.earn}>Tu gagnes ≈ {earn.toLocaleString('fr-FR')} F / vente</Text>
-        {p.tiers.length > 0 && (
-          <Text style={styles.tiers} numberOfLines={1}>Prix par lot : {p.tiers.map((t) => `${t.qty}→${t.price_cfa.toLocaleString('fr-FR')}`).join(' · ')}</Text>
-        )}
-
-        <View style={styles.actions}>
-          <Pressable onPress={onCopy} style={[styles.copyBtn, copied && styles.copyBtnDone]}>
-            <Ionicons name={copied ? 'checkmark' : 'link'} size={16} color={copied ? '#fff' : Afylo.violet} />
-            <Text style={[styles.copyText, copied && { color: '#fff' }]}>{copied ? 'Lien copié' : 'Copier le lien'}</Text>
-          </Pressable>
-          <Pressable onPress={onResell} style={[styles.resellBtn, resold && { backgroundColor: Afylo.green }]}>
-            <Ionicons name={resold ? 'checkmark' : 'repeat'} size={16} color="#fff" />
-            <Text style={styles.resellText}>{resold ? 'Dans ta boutique' : 'Revendre'}</Text>
-          </Pressable>
+        <View style={styles.gBody}>
+          <Text style={styles.gTitle} numberOfLines={1}>{p.title}</Text>
+          <View style={styles.priceRow}>
+            {p.promo ? (
+              <>
+                <Text style={styles.promo}>{p.promo.toLocaleString('fr-FR')} F</Text>
+                <Text style={styles.priceStrike}>{p.price.toLocaleString('fr-FR')} F</Text>
+              </>
+            ) : (
+              <Text style={styles.price}>{p.price.toLocaleString('fr-FR')} F</Text>
+            )}
+          </View>
+          <Text style={styles.earn} numberOfLines={1}>Tu gagnes ≈ {earn.toLocaleString('fr-FR')} F</Text>
         </View>
+      </Pressable>
 
-        {/* Vendre en live : passe en direct avec ce produit d'affiliation déjà sélectionné */}
-        <Pressable onPress={onSellLive} style={styles.sellLiveBtn}>
+      {/* Action principale + secondaires (icônes) */}
+      <View style={styles.gActions}>
+        <Pressable onPress={onResell} style={[styles.resellBtn, resold && { backgroundColor: Afylo.green }]}>
+          <Ionicons name={resold ? 'checkmark' : 'repeat'} size={15} color="#fff" />
+          <Text style={styles.resellText}>{resold ? 'Ajouté' : 'Revendre'}</Text>
+        </Pressable>
+        <Pressable onPress={onCopy} style={[styles.iconBtn, copied && styles.iconBtnDone]} hitSlop={6}>
+          <Ionicons name={copied ? 'checkmark' : 'link'} size={16} color={copied ? '#fff' : Afylo.violet} />
+        </Pressable>
+        <Pressable onPress={onSellLive} style={styles.iconBtnLive} hitSlop={6}>
           <Ionicons name="radio" size={16} color="#fff" />
-          <Text style={styles.sellLiveText}>Vendre en live</Text>
         </Pressable>
       </View>
     </View>
@@ -286,26 +291,25 @@ const styles = StyleSheet.create({
   gateBtnText: { color: '#fff', fontFamily: Font.bold, fontSize: 15 },
   empty: { ...Type.body, color: Afylo.textDim, textAlign: 'center', marginTop: 30 },
 
-  card: { flexDirection: 'row', backgroundColor: Afylo.surface, borderRadius: Radius.lg, padding: 10, marginBottom: 12, borderWidth: 1, borderColor: Afylo.border },
-  cardImg: { width: 96, height: 96, borderRadius: Radius.md, backgroundColor: Afylo.surfaceAlt },
-  sellLiveBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: 8, height: 44, borderRadius: Radius.pill, backgroundColor: Afylo.live },
-  sellLiveText: { color: '#fff', fontFamily: Font.bold, fontSize: 14 },
-  commissionBadge: { position: 'absolute', top: 16, left: 16, backgroundColor: Afylo.green, paddingHorizontal: 8, paddingVertical: 3, borderRadius: Radius.pill },
+  commissionBadge: { position: 'absolute', top: 8, left: 8, backgroundColor: Afylo.green, paddingHorizontal: 8, paddingVertical: 3, borderRadius: Radius.pill },
   commissionText: { color: '#fff', fontFamily: Font.bold, fontSize: 12 },
-  cardBody: { flex: 1, marginLeft: 12 },
-  cardTitle: { ...Type.subtitle, fontSize: 16, color: Afylo.text },
-  cardMeta: { ...Type.caption, color: Afylo.textDim, marginTop: 2 },
-  priceRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 6 },
-  price: { fontFamily: Font.bold, fontSize: 16, color: Afylo.text },
-  promo: { fontFamily: Font.bold, fontSize: 16, color: Afylo.live },
-  priceStrike: { ...Type.small, color: Afylo.textFaint, textDecorationLine: 'line-through' },
-  earn: { ...Type.small, color: Afylo.green, marginTop: 4 },
-  tiers: { ...Type.caption, color: Afylo.textDim, marginTop: 3 },
+  priceRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 5, flexWrap: 'wrap' },
+  price: { fontFamily: Font.bold, fontSize: 15, color: Afylo.text },
+  promo: { fontFamily: Font.bold, fontSize: 15, color: Afylo.live },
+  priceStrike: { ...Type.caption, color: Afylo.textFaint, textDecorationLine: 'line-through' },
+  earn: { ...Type.caption, color: Afylo.green, fontFamily: Font.semibold, marginTop: 3 },
 
-  actions: { flexDirection: 'row', gap: 8, marginTop: 10 },
-  copyBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, height: 38, borderRadius: Radius.pill, borderWidth: 1.5, borderColor: Afylo.violet },
-  copyBtnDone: { backgroundColor: Afylo.violet, borderColor: Afylo.violet },
-  copyText: { fontFamily: Font.semibold, fontSize: 13, color: Afylo.violet },
-  resellBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, height: 38, paddingHorizontal: 16, borderRadius: Radius.pill, backgroundColor: Afylo.violet },
-  resellText: { fontFamily: Font.semibold, fontSize: 13, color: '#fff' },
+  // Grille 2 colonnes
+  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
+  gcard: { width: '47%', flexGrow: 1, backgroundColor: Afylo.surface, borderRadius: Radius.lg, borderWidth: 1, borderColor: Afylo.border, overflow: 'hidden' },
+  gImgWrap: { width: '100%', aspectRatio: 1, backgroundColor: Afylo.surfaceAlt },
+  gImg: { width: '100%', height: '100%' },
+  gBody: { paddingHorizontal: 10, paddingTop: 8 },
+  gTitle: { ...Type.small, fontFamily: Font.semibold, color: Afylo.text },
+  gActions: { flexDirection: 'row', alignItems: 'center', gap: 6, padding: 10, paddingTop: 8 },
+  resellBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5, height: 36, borderRadius: Radius.pill, backgroundColor: Afylo.violet },
+  resellText: { fontFamily: Font.semibold, fontSize: 12.5, color: '#fff' },
+  iconBtn: { width: 36, height: 36, borderRadius: 18, borderWidth: 1.5, borderColor: Afylo.violet, alignItems: 'center', justifyContent: 'center' },
+  iconBtnDone: { backgroundColor: Afylo.violet, borderColor: Afylo.violet },
+  iconBtnLive: { width: 36, height: 36, borderRadius: 18, backgroundColor: Afylo.live, alignItems: 'center', justifyContent: 'center' },
 });
