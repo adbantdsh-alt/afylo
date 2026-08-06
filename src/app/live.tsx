@@ -174,6 +174,9 @@ export default function Live() {
   const [requested, setRequested] = useState<'idle' | 'pending' | 'accepted' | 'live'>('idle'); // côté spectateur
   const [chooser, setChooser] = useState(false); // choix audio/vidéo après acceptation
   const [endConfirm, setEndConfirm] = useState(false); // confirmation avant de terminer le live (vendeur)
+  // Plein écran (spotlight) : 'host' = l'hôte occupe le grand écran (défaut), sinon l'id de l'intervenant mis en avant.
+  const [spotlight, setSpotlight] = useState<string>('host');
+  const [guestMenu, setGuestMenu] = useState<Guest | null>(null); // feuille d'options (appui long sur une tuile)
   const lastTap = useRef(0);
   const commentsRef = useRef<ScrollView>(null); // auto-scroll vers le dernier message
   const atBottomRef = useRef(true); // colle au bas seulement si l'utilisateur n'a pas remonté pour lire
@@ -360,8 +363,13 @@ export default function Live() {
     setChooser(false);
     pushEvent(me.name, me.avatar, 'guest', finalMode === 'video' ? 'tu interviens en vidéo 📹' : 'tu interviens en audio 🎤');
   };
-  const leaveStage = () => { setGuests((prev) => prev.filter((g) => !g.local)); setRequested('idle'); };
+  const leaveStage = () => { setGuests((prev) => prev.filter((g) => !g.local)); setRequested('idle'); setSpotlight('host'); };
   const localMode = guests.find((g) => g.local)?.mode;
+  // Intervenant actuellement en plein écran (spotlight), s'il y en a un.
+  const spotG = spotlight !== 'host' ? guests.find((g) => g.id === spotlight) : undefined;
+  // Tuiles du rail : quand un intervenant est en plein écran, l'hôte redevient une tuile (en tête), et l'intervenant en avant sort du rail.
+  const hostTile: Guest = { id: 'host', name, avatar: hostAvatar, mode: liveKind, local: isHost };
+  const railGuests: Guest[] = spotG ? [hostTile, ...guests.filter((g) => g.id !== spotlight)] : guests;
 
   // Contrôles de MON intervention (co-host) : retourner ma caméra, couper la caméra (→ audio) ou la rallumer.
   const [guestFacing, setGuestFacing] = useState<'front' | 'back'>('front');
@@ -374,6 +382,11 @@ export default function Live() {
     if (cur.mode === 'audio' && !permission?.granted) { const r = await requestPermission(); if (!r?.granted) { showToast('Caméra refusée'); return; } }
     setGuests((prev) => prev.map((g) => (g.local ? { ...g, mode: g.mode === 'video' ? 'audio' : 'video' } : g)));
   };
+
+  // Si l'intervenant mis en plein écran quitte le live, on revient à l'hôte.
+  useEffect(() => {
+    if (spotlight !== 'host' && !guests.some((g) => g.id === spotlight)) setSpotlight('host');
+  }, [guests, spotlight]);
 
   // Message d'accueil + règles (une seule fois, pas lors d'une reprise depuis le PiP).
   useEffect(() => {
@@ -497,7 +510,16 @@ export default function Live() {
   // ---------- VUE LIVE ----------
   return (
     <View style={styles.root}>
-      {isHost ? (
+      {spotG ? (
+        // Un intervenant est mis en plein écran (spotlight)
+        spotG.mode === 'video' ? (
+          spotG.local
+            ? <CameraView key={guestFacing} style={StyleSheet.absoluteFill} facing={guestFacing} mirror={guestFacing === 'front'} />
+            : <RemoteVideoPip />
+        ) : (
+          <HostAudioBackdrop avatar={spotG.avatar} name={spotG.name} />
+        )
+      ) : isHost ? (
         liveKind === 'audio' ? (
           <HostAudioBackdrop avatar={hostAvatar} name={name} />
         ) : (
@@ -505,6 +527,14 @@ export default function Live() {
         )
       ) : (
         <VideoView player={viewerPlayer} style={StyleSheet.absoluteFill} contentFit="cover" nativeControls={false} />
+      )}
+
+      {/* Nom + bouton « réduire » de l'intervenant mis en plein écran */}
+      {spotG && (
+        <Pressable onPress={() => setSpotlight('host')} style={styles.spotChip}>
+          <Ionicons name="contract-outline" size={14} color="#fff" />
+          <Text style={styles.spotChipText} numberOfLines={1}>{spotG.name} · Réduire</Text>
+        </Pressable>
       )}
 
       {/* Live en pause : voile plein écran (hôte voit le bouton reprendre, spectateurs un message) */}
@@ -637,28 +667,32 @@ export default function Live() {
         )}
 
         {/* Intervenants en direct — colonne verticale à droite (façon TikTok) : l'hôte reste plein écran et visible.
-            La taille des tuiles se réduit quand il y en a beaucoup. */}
-        {guests.length > 0 && (() => {
-          const n = guests.length;
+            Appui long sur une tuile → options (dont « Passer en plein écran »). La taille se réduit s'il y en a beaucoup. */}
+        {railGuests.length > 0 && (() => {
+          const n = railGuests.length;
           const size = n <= 2 ? 96 : n <= 4 ? 84 : n <= 6 ? 74 : 64;
           return (
             <View style={styles.guestRail} pointerEvents="box-none">
-              {guests.map((g) => (
-                <GuestPip
-                  key={g.id}
-                  g={g}
-                  size={size}
-                  facing={g.local ? guestFacing : facing}
-                  onFlip={g.local ? flipGuestCam : undefined}
-                  onToggleCam={g.local ? toggleGuestCam : undefined}
-                  onLeave={g.local ? leaveStage : undefined}
-                  followed={!isHost && !g.local ? followedGuests.includes(g.name) : undefined}
-                  onFollow={!isHost && !g.local ? () => toggleFollowGuest({ id: g.id, name: g.name }) : undefined}
-                  onHostMute={isHost && !g.local ? () => (g.muted ? hostAskGuestMic(g.id) : hostCutGuestMic(g.id)) : undefined}
-                  onHostCam={isHost && !g.local ? () => (g.mode === 'video' ? hostCutGuestCam(g.id) : hostAskGuestCam(g.id)) : undefined}
-                  onHostRemove={isHost && !g.local ? () => removeGuest(g.id) : undefined}
-                />
-              ))}
+              {railGuests.map((g) => {
+                const isHostTile = g.id === 'host';
+                return (
+                  <GuestPip
+                    key={g.id}
+                    g={g}
+                    size={size}
+                    facing={g.local ? guestFacing : facing}
+                    onLongPress={() => setGuestMenu(g)}
+                    onFlip={g.local && !isHostTile ? flipGuestCam : undefined}
+                    onToggleCam={g.local && !isHostTile ? toggleGuestCam : undefined}
+                    onLeave={g.local && !isHostTile ? leaveStage : undefined}
+                    followed={!isHost && !g.local && !isHostTile ? followedGuests.includes(g.name) : undefined}
+                    onFollow={!isHost && !g.local && !isHostTile ? () => toggleFollowGuest({ id: g.id, name: g.name }) : undefined}
+                    onHostMute={isHost && !g.local && !isHostTile ? () => (g.muted ? hostAskGuestMic(g.id) : hostCutGuestMic(g.id)) : undefined}
+                    onHostCam={isHost && !g.local && !isHostTile ? () => (g.mode === 'video' ? hostCutGuestCam(g.id) : hostAskGuestCam(g.id)) : undefined}
+                    onHostRemove={isHost && !g.local && !isHostTile ? () => removeGuest(g.id) : undefined}
+                  />
+                );
+              })}
             </View>
           );
         })()}
@@ -910,6 +944,36 @@ export default function Live() {
         </Pressable>
       </Modal>
 
+      {/* Options d'une tuile (appui long) : plein écran / réduire / suivre */}
+      <Modal visible={!!guestMenu} transparent animationType="fade" onRequestClose={() => setGuestMenu(null)}>
+        <Pressable style={styles.modOverlay} onPress={() => setGuestMenu(null)}>
+          <View style={styles.modSheet}>
+            <Text style={styles.modWho}>{guestMenu?.name}{guestMenu?.local ? ' (toi)' : ''}</Text>
+            <Text style={styles.modMsg}>Affichage à l'écran</Text>
+            {guestMenu?.id === 'host' ? (
+              <Pressable style={styles.modItem} onPress={() => { setSpotlight('host'); setGuestMenu(null); }}>
+                <Ionicons name="expand-outline" size={20} color={Afylo.violet} /><Text style={[styles.modItemText, { color: Afylo.violet }]}>Remettre l'hôte en plein écran</Text>
+              </Pressable>
+            ) : spotlight === guestMenu?.id ? (
+              <Pressable style={styles.modItem} onPress={() => { setSpotlight('host'); setGuestMenu(null); }}>
+                <Ionicons name="contract-outline" size={20} color={Afylo.text} /><Text style={styles.modItemText}>Réduire — revenir à l'hôte</Text>
+              </Pressable>
+            ) : (
+              <Pressable style={styles.modItem} onPress={() => { if (guestMenu) setSpotlight(guestMenu.id); setGuestMenu(null); }}>
+                <Ionicons name="expand-outline" size={20} color={Afylo.violet} /><Text style={[styles.modItemText, { color: Afylo.violet }]}>Passer en plein écran</Text>
+              </Pressable>
+            )}
+            {!isHost && guestMenu && guestMenu.id !== 'host' && !guestMenu.local && (
+              <Pressable style={styles.modItem} onPress={() => { toggleFollowGuest({ id: guestMenu.id, name: guestMenu.name }); setGuestMenu(null); }}>
+                <Ionicons name={followedGuests.includes(guestMenu.name) ? 'checkmark-circle' : 'person-add-outline'} size={20} color={Afylo.text} />
+                <Text style={styles.modItemText}>{followedGuests.includes(guestMenu.name) ? 'Ne plus suivre' : 'Suivre'} {guestMenu.name}</Text>
+              </Pressable>
+            )}
+            <Pressable style={styles.modCancel} onPress={() => setGuestMenu(null)}><Text style={styles.modCancelText}>Annuler</Text></Pressable>
+          </View>
+        </Pressable>
+      </Modal>
+
       {/* Ventes reçues en direct (vendeur) */}
       <Modal visible={salesOpen} transparent animationType="slide" onRequestClose={() => setSalesOpen(false)}>
         <Pressable style={styles.mOverlay} onPress={() => setSalesOpen(false)}>
@@ -1099,9 +1163,9 @@ function ProductFilterBar({ filter, setFilter, query, setQuery }: { filter: 'all
   );
 }
 
-function GuestPip({ g, size = 86, facing, onFlip, onToggleCam, onLeave, followed, onFollow, onHostMute, onHostCam, onHostRemove }: { g: Guest; size?: number; facing: 'front' | 'back'; onFlip?: () => void; onToggleCam?: () => void; onLeave?: () => void; followed?: boolean; onFollow?: () => void; onHostMute?: () => void; onHostCam?: () => void; onHostRemove?: () => void }) {
+function GuestPip({ g, size = 86, facing, onLongPress, onFlip, onToggleCam, onLeave, followed, onFollow, onHostMute, onHostCam, onHostRemove }: { g: Guest; size?: number; facing: 'front' | 'back'; onLongPress?: () => void; onFlip?: () => void; onToggleCam?: () => void; onLeave?: () => void; followed?: boolean; onFollow?: () => void; onHostMute?: () => void; onHostCam?: () => void; onHostRemove?: () => void }) {
   return (
-    <View style={[styles.guestPip, { width: size, height: size * 1.35 }]}>
+    <Pressable onLongPress={onLongPress} delayLongPress={280} style={[styles.guestPip, { width: size, height: size * 1.35 }]}>
       {/* Suivre l'intervenant d'un tap (spectateur) */}
       {onFollow && (
         <Pressable onPress={onFollow} style={[styles.guestFollow, followed && styles.guestFollowOn]} hitSlop={6}>
@@ -1150,7 +1214,7 @@ function GuestPip({ g, size = 86, facing, onFlip, onToggleCam, onLeave, followed
         <Ionicons name={g.muted ? 'mic-off' : g.mode === 'video' ? 'videocam' : 'mic'} size={9} color={g.muted ? '#FF6B81' : '#fff'} />
         <Text style={styles.guestName} numberOfLines={1}>{g.name}{g.local ? ' (toi)' : ''}</Text>
       </View>
-    </View>
+    </Pressable>
   );
 }
 
@@ -1356,6 +1420,8 @@ const styles = StyleSheet.create({
   pinnedText: { color: '#fff', fontSize: 13, flex: 1 },
 
   guestRail: { position: 'absolute', right: 10, top: 150, flexDirection: 'column', alignItems: 'flex-end', gap: 8, zIndex: 3 },
+  spotChip: { position: 'absolute', top: 150, left: 12, zIndex: 4, flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: '#000000aa', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 16, maxWidth: 180 },
+  spotChipText: { color: '#fff', fontFamily: Font.semibold, fontSize: 12 },
   guestPip: { borderRadius: 16, overflow: 'hidden', backgroundColor: '#111', borderWidth: 2, borderColor: Afylo.violet },
   guestFollow: { position: 'absolute', top: 4, right: 4, zIndex: 2, width: 22, height: 22, borderRadius: 11, backgroundColor: Afylo.violet, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#fff' },
   guestFollowOn: { backgroundColor: '#ffffff33' },
