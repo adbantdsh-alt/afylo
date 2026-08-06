@@ -10,6 +10,7 @@ import { VerifiedBadge, verifiedKind } from '@/components/verified';
 import { Afylo, Font, Radius, Type } from '@/constants/brand';
 import { searchPosts, searchProfiles, type SearchPost } from '@/lib/db';
 import { face, photo } from '@/lib/mock';
+import { addSearchHistory, clearSearchHistory, getSearchHistory, removeSearchHistory } from '@/lib/search-history';
 import { searchSounds } from '@/lib/sounds';
 import type { Profile } from '@/types/db';
 
@@ -24,6 +25,14 @@ export default function Search() {
   const [creators, setCreators] = useState<Profile[]>([]);
   const [posts, setPosts] = useState<SearchPost[]>([]);
   const [loading, setLoading] = useState(true);
+  const [history, setHistory] = useState<string[]>([]);
+
+  // Charge l'historique de recherche local.
+  useEffect(() => { getSearchHistory().then(setHistory); }, []);
+  // Enregistre un terme dans l'historique (au lancement d'une recherche / ouverture d'un résultat).
+  const commit = (term: string) => { const t = term.trim(); if (t) addSearchHistory(t).then(setHistory); };
+  const removeHist = (term: string) => removeSearchHistory(term).then(setHistory);
+  const clearHist = () => clearSearchHistory().then(() => setHistory([]));
 
   // Recherche RÉELLE (Supabase) selon l'onglet actif, avec léger anti-rebond
   useEffect(() => {
@@ -37,11 +46,15 @@ export default function Search() {
     return () => { cancel = true; clearTimeout(t); };
   }, [q, tab]);
 
-  const openCreator = (p: Profile) =>
+  const openCreator = (p: Profile) => {
+    commit(q);
     router.push({ pathname: '/creator/[id]', params: { id: p.handle ?? p.id, name: p.display_name ?? '', avatar: p.avatar_url ?? '' } });
-  const openPost = (p: SearchPost) =>
+  };
+  const openPost = (p: SearchPost) => {
+    commit(q);
     router.push({ pathname: '/comments/[id]', params: { id: p.id, image: p.thumbnail_url || p.media_url || '' } });
-  const openTag = (t: string) => { setQ(t.replace('#', '')); setTab(1); };
+  };
+  const openTag = (t: string) => { const term = t.replace('#', ''); commit(term); setQ(term); setTab(1); };
 
   return (
     <View style={styles.root}>
@@ -50,7 +63,7 @@ export default function Search() {
           <Ionicons name="chevron-back" size={26} color={Afylo.text} onPress={() => (router.canGoBack() ? router.back() : router.replace('/accueil'))} />
           <View style={styles.searchBox}>
             <Ionicons name="search" size={18} color={Afylo.textDim} />
-            <TextInput style={styles.searchInput} value={q} onChangeText={setQ} placeholder="Rechercher" placeholderTextColor={Afylo.textFaint} autoFocus />
+            <TextInput style={styles.searchInput} value={q} onChangeText={setQ} placeholder="Rechercher" placeholderTextColor={Afylo.textFaint} autoFocus returnKeyType="search" onSubmitEditing={() => commit(q)} />
             {q.length > 0 && <Ionicons name="close-circle" size={18} color={Afylo.textFaint} onPress={() => setQ('')} />}
           </View>
         </View>
@@ -63,7 +76,25 @@ export default function Search() {
         </ScrollView>
       </SafeAreaView>
 
-      <ScrollView contentContainerStyle={{ padding: 16 }} showsVerticalScrollIndicator={false}>
+      <ScrollView contentContainerStyle={{ padding: 16 }} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+        {/* Recherches récentes (quand le champ est vide) — chaque entrée est supprimable */}
+        {!q.trim() && history.length > 0 && (
+          <View style={styles.histWrap}>
+            <View style={styles.histHead}>
+              <Text style={styles.histTitle}>Recherches récentes</Text>
+              <Pressable onPress={clearHist} hitSlop={8}><Text style={styles.histClear}>Effacer tout</Text></Pressable>
+            </View>
+            {history.map((h) => (
+              <View key={h} style={styles.histRow}>
+                <Pressable style={styles.histLeft} onPress={() => setQ(h)}>
+                  <Ionicons name="time-outline" size={18} color={Afylo.textDim} />
+                  <Text style={styles.histText} numberOfLines={1}>{h}</Text>
+                </Pressable>
+                <Ionicons name="close" size={18} color={Afylo.textFaint} onPress={() => removeHist(h)} />
+              </View>
+            ))}
+          </View>
+        )}
         {tab === 3 ? (
           <View style={styles.tagWrap}>
             {TAGS.filter((t) => (q ? t.includes(q.toLowerCase()) : true)).map((t) => (
@@ -148,6 +179,14 @@ const styles = StyleSheet.create({
   soundIcon: { width: 44, height: 44, borderRadius: 10, backgroundColor: Afylo.surfaceAlt, alignItems: 'center', justifyContent: 'center' },
   soundName: { ...Type.body, fontFamily: Font.semibold, color: Afylo.text },
   soundMeta: { ...Type.caption, color: Afylo.textDim, marginTop: 2 },
+
+  histWrap: { marginBottom: 12 },
+  histHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 },
+  histTitle: { ...Type.body, fontFamily: Font.semibold, color: Afylo.text },
+  histClear: { ...Type.small, fontFamily: Font.semibold, color: Afylo.violet },
+  histRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 10 },
+  histLeft: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 10 },
+  histText: { ...Type.body, fontSize: 15, color: Afylo.text, flexShrink: 1 },
 
   tagWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
   tagPill: { paddingHorizontal: 16, paddingVertical: 10, borderRadius: Radius.pill, backgroundColor: Afylo.surfaceAlt },

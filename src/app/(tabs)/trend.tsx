@@ -331,6 +331,20 @@ function Reel({ post, index, active, height, width, showBuzz, onNotInterested, a
 
       {/* Infos en bas */}
       <SafeAreaView edges={['bottom']} style={styles.bottom} pointerEvents="box-none">
+        {/* Carte produit AVANT le nom (façon TikTok Shop) : achat immédiat, sans scroll */}
+        {post.product && (
+          <Pressable style={styles.buyBar} onPress={buy}>
+            <View style={styles.buyIcon}><Ionicons name="bag-handle" size={16} color="#fff" /></View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.buyTitle} numberOfLines={1}>{post.product.title}</Text>
+              <View style={styles.buyPriceRow}>
+                <Text style={styles.buyPrice}>{post.product.price}</Text>
+                {post.product.priceOld && <Text style={styles.buyPriceOld}>{post.product.priceOld}</Text>}
+              </View>
+            </View>
+            <View style={styles.buyCta}><Text style={styles.buyCtaText}>Acheter</Text></View>
+          </Pressable>
+        )}
         <View style={styles.infoRow}>
           <Text style={styles.name}>{post.name}</Text>
           {showBuzz && <BuzzBadge />}
@@ -342,17 +356,6 @@ function Reel({ post, index, active, height, width, showBuzz, onNotInterested, a
           )}
         </View>
         <RichText text={post.caption || ''} style={styles.caption} linkStyle={styles.captionLink} numberOfLines={2} onPressMention={openMention} onPressTag={openTag} />
-
-        {post.product && (
-          <View style={styles.buyBar}>
-            <Ionicons name="bag-handle" size={18} color="#fff" />
-            <Text style={styles.buyTitle} numberOfLines={1}>{post.product.title}</Text>
-            <Text style={styles.buyPrice}>{post.product.price}</Text>
-            <Pressable style={styles.buyCta} onPress={buy}>
-              <Text style={styles.buyCtaText}>Acheter</Text>
-            </Pressable>
-          </View>
-        )}
       </SafeAreaView>
 
       <RateSheet
@@ -497,19 +500,20 @@ const styles = StyleSheet.create({
   buyBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    backgroundColor: '#ffffff22',
+    gap: 10,
+    backgroundColor: '#000000aa',
     borderWidth: 1,
-    borderColor: '#ffffff44',
-    borderRadius: Radius.pill,
-    paddingLeft: 12,
-    paddingRight: 6,
-    paddingVertical: 6,
-    marginTop: 12,
-    width: '82%',
+    borderColor: '#ffffff33',
+    borderRadius: 14,
+    padding: 8,
+    marginBottom: 10,
+    width: '86%',
   },
-  buyTitle: { color: '#fff', fontSize: 13, fontWeight: '700', flex: 1 },
-  buyPrice: { color: Afylo.gold, fontSize: 13, fontWeight: '800' },
-  buyCta: { backgroundColor: Afylo.violet, paddingHorizontal: 14, paddingVertical: 8, borderRadius: Radius.pill },
+  buyIcon: { width: 34, height: 34, borderRadius: 9, backgroundColor: Afylo.violet, alignItems: 'center', justifyContent: 'center' },
+  buyTitle: { color: '#fff', fontSize: 13, fontFamily: Font.semibold },
+  buyPriceRow: { flexDirection: 'row', alignItems: 'baseline', gap: 6, marginTop: 1 },
+  buyPrice: { color: Afylo.gold, fontSize: 14, fontWeight: '800' },
+  buyPriceOld: { color: '#ffffff99', fontSize: 11, textDecorationLine: 'line-through' },
+  buyCta: { backgroundColor: Afylo.violet, paddingHorizontal: 16, paddingVertical: 9, borderRadius: Radius.pill },
   buyCtaText: { color: '#fff', fontSize: 13, fontWeight: '800' },
 });
