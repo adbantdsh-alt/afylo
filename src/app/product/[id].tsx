@@ -10,7 +10,7 @@ import { Avatar } from '@/components/ui-kit';
 import { VerifiedBadge, verifiedKind } from '@/components/verified';
 import { Afylo, Font, Radius, Type } from '@/constants/brand';
 import { useAuthGate } from '@/lib/auth-gate';
-import { getProductWithOwner, hasPurchasedProduct, listProductReviews, upsertProductReview, type ProductReview, type ProductWithOwner } from '@/lib/db';
+import { getProductWithOwner, hasPurchasedProduct, listProductReviews, sendMessage, upsertProductReview, type ProductReview, type ProductWithOwner } from '@/lib/db';
 import { timeAgo } from '@/lib/feed-map';
 import { photo } from '@/lib/mock';
 import { formatCfa } from '@/types/db';
@@ -80,6 +80,15 @@ export default function ProductPage() {
 
   const openSeller = () => owner?.handle && router.push({ pathname: '/creator/[id]', params: { id: owner.handle } });
 
+  // Contacter le vendeur : envoie la carte produit (→ conversation classée "boutique") puis ouvre la discussion.
+  const messageSeller = async () => {
+    if (!owner?.id || !gate('envoyer un message')) return;
+    try {
+      await sendMessage(owner.id, { kind: 'product', product: { id: product.id, title: product.title, price: formatCfa(price), image: images[0] } });
+    } catch {}
+    router.push({ pathname: '/chat/[id]', params: { id: owner.id, name: owner.display_name ?? '', avatar: owner.avatar_url ?? '' } });
+  };
+
   const sendReview = async () => {
     if (!gate('laisser un avis') || myRating === 0) return;
     setSending(true);
@@ -134,6 +143,26 @@ export default function ProductPage() {
             </View>
             {product.kind === 'physical' && product.stock <= 0 && <Text style={styles.soldOut}>Rupture de stock</Text>}
           </View>
+
+          {/* Offres de quantité (paliers définis à la création) — la sélection se fait au paiement */}
+          {!!product.quantity_tiers?.length && (
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Offres de quantité</Text>
+              <View style={styles.tierWrap}>
+                <View style={styles.tierChip}>
+                  <Text style={styles.tierQty}>1 unité</Text>
+                  <Text style={styles.tierPrice}>{formatCfa(price)}</Text>
+                </View>
+                {product.quantity_tiers.map((t) => (
+                  <View key={t.qty} style={styles.tierChip}>
+                    <Text style={styles.tierQty}>{t.qty} unités</Text>
+                    <Text style={styles.tierPrice}>{formatCfa(t.price_cfa)}</Text>
+                  </View>
+                ))}
+              </View>
+              <Text style={styles.tierHint}>Choisis la quantité au moment du paiement.</Text>
+            </View>
+          )}
 
           {/* Vendeur */}
           {owner && (
@@ -200,6 +229,11 @@ export default function ProductPage() {
           <Text style={styles.buyPrice}>{formatCfa(price)}</Text>
           <Text style={styles.buyMeta}>{fee > 0 ? `+ ${formatCfa(fee)} livraison` : 'Livraison gratuite'}</Text>
         </View>
+        {owner && (
+          <Pressable onPress={messageSeller} style={styles.msgBtn}>
+            <Ionicons name="chatbubble-ellipses-outline" size={22} color={Afylo.violet} />
+          </Pressable>
+        )}
         <Pressable onPress={() => { if (gate('acheter')) setPayOpen(true); }} style={styles.buyBtn}>
           <Ionicons name="bag-handle" size={18} color="#fff" />
           <Text style={styles.buyBtnText}>Acheter</Text>
@@ -265,6 +299,13 @@ const styles = StyleSheet.create({
   buyBar: { position: 'absolute', left: 0, right: 0, bottom: 0, flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, paddingTop: 10, backgroundColor: Afylo.bg, borderTopWidth: 1, borderTopColor: Afylo.border },
   buyPrice: { color: Afylo.ink, fontFamily: Font.bold, fontSize: 18 },
   buyMeta: { color: Afylo.textDim, ...Type.caption },
-  buyBtn: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: Afylo.violet, borderRadius: Radius.pill, paddingHorizontal: 28, height: 50 },
+  buyBtn: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: Afylo.violet, borderRadius: Radius.pill, paddingHorizontal: 24, height: 50 },
   buyBtnText: { color: '#fff', fontFamily: Font.bold, fontSize: 16 },
+  msgBtn: { width: 50, height: 50, borderRadius: 25, borderWidth: 1.5, borderColor: Afylo.violet, alignItems: 'center', justifyContent: 'center' },
+
+  tierWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  tierChip: { alignItems: 'center', paddingHorizontal: 16, paddingVertical: 9, borderRadius: Radius.md, backgroundColor: Afylo.surface, borderWidth: 1, borderColor: Afylo.border, minWidth: 88 },
+  tierQty: { ...Type.caption, color: Afylo.textDim },
+  tierPrice: { ...Type.body, fontFamily: Font.bold, color: Afylo.text, marginTop: 1 },
+  tierHint: { ...Type.caption, color: Afylo.textDim, marginTop: 8 },
 });
