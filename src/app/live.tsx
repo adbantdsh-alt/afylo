@@ -44,6 +44,7 @@ const CHATTERS = ['Awa', 'Modou', 'Sokhna', 'Cheikh', 'Mariama', 'Ibou', 'Aïda'
 const MSGS = ['Trop belle 😍', 'Ça coûte combien ?', 'Livraison à Thiès ?', '🔥🔥🔥', "J'achète !", 'Bravo 👏', "Tu as d'autres couleurs ?", 'Première fois ici 🙌', 'Salut de Dakar', 'Le lien du produit ?', 'Magnifique'];
 const GIFTS = [500, 1000, 2000, 5000];
 const BUZZ_GOAL = 10000; // j'aime à atteindre pour que le live obtienne le Buzz
+const MAX_GUESTS = 6; // nombre maximum d'intervenants simultanés (comme TikTok/IG)
 const HEART_COLORS = ['#E11D48', '#FF4D8D', '#FF7AB8', '#B8791F', '#6E80FF', '#FF5A5F', '#FF2D55'];
 const SYS: Record<'join' | 'like' | 'share' | 'guest' | 'sale' | 'welcome', { icon: keyof typeof Ionicons.glyphMap; color: string }> = {
   join: { icon: 'enter-outline', color: '#7EC8FF' },
@@ -310,8 +311,10 @@ export default function Live() {
 
   // ---- Intervenants (co-host façon appel vidéo TikTok) ----
   const acceptGuest = (g: Guest, mode: GuestMode) => {
-    setGuests((prev) => [...prev, { ...g, mode }]);
     setRequests((prev) => prev.filter((r) => r.id !== g.id));
+    if (guests.some((x) => x.id === g.id)) return; // déjà en direct : on ignore (anti-doublon)
+    if (guests.length >= MAX_GUESTS) { showToast(`Maximum ${MAX_GUESTS} intervenants en même temps`); return; }
+    setGuests((prev) => [...prev, { ...g, mode }]);
     pushEvent(g.name, g.avatar, 'guest', mode === 'video' ? 'a rejoint en vidéo 📹' : 'a rejoint en audio 🎤');
   };
   const refuseGuest = (id: string) => setRequests((prev) => prev.filter((r) => r.id !== id));
@@ -374,6 +377,14 @@ export default function Live() {
   // Contrôles de MON intervention (co-host) : retourner ma caméra, couper la caméra (→ audio) ou la rallumer.
   const [guestFacing, setGuestFacing] = useState<'front' | 'back'>('front');
   const flipGuestCam = () => setGuestFacing((f) => (f === 'front' ? 'back' : 'front'));
+  // Couper / réactiver MON micro (intervenant). Si l'hôte l'a coupé, je ne peux pas le rallumer seul.
+  const toggleGuestMic = () => {
+    const cur = guests.find((g) => g.local);
+    if (!cur) return;
+    if (cur.muted && cur.mutedByHost) { showToast("L'hôte a coupé ton micro — attends sa réactivation"); return; }
+    setGuests((prev) => prev.map((g) => (g.local ? { ...g, muted: !g.muted } : g)));
+    showToast(cur.muted ? 'Micro réactivé' : 'Ton micro est coupé');
+  };
   const toggleGuestCam = async () => {
     const cur = guests.find((g) => g.local);
     if (!cur) return;
@@ -387,6 +398,15 @@ export default function Live() {
   useEffect(() => {
     if (spotlight !== 'host' && !guests.some((g) => g.id === spotlight)) setSpotlight('host');
   }, [guests, spotlight]);
+
+  // Spectateur retiré du direct par l'hôte : on remet son état d'intervention à zéro (bouton "demander" de nouveau).
+  useEffect(() => {
+    if (!isHost && requested === 'live' && !guests.some((g) => g.local)) {
+      setRequested('idle');
+      showToast("Tu n'es plus en direct");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [guests, requested, isHost]);
 
   // Message d'accueil + règles (une seule fois, pas lors d'une reprise depuis le PiP).
   useEffect(() => {
@@ -537,6 +557,14 @@ export default function Live() {
         </Pressable>
       )}
 
+      {/* Rappel visible quand l'hôte a coupé son propre micro */}
+      {isHost && hostMuted && !livePaused && (
+        <Pressable onPress={() => setHostMuted(false)} style={styles.selfMuteChip}>
+          <Ionicons name="mic-off" size={14} color="#fff" />
+          <Text style={styles.spotChipText}>Ton micro est coupé</Text>
+        </Pressable>
+      )}
+
       {/* Live en pause : voile plein écran (hôte voit le bouton reprendre, spectateurs un message) */}
       {livePaused && (
         <View style={styles.pauseOverlay} pointerEvents={isHost ? 'auto' : 'none'}>
@@ -682,6 +710,7 @@ export default function Live() {
                     size={size}
                     facing={g.local ? guestFacing : facing}
                     onLongPress={() => setGuestMenu(g)}
+                    onToggleMic={g.local && !isHostTile ? toggleGuestMic : undefined}
                     onFlip={g.local && !isHostTile ? flipGuestCam : undefined}
                     onToggleCam={g.local && !isHostTile ? toggleGuestCam : undefined}
                     onLeave={g.local && !isHostTile ? leaveStage : undefined}
@@ -1163,7 +1192,7 @@ function ProductFilterBar({ filter, setFilter, query, setQuery }: { filter: 'all
   );
 }
 
-function GuestPip({ g, size = 86, facing, onLongPress, onFlip, onToggleCam, onLeave, followed, onFollow, onHostMute, onHostCam, onHostRemove }: { g: Guest; size?: number; facing: 'front' | 'back'; onLongPress?: () => void; onFlip?: () => void; onToggleCam?: () => void; onLeave?: () => void; followed?: boolean; onFollow?: () => void; onHostMute?: () => void; onHostCam?: () => void; onHostRemove?: () => void }) {
+function GuestPip({ g, size = 86, facing, onLongPress, onToggleMic, onFlip, onToggleCam, onLeave, followed, onFollow, onHostMute, onHostCam, onHostRemove }: { g: Guest; size?: number; facing: 'front' | 'back'; onLongPress?: () => void; onToggleMic?: () => void; onFlip?: () => void; onToggleCam?: () => void; onLeave?: () => void; followed?: boolean; onFollow?: () => void; onHostMute?: () => void; onHostCam?: () => void; onHostRemove?: () => void }) {
   return (
     <Pressable onLongPress={onLongPress} delayLongPress={280} style={[styles.guestPip, { width: size, height: size * 1.35 }]}>
       {/* Suivre l'intervenant d'un tap (spectateur) */}
@@ -1176,9 +1205,13 @@ function GuestPip({ g, size = 86, facing, onLongPress, onFlip, onToggleCam, onLe
         ? (g.local ? <CameraView key={facing} style={StyleSheet.absoluteFill} facing={facing} mirror={facing === 'front'} /> : <RemoteVideoPip />)
         : <AudioPip avatar={g.avatar} local={!!g.local} />}
 
-      {/* Contrôles de MON intervention (co-host) */}
-      {g.local && (
+      {/* Contrôles de MON intervention (co-host) : micro, caméra, retourner, quitter.
+          onLeave n'est fourni qu'à la vraie tuile locale (pas à la tuile "hôte" rétrogradée). */}
+      {g.local && onLeave && (
         <View style={styles.pipControls}>
+          <Pressable onPress={onToggleMic} style={[styles.pipBtn, g.muted && { backgroundColor: '#E11D48' }]}>
+            <Ionicons name={g.muted ? 'mic-off' : 'mic'} size={13} color="#fff" />
+          </Pressable>
           <Pressable onPress={onToggleCam} style={styles.pipBtn}>
             <Ionicons name={g.mode === 'video' ? 'videocam' : 'videocam-off'} size={13} color="#fff" />
           </Pressable>
@@ -1422,6 +1455,7 @@ const styles = StyleSheet.create({
   guestRail: { position: 'absolute', right: 10, top: 150, flexDirection: 'column', alignItems: 'flex-end', gap: 8, zIndex: 3 },
   spotChip: { position: 'absolute', top: 150, left: 12, zIndex: 4, flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: '#000000aa', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 16, maxWidth: 180 },
   spotChipText: { color: '#fff', fontFamily: Font.semibold, fontSize: 12 },
+  selfMuteChip: { position: 'absolute', top: 112, alignSelf: 'center', zIndex: 4, flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: '#E11D48dd', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16 },
   guestPip: { borderRadius: 16, overflow: 'hidden', backgroundColor: '#111', borderWidth: 2, borderColor: Afylo.violet },
   guestFollow: { position: 'absolute', top: 4, right: 4, zIndex: 2, width: 22, height: 22, borderRadius: 11, backgroundColor: Afylo.violet, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#fff' },
   guestFollowOn: { backgroundColor: '#ffffff33' },
@@ -1475,8 +1509,8 @@ const styles = StyleSheet.create({
   gateConfirmText: { color: '#fff', fontFamily: Font.bold, fontSize: 15 },
   gateCancel: { height: 46, alignItems: 'center', justifyContent: 'center', marginTop: 4 },
   gateCancelText: { color: Afylo.textDim, fontFamily: Font.semibold, fontSize: 14 },
-  pipControls: { position: 'absolute', top: 5, left: 0, right: 0, flexDirection: 'row', justifyContent: 'center', gap: 5 },
-  pipBtn: { width: 24, height: 24, borderRadius: 12, backgroundColor: '#00000088', alignItems: 'center', justifyContent: 'center' },
+  pipControls: { position: 'absolute', top: 5, left: 0, right: 0, flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 4, paddingHorizontal: 3 },
+  pipBtn: { width: 22, height: 22, borderRadius: 11, backgroundColor: '#00000088', alignItems: 'center', justifyContent: 'center' },
   guestNameBar: { position: 'absolute', left: 0, right: 0, bottom: 0, flexDirection: 'row', alignItems: 'center', gap: 3, paddingHorizontal: 5, paddingVertical: 3, backgroundColor: '#00000088' },
   guestName: { color: '#fff', fontFamily: Font.semibold, fontSize: 10, flex: 1 },
 
