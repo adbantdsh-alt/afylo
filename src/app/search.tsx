@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -18,8 +18,9 @@ const TAGS = ['#dakar', '#waxstyle', '#afrobeats', '#tutoriel', '#liveshopping',
 
 export default function Search() {
   const router = useRouter();
-  const [q, setQ] = useState('');
-  const [tab, setTab] = useState(0);
+  const params = useLocalSearchParams<{ q?: string }>();
+  const [q, setQ] = useState(params.q ?? '');
+  const [tab, setTab] = useState(params.q ? 1 : 0); // arrivé avec un tag/terme → onglet Vidéos
   const [creators, setCreators] = useState<Profile[]>([]);
   const [posts, setPosts] = useState<SearchPost[]>([]);
   const [loading, setLoading] = useState(true);

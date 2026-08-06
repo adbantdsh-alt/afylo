@@ -8,6 +8,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Avatar } from '@/components/ui-kit';
 import { PaymentSheet, type PayItem } from '@/components/payment-sheet';
+import { RichText } from '@/components/rich-text';
 import { VerifiedBadge } from '@/components/verified';
 import { Afylo, Font, Radius } from '@/constants/brand';
 import { bumpPostView, getPost, likePost, listMyLikedPostIds, listPostsByAuthor, unlikePost } from '@/lib/db';
@@ -85,6 +86,9 @@ export default function PostViewer() {
 }
 
 function PostView({ post, liked, onLike, onOpenComments }: { post: Post; liked: boolean; onLike: (id: string, liked: boolean) => void; onOpenComments: () => void }) {
+  const router = useRouter();
+  const openMention = (h: string) => router.push({ pathname: '/creator/[id]', params: { id: h } });
+  const openTag = (t: string) => router.push({ pathname: '/search', params: { q: t } });
   const [idx, setIdx] = useState(0);
   const [isLiked, setIsLiked] = useState(liked);
   const [payOpen, setPayOpen] = useState(false);
@@ -140,7 +144,11 @@ function PostView({ post, liked, onLike, onOpenComments }: { post: Post; liked: 
       )}
 
       {/* Légende */}
-      {post.textOnly ? <Text style={styles.textPost}>{post.caption}</Text> : !!post.caption && <Text style={styles.caption}>{post.caption}</Text>}
+      {post.textOnly ? (
+        <RichText text={post.caption} style={styles.textPost} linkStyle={styles.link} onPressMention={openMention} onPressTag={openTag} />
+      ) : !!post.caption && (
+        <RichText text={post.caption} style={styles.caption} linkStyle={styles.link} onPressMention={openMention} onPressTag={openTag} />
+      )}
 
       {/* Produit → Acheter */}
       {post.product && (
@@ -282,6 +290,7 @@ const styles = StyleSheet.create({
   dotOn: { backgroundColor: '#fff', width: 7, height: 7, borderRadius: 3.5 },
 
   caption: { color: Afylo.text, fontSize: 15, lineHeight: 21, paddingHorizontal: 16, paddingTop: 12 },
+  link: { color: Afylo.violet, fontFamily: Font.semibold },
   textPost: { color: Afylo.text, fontSize: 16, lineHeight: 23, paddingHorizontal: 16, paddingTop: 8 },
 
   buyBar: { flexDirection: 'row', alignItems: 'center', gap: 10, marginHorizontal: 16, marginTop: 12, backgroundColor: Afylo.surface, borderRadius: Radius.md, padding: 10, borderWidth: 1, borderColor: Afylo.border },

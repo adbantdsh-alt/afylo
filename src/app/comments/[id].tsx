@@ -9,6 +9,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Avatar } from '@/components/ui-kit';
 import { GiftSheet } from '@/components/gift-sheet';
 import { REACTIONS } from '@/components/rate-sheet';
+import { RichText } from '@/components/rich-text';
 import { Afylo, Font, Radius, Type } from '@/constants/brand';
 import { useAuthGate } from '@/lib/auth-gate';
 import { createComment, deleteCommentDB, listComments, type CommentRow } from '@/lib/db';
@@ -265,6 +266,9 @@ function VoiceNote({ uri, dur }: { uri: string; dur: string }) {
 }
 
 function CommentRow({ c, isOwner, onLike, onReply, onDelete, depth = 0 }: { c: Comment; isOwner: boolean; onLike: (id: string) => void; onReply: (t: { id: string; handle: string }) => void; onDelete: (id: string) => void; depth?: number }) {
+  const router = useRouter();
+  const openMention = (h: string) => router.push({ pathname: '/creator/[id]', params: { id: h } });
+  const openTag = (t: string) => router.push({ pathname: '/search', params: { q: t } });
   const [reaction, setReaction] = useState<string | null>(null);
   const [picker, setPicker] = useState(false);
   const canDelete = isOwner || !!c.mine; // propriétaire du post OU auteur du commentaire
@@ -283,7 +287,7 @@ function CommentRow({ c, isOwner, onLike, onReply, onDelete, depth = 0 }: { c: C
               <Text style={styles.giftNoteText}>{c.text}</Text>
             </View>
           ) : (
-            <Text style={styles.cText}>{c.text}</Text>
+            <RichText text={c.text} style={styles.cText} linkStyle={styles.cLink} onPressMention={openMention} onPressTag={openTag} />
           )}
           <View style={styles.cActions}>
             <Pressable onPress={() => onReply({ id: c.id, handle: c.handle })}>
@@ -343,6 +347,7 @@ const styles = StyleSheet.create({
   cName: { ...Type.small, fontFamily: Font.semibold, color: Afylo.text },
   cTime: { ...Type.caption, color: Afylo.textFaint, fontFamily: Font.regular },
   cText: { ...Type.body, fontSize: 15, color: Afylo.text, marginTop: 3 },
+  cLink: { color: Afylo.violet, fontFamily: Font.semibold },
   cActions: { flexDirection: 'row', alignItems: 'center', gap: 16, marginTop: 6 },
   cReply: { ...Type.caption, fontFamily: Font.semibold, color: Afylo.textDim },
   picker: { flexDirection: 'row', gap: 10, marginTop: 8, backgroundColor: Afylo.surface, borderWidth: 1, borderColor: Afylo.border, borderRadius: Radius.pill, paddingHorizontal: 12, paddingVertical: 6, alignSelf: 'flex-start' },

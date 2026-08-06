@@ -21,7 +21,7 @@ import { EMPTY_WALLET, getWalletSummary, type WalletSummary } from '@/lib/wallet
 import { useReposts, type Repost } from '@/lib/reposts';
 import { useStories } from '@/lib/stories';
 import { useAlwaysShowTabBar } from '@/lib/tabbar';
-import { myLives, myProducts, photo, type MyLive, type Purchase } from '@/lib/mock';
+import { myProducts, photo, type Purchase } from '@/lib/mock';
 import { formatCfa, type Profile } from '@/types/db';
 
 /** Bannière Afylo par défaut (nouveau compte). Remplaçable par assets/images/default-banner.png. */
@@ -219,10 +219,12 @@ export default function Profil() {
               <Text style={[styles.metaText, { color: Afylo.violet }]}>{website}</Text>
             </Pressable>
           )}
-          <View style={styles.meta}>
-            <Ionicons name="location-outline" size={15} color={Afylo.textDim} />
-            <Text style={styles.metaText}>Dakar, Sénégal</Text>
-          </View>
+          {!!dbProfile?.country && (
+            <View style={styles.meta}>
+              <Ionicons name="location-outline" size={15} color={Afylo.textDim} />
+              <Text style={styles.metaText}>{dbProfile.country}</Text>
+            </View>
+          )}
         </View>
 
         {/* Onglets — Pro : 5 (avec Boutique) · Simple : 4 (pas de Boutique, non vendeur) */}
@@ -846,45 +848,6 @@ function ProductCard({ p, isOwner, onEdit, onDelete }: { p: DisplayProduct; isOw
           <Pressable style={styles.shareBtnSm} onPress={shareProduct}><Ionicons name="share-social-outline" size={16} color={Afylo.violet} /></Pressable>
         </View>
       )}
-    </View>
-  );
-}
-
-function LivesList({ isOwner }: { isOwner: boolean }) {
-  return (
-    <View style={{ paddingHorizontal: 16, paddingTop: 12, gap: 12 }}>
-      {isOwner && (
-        <Pressable style={styles.createBtn}>
-          <Ionicons name="radio" size={20} color={Afylo.live} />
-          <Text style={[styles.createText, { color: Afylo.live }]}>Démarrer un live</Text>
-        </Pressable>
-      )}
-      {myLives.map((l) => (
-        <LiveRow key={l.id} l={l} isOwner={isOwner} />
-      ))}
-    </View>
-  );
-}
-
-function LiveRow({ l, isOwner }: { l: MyLive; isOwner: boolean }) {
-  return (
-    <View style={styles.liveRow}>
-      <View style={styles.liveThumb}>
-        <Image source={{ uri: l.thumb }} style={StyleSheet.absoluteFill} contentFit="cover" transition={200} />
-        <View style={styles.playCircle}><Ionicons name="play" size={16} color="#fff" /></View>
-        <Text style={styles.liveDuration}>{l.duration}</Text>
-      </View>
-      <View style={{ flex: 1 }}>
-        <Text style={styles.liveTitle} numberOfLines={1}>{l.title}</Text>
-        <Text style={styles.liveMeta}>{l.date} · {l.viewers} spectateurs</Text>
-        {isOwner && (
-          <View style={styles.liveRevenue}>
-            <Ionicons name="cash-outline" size={13} color={Afylo.green} />
-            <Text style={styles.liveRevenueText}>{l.revenue} F générés</Text>
-          </View>
-        )}
-      </View>
-      <Ionicons name="ellipsis-vertical" size={18} color={Afylo.textFaint} />
     </View>
   );
 }

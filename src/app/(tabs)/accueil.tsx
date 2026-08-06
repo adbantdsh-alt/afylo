@@ -11,6 +11,7 @@ import { PaymentSheet } from '@/components/payment-sheet';
 import { PostOptionsSheet } from '@/components/post-options-sheet';
 import { RateSheet } from '@/components/rate-sheet';
 import { RatingStar } from '@/components/rating-star';
+import { RichText } from '@/components/rich-text';
 import { ReportSheet } from '@/components/report-sheet';
 import { RepostSheet } from '@/components/repost-sheet';
 import { FeedSkeleton } from '@/components/skeleton';
@@ -372,6 +373,8 @@ function PostCard({ post, isPro, myHandle, initialLiked, initialSaved, initialFo
       pathname: '/creator/[id]',
       params: { id: post.handle, name: post.name, avatar: post.avatar, badge: post.badge ?? '' },
     });
+  const openMention = (h: string) => router.push({ pathname: '/creator/[id]', params: { id: h } });
+  const openTag = (t: string) => router.push({ pathname: '/search', params: { q: t } });
 
   if (hidden) return null;
 
@@ -427,7 +430,7 @@ function PostCard({ post, isPro, myHandle, initialLiked, initialSaved, initialFo
 
       <View style={styles.body}>
       {/* Publication texte (façon X) */}
-      {post.textOnly && <Text style={styles.textPost}>{post.caption}</Text>}
+      {post.textOnly && <RichText text={post.caption} style={styles.textPost} linkStyle={styles.link} onPressMention={openMention} onPressTag={openTag} />}
 
       {/* Barre "Acheter" (live shopping) */}
       {post.product && (
@@ -477,7 +480,7 @@ function PostCard({ post, isPro, myHandle, initialLiked, initialSaved, initialFo
         <Stat icon="eye" label={post.views} />
       </View>
 
-      {!post.textOnly && <Text style={styles.caption}>{post.caption}</Text>}
+      {!post.textOnly && !!post.caption && <RichText text={post.caption} style={styles.caption} linkStyle={styles.link} onPressMention={openMention} onPressTag={openTag} />}
 
       {post.sound && (
         <Pressable onPress={() => router.push({ pathname: '/sound/[id]', params: { id: post.sound!.id } })} style={styles.soundRow}>
@@ -784,6 +787,7 @@ const styles = StyleSheet.create({
   rate: { flexDirection: 'row', alignItems: 'center', gap: 5 },
   rateEmoji: { fontSize: 17 },
   caption: { ...Type.body, color: Afylo.ink, marginTop: 12 },
+  link: { color: Afylo.violet, fontFamily: Font.semibold },
   soundRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 10, backgroundColor: Afylo.surfaceAlt, alignSelf: 'flex-start', paddingHorizontal: 10, paddingVertical: 5, borderRadius: Radius.pill },
   soundText: { ...Type.small, color: Afylo.text, maxWidth: 240 },
 });

@@ -12,6 +12,7 @@ import { BuzzBadge } from '@/components/buzz-badge';
 import { PaymentSheet } from '@/components/payment-sheet';
 import { RateSheet } from '@/components/rate-sheet';
 import { RatingStar } from '@/components/rating-star';
+import { RichText } from '@/components/rich-text';
 import { ReportSheet } from '@/components/report-sheet';
 import { RepostSheet } from '@/components/repost-sheet';
 import { Afylo, Font, Radius, Type } from '@/constants/brand';
@@ -273,6 +274,8 @@ function Reel({ post, index, active, height, width, showBuzz, onNotInterested, a
   const rate = () => { if (gate('noter')) setRateOpen(true); };
   const buy = () => { if (gate('acheter')) setPayOpen(true); };
   const openComments = () => router.push({ pathname: '/comments/[id]', params: { id: post.id, image: post.image, name: post.name } });
+  const openMention = (h: string) => router.push({ pathname: '/creator/[id]', params: { id: h } });
+  const openTag = (t: string) => router.push({ pathname: '/search', params: { q: t } });
 
   return (
     <View style={{ height, width, backgroundColor: '#000' }}>
@@ -338,7 +341,7 @@ function Reel({ post, index, active, height, width, showBuzz, onNotInterested, a
             </View>
           )}
         </View>
-        <Text style={styles.caption} numberOfLines={2}>{post.caption}</Text>
+        <RichText text={post.caption || ''} style={styles.caption} linkStyle={styles.captionLink} numberOfLines={2} onPressMention={openMention} onPressTag={openTag} />
 
         {post.product && (
           <View style={styles.buyBar}>
@@ -490,6 +493,7 @@ const styles = StyleSheet.create({
   dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#fff' },
   liveTagText: { color: '#fff', fontSize: 10, fontWeight: '800' },
   caption: { color: '#fff', fontSize: 14, lineHeight: 20, width: '78%' },
+  captionLink: { color: '#9DB4FF', fontFamily: Font.semibold },
   buyBar: {
     flexDirection: 'row',
     alignItems: 'center',

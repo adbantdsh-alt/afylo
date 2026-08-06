@@ -123,7 +123,7 @@ export default function CreatorProfile() {
       { icon: 'ban-outline' as const, label: 'Bloquer', onPress: () => act(block) },
       { icon: 'flag-outline' as const, label: 'Signaler', danger: true, onPress: () => act(() => setReportOpen(true)) },
     ]),
-    { icon: 'information-circle-outline', label: 'À propos de ce compte', onPress: () => act(() => showToast(`${handle} · a rejoint Afylo en 2026`)) },
+    { icon: 'information-circle-outline', label: 'À propos de ce compte', onPress: () => act(() => showToast(p?.created_at ? `${handle} · a rejoint Afylo en ${new Date(p.created_at).getFullYear()}` : `${handle}`)) },
     ...(isSelf ? [] : [{ icon: 'eye-off-outline' as const, label: 'Masquer votre story', onPress: () => act(() => showToast(`Ta story est masquée pour ${handle}`)) }]),
     { icon: 'link-outline', label: "Copier l'URL du profil", onPress: () => act(copyUrl) },
     { icon: 'share-social-outline', label: 'Partager ce profil', onPress: () => act(shareProfile) },
@@ -210,10 +210,12 @@ export default function CreatorProfile() {
                 <Text style={[styles.metaText, { color: Afylo.violet }]}>{website}</Text>
               </Pressable>
             )}
-            <View style={styles.meta}>
-              <Ionicons name="location-outline" size={15} color={Afylo.textDim} />
-              <Text style={styles.metaText}>Dakar, Sénégal</Text>
-            </View>
+            {!!p?.country && (
+              <View style={styles.meta}>
+                <Ionicons name="location-outline" size={15} color={Afylo.textDim} />
+                <Text style={styles.metaText}>{p.country}</Text>
+              </View>
+            )}
           </View>
         )}
 
