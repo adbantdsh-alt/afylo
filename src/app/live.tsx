@@ -435,10 +435,12 @@ export default function Live() {
             <Text style={styles.setupTitle}>Préparer ton live</Text>
             <Pressable onPress={() => setFacing((f) => (f === 'front' ? 'back' : 'front'))} style={styles.close}><Ionicons name="camera-reverse-outline" size={22} color="#fff" /></Pressable>
           </View>
-          <View style={{ flex: 1 }} />
           <View style={styles.setupPanel}>
-            {/* Titre / thème du live (bandeau affiché aux spectateurs) */}
-            <Text style={styles.panelTitle}>Titre du live</Text>
+            {/* Titre (optionnel) + type de live : compacts, en haut */}
+            <View style={styles.panelHead}>
+              <Text style={styles.panelLabel}>Titre du live</Text>
+              <Text style={styles.optTag}>Optionnel</Text>
+            </View>
             <TextInput
               style={styles.titleInput}
               value={liveTitle}
@@ -447,13 +449,25 @@ export default function Live() {
               placeholderTextColor="#ffffff66"
               maxLength={60}
             />
-            <View style={[styles.panelHead, { marginTop: 14 }]}>
-              <Text style={styles.panelTitle}>Produits à vendre</Text>
-              <Text style={styles.optTag}>Optionnel</Text>
+            <View style={styles.kindRow}>
+              <Pressable onPress={() => setLiveKind('video')} style={[styles.kindBtn, liveKind === 'video' && styles.kindBtnOn]}>
+                <Ionicons name="videocam" size={16} color={liveKind === 'video' ? '#fff' : '#ffffff99'} />
+                <Text style={[styles.kindText, liveKind === 'video' && styles.kindTextOn]}>Vidéo</Text>
+              </Pressable>
+              <Pressable onPress={() => setLiveKind('audio')} style={[styles.kindBtn, liveKind === 'audio' && styles.kindBtnOn]}>
+                <Ionicons name="mic" size={16} color={liveKind === 'audio' ? '#fff' : '#ffffff99'} />
+                <Text style={[styles.kindText, liveKind === 'audio' && styles.kindTextOn]}>Audio</Text>
+              </Pressable>
             </View>
-            <Text style={styles.panelSub}>Tu peux lancer ton live sans produit. {sell.length > 0 ? `${sell.length} sélectionné(s).` : 'Ajoute-en quand tu veux pendant le live.'}</Text>
+
+            {/* Produits (optionnel) : la liste prend l'espace restant et défile toute seule */}
+            <View style={[styles.panelHead, { marginTop: 14 }]}>
+              <Text style={styles.panelLabel}>Produits à vendre</Text>
+              <Text style={styles.optTag}>Optionnel</Text>
+              {sell.length > 0 && <Text style={styles.panelCount}>{sell.length} sélectionné(s)</Text>}
+            </View>
             <ProductFilterBar filter={prodFilter} setFilter={setProdFilter} query={prodQuery} setQuery={setProdQuery} />
-            <ScrollView style={{ maxHeight: 220 }} showsVerticalScrollIndicator={false}>
+            <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 4 }} showsVerticalScrollIndicator={false}>
               {filteredAvailable.map((p) => {
                 const on = !!sell.find((x) => x.id === p.id);
                 return (
@@ -468,20 +482,8 @@ export default function Live() {
                 );
               })}
             </ScrollView>
-            {/* Type de live : vidéo ou audio (modifiable pendant le live) */}
-            <View style={[styles.panelHead, { marginTop: 14 }]}>
-              <Text style={styles.panelTitle}>Type de live</Text>
-            </View>
-            <View style={styles.kindRow}>
-              <Pressable onPress={() => setLiveKind('video')} style={[styles.kindBtn, liveKind === 'video' && styles.kindBtnOn]}>
-                <Ionicons name="videocam" size={17} color={liveKind === 'video' ? '#fff' : '#ffffff99'} />
-                <Text style={[styles.kindText, liveKind === 'video' && styles.kindTextOn]}>Vidéo</Text>
-              </Pressable>
-              <Pressable onPress={() => setLiveKind('audio')} style={[styles.kindBtn, liveKind === 'audio' && styles.kindBtnOn]}>
-                <Ionicons name="mic" size={17} color={liveKind === 'audio' ? '#fff' : '#ffffff99'} />
-                <Text style={[styles.kindText, liveKind === 'audio' && styles.kindTextOn]}>Audio</Text>
-              </Pressable>
-            </View>
+
+            {/* Bouton toujours visible, épinglé en bas */}
             <Pressable onPress={() => setPhase('live')} style={styles.startBtn}>
               <View style={styles.startDot} />
               <Text style={styles.startText}>Démarrer le live {liveKind === 'audio' ? 'audio' : 'vidéo'}</Text>
@@ -1294,9 +1296,11 @@ const styles = StyleSheet.create({
   setupDim: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: '#00000066' },
   setupHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 12, paddingTop: 8 },
   setupTitle: { color: '#fff', fontFamily: Font.bold, fontSize: 17 },
-  setupPanel: { backgroundColor: '#15151C', margin: 12, borderRadius: 20, padding: 16 },
-  panelHead: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  setupPanel: { flex: 1, backgroundColor: '#15151C', marginHorizontal: 12, marginBottom: 12, marginTop: 8, borderRadius: 20, padding: 14 },
+  panelHead: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 },
   panelTitle: { color: '#fff', fontFamily: Font.bold, fontSize: 17 },
+  panelLabel: { color: '#fff', fontFamily: Font.bold, fontSize: 15 },
+  panelCount: { color: Afylo.violet2, fontFamily: Font.semibold, fontSize: 12, marginLeft: 'auto' },
   optTag: { color: '#ffffffcc', fontFamily: Font.semibold, fontSize: 11, backgroundColor: '#ffffff1f', paddingHorizontal: 8, paddingVertical: 3, borderRadius: Radius.pill, overflow: 'hidden' },
   panelSub: { color: '#ffffffaa', fontSize: 13, marginTop: 4, marginBottom: 10 },
   pRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 8, paddingHorizontal: 8, borderRadius: 12 },
@@ -1304,7 +1308,7 @@ const styles = StyleSheet.create({
   pImg: { width: 46, height: 46, borderRadius: 10, backgroundColor: '#222' },
   pName: { color: '#fff', fontFamily: Font.semibold, fontSize: 14 },
   pMeta: { color: '#ffffff99', fontSize: 12, marginTop: 2 },
-  startBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: Afylo.live, height: 52, borderRadius: Radius.pill, marginTop: 12 },
+  startBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: Afylo.live, height: 52, borderRadius: Radius.pill, marginTop: 12, flexShrink: 0 },
   startDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#fff' },
   startText: { color: '#fff', fontFamily: Font.bold, fontSize: 16 },
 
@@ -1358,8 +1362,8 @@ const styles = StyleSheet.create({
   guestPending: { position: 'absolute', top: 6, left: 6, right: 6, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 3, backgroundColor: '#000000aa', paddingVertical: 3, borderRadius: 8 },
   guestPendingText: { color: '#fff', fontFamily: Font.semibold, fontSize: 9 },
   // Choix du type de live (setup)
-  kindRow: { flexDirection: 'row', gap: 10, marginTop: 8 },
-  kindBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7, paddingVertical: 12, borderRadius: 14, backgroundColor: '#ffffff14', borderWidth: 1, borderColor: '#ffffff22' },
+  kindRow: { flexDirection: 'row', gap: 10, marginTop: 10 },
+  kindBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7, paddingVertical: 10, borderRadius: 14, backgroundColor: '#ffffff14', borderWidth: 1, borderColor: '#ffffff22' },
   kindBtnOn: { backgroundColor: Afylo.violet, borderColor: Afylo.violet },
   kindText: { color: '#ffffff99', fontFamily: Font.semibold, fontSize: 14 },
   kindTextOn: { color: '#fff' },
@@ -1394,7 +1398,7 @@ const styles = StyleSheet.create({
   // Bandeau titre du live
   titleBanner: { flexDirection: 'row', alignItems: 'center', gap: 7, alignSelf: 'flex-start', maxWidth: '82%', backgroundColor: '#00000055', marginHorizontal: 14, marginTop: 8, paddingHorizontal: 12, height: 34, borderRadius: Radius.pill, borderWidth: 1, borderColor: '#ffffff22' },
   titleBannerText: { color: '#fff', fontFamily: Font.semibold, fontSize: 13, flexShrink: 1 },
-  titleInput: { backgroundColor: '#ffffff14', borderRadius: Radius.md, borderWidth: 1, borderColor: '#ffffff26', color: '#fff', fontSize: 15, paddingHorizontal: 14, height: 48, marginTop: 8 },
+  titleInput: { backgroundColor: '#ffffff14', borderRadius: Radius.md, borderWidth: 1, borderColor: '#ffffff26', color: '#fff', fontSize: 15, paddingHorizontal: 14, height: 44 },
   // Modal gate 18+ / édition titre
   gateOverlay: { flex: 1, backgroundColor: '#000000aa', alignItems: 'center', justifyContent: 'center', padding: 26 },
   gateCard: { width: '100%', maxWidth: 380, backgroundColor: Afylo.bg, borderRadius: 22, padding: 22, borderWidth: 1, borderColor: Afylo.border },
