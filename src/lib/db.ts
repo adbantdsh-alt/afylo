@@ -787,6 +787,48 @@ export async function listSavedPosts(): Promise<FeedPost[]> {
   return ((data ?? []).map((r: any) => r.post).filter(Boolean)) as FeedPost[];
 }
 
+// ---- Commentaires (persistants) ----
+export type CommentRow = {
+  id: string;
+  post_id: string;
+  author_id: string;
+  body: string;
+  parent_id: string | null;
+  created_at: string;
+  author?: { id: string; display_name: string | null; handle: string | null; avatar_url: string | null; is_verified?: boolean } | null;
+};
+
+/** Tous les commentaires d'un post (à plat, plus anciens d'abord). Le client reconstruit l'arborescence via parent_id. */
+export async function listComments(postId: string): Promise<CommentRow[]> {
+  const { data, error } = await supabase
+    .from('comments')
+    .select('id, post_id, author_id, body, parent_id, created_at, author:profiles!comments_author_id_fkey(id,display_name,handle,avatar_url,is_verified)')
+    .eq('post_id', postId)
+    .order('created_at', { ascending: true });
+  if (error) return [];
+  return (data ?? []) as CommentRow[];
+}
+
+/** Publie un commentaire (ou une réponse si parentId) et renvoie la ligne créée. */
+export async function createComment(postId: string, body: string, parentId?: string | null): Promise<CommentRow> {
+  const author_id = await requireUserId();
+  const payload: any = { post_id: postId, author_id, body: body.trim() };
+  if (parentId) payload.parent_id = parentId;
+  const { data, error } = await supabase
+    .from('comments')
+    .insert(payload)
+    .select('id, post_id, author_id, body, parent_id, created_at, author:profiles!comments_author_id_fkey(id,display_name,handle,avatar_url,is_verified)')
+    .single();
+  if (error) throw error;
+  return data as CommentRow;
+}
+
+/** Supprime un commentaire (RLS : auteur du commentaire OU propriétaire du post). */
+export async function deleteCommentDB(id: string): Promise<void> {
+  const { error } = await supabase.from('comments').delete().eq('id', id);
+  if (error) throw error;
+}
+
 // ---- KYC (vérification identité 18+ pour le retrait des gains) ----
 /** Soumet la vérification : nom légal + date de naissance (AAAA-MM-JJ). Marque le compte vérifié. */
 export async function submitKyc(input: { legal_name: string; birthdate: string }): Promise<void> {

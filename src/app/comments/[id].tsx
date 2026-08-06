@@ -2,7 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { AudioModule, RecordingPresets, useAudioPlayer, useAudioRecorder } from 'expo-audio';
 import { Image } from 'expo-image';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -11,6 +11,7 @@ import { GiftSheet } from '@/components/gift-sheet';
 import { REACTIONS } from '@/components/rate-sheet';
 import { Afylo, Font, Radius, Type } from '@/constants/brand';
 import { useAuthGate } from '@/lib/auth-gate';
+import { createComment, deleteCommentDB, listComments, type CommentRow } from '@/lib/db';
 import { useMe } from '@/lib/me';
 
 type Comment = {
@@ -30,7 +31,56 @@ type Comment = {
 };
 
 let cid = 0;
-const nid = () => `c${++cid}`;
+const nid = () => `local-c${++cid}`; // les ids locaux (optimistes/vocaux/cadeaux) sont préfixés pour ne pas les confondre avec les UUID de la base
+
+const ago = (iso: string) => {
+  const d = (Date.now() - new Date(iso).getTime()) / 1000;
+  if (d < 60) return "à l'instant";
+  if (d < 3600) return `${Math.floor(d / 60)} min`;
+  if (d < 86400) return `${Math.floor(d / 3600)} h`;
+  return `${Math.floor(d / 86400)} j`;
+};
+
+// Reconstruit l'arborescence (parent_id) à partir de la liste à plat de la base ; racines les plus récentes en haut.
+function buildTree(rows: CommentRow[], myId?: string | null): Comment[] {
+  const map = new Map<string, Comment>();
+  const roots: Comment[] = [];
+  for (const r of rows) {
+    map.set(r.id, {
+      id: r.id,
+      name: r.author?.display_name || r.author?.handle || 'Utilisateur',
+      handle: r.author?.handle ? `@${r.author.handle}` : '@user',
+      avatar: r.author?.avatar_url || '',
+      text: r.body,
+      time: ago(r.created_at),
+      likes: 0,
+      liked: false,
+      mine: !!myId && r.author_id === myId,
+      replies: [],
+    });
+  }
+  for (const r of rows) {
+    const node = map.get(r.id)!;
+    if (r.parent_id && map.has(r.parent_id)) map.get(r.parent_id)!.replies.push(node);
+    else roots.push(node);
+  }
+  return roots.reverse();
+}
+
+// Remplace l'id temporaire d'un commentaire optimiste par l'id réel renvoyé par la base (pour que la suppression cible la bonne ligne).
+function swapId(list: Comment[], tempId: string, realId: string): Comment[] {
+  return list.map((c) => ({ ...c, id: c.id === tempId ? realId : c.id, replies: swapId(c.replies, tempId, realId) }));
+}
+
+// Ajoute une réponse sous n'importe quel commentaire (à n'importe quelle profondeur).
+function addReply(list: Comment[], parentId: string, reply: Comment): Comment[] {
+  return list.map((c) => (c.id === parentId ? { ...c, replies: [...c.replies, reply] } : { ...c, replies: addReply(c.replies, parentId, reply) }));
+}
+
+// Nombre total de commentaires (réponses incluses).
+function countComments(list: Comment[]): number {
+  return list.reduce((n, c) => n + 1 + countComments(c.replies), 0);
+}
 
 export default function Comments() {
   const router = useRouter();
@@ -46,10 +96,18 @@ export default function Comments() {
   const [replyTo, setReplyTo] = useState<{ id: string; handle: string } | null>(null);
   const [recording, setRecording] = useState(false);
 
+  // Charge les commentaires RÉELS du post (fallback : liste vide si hors-ligne / quota / table non migrée).
+  useEffect(() => {
+    let alive = true;
+    listComments(params.id).then((rows) => { if (alive) setComments(buildTree(rows, meP.id)); }).catch(() => {});
+    return () => { alive = false; };
+  }, [params.id, meP.id]);
+
   const close = () => (router.canGoBack() ? router.back() : router.replace('/accueil'));
   const deleteComment = (id: string) => {
     const rec = (list: Comment[]): Comment[] => list.filter((c) => c.id !== id).map((c) => ({ ...c, replies: rec(c.replies) }));
     setComments(rec);
+    if (!id.startsWith('local-')) deleteCommentDB(id).catch(() => {}); // supprime aussi en base (ignore les commentaires locaux/vocaux/cadeaux)
   };
 
   // Vrai vocal : maintiens le micro pour enregistrer, relâche pour envoyer.
@@ -101,14 +159,18 @@ export default function Comments() {
   const send = () => {
     if (!text.trim()) return;
     if (!gate('commenter')) return;
-    const me: Comment = { id: nid(), name: meP.name, handle: `@${meP.handle}`, avatar: meP.avatar, text: text.trim(), time: 'à l\'instant', likes: 0, liked: false, mine: true, replies: [] };
-    if (replyTo) {
-      setComments((prev) => prev.map((c) => (c.id === replyTo.id ? { ...c, replies: [...c.replies, me] } : c)));
-    } else {
-      setComments((prev) => [me, ...prev]);
-    }
+    const body = text.trim();
+    const tempId = nid();
+    const parentId = replyTo?.id ?? null;
+    const optimistic: Comment = { id: tempId, name: meP.name, handle: `@${meP.handle}`, avatar: meP.avatar, text: body, time: 'à l\'instant', likes: 0, liked: false, mine: true, replies: [] };
+    if (parentId) setComments((prev) => addReply(prev, parentId, optimistic));
+    else setComments((prev) => [optimistic, ...prev]);
     setText('');
     setReplyTo(null);
+    // Persistance réelle : on remplace l'id temporaire par l'id de la base. En cas d'échec (quota/hors-ligne), le commentaire reste affiché localement.
+    createComment(params.id, body, parentId && !parentId.startsWith('local-') ? parentId : null)
+      .then((row) => setComments((prev) => swapId(prev, tempId, row.id)))
+      .catch(() => {});
   };
 
   return (
@@ -129,7 +191,7 @@ export default function Comments() {
       <View style={styles.sheet}>
         <View style={styles.grip} />
         <View style={styles.header}>
-          <Text style={styles.title}>{comments.length} commentaires</Text>
+          <Text style={styles.title}>{countComments(comments)} commentaires</Text>
           <Ionicons name="close" size={24} color={Afylo.text} onPress={() => (router.canGoBack() ? router.back() : router.replace('/accueil'))} />
         </View>
 
