@@ -79,11 +79,13 @@ export function mapFeedPost(fp: FeedPost): Post {
     caption: fp.caption || '',
     product: first
       ? {
+          id: first.id,
           title: first.title,
           price: formatCfa(first.promo_cfa ?? first.price_cfa),
           priceOld: first.promo_cfa && first.promo_cfa < first.price_cfa ? formatCfa(first.price_cfa) : undefined, // prix barré si promo
           commission: pct(first.commission_pct),
           priceCfa: first.promo_cfa ?? first.price_cfa,
+          deliveryFee: (first as any).delivery_fee_cfa ?? 0,
           tiers: first.quantity_tiers,
         }
       : undefined,

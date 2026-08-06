@@ -36,6 +36,8 @@ export default function ProductNew() {
   const [affiliationOn, setAffiliationOn] = useState(false);
   const [commission, setCommission] = useState('15');
   const [free, setFree] = useState(false); // produit digital gratuit (téléchargement gratuit)
+  const [deliveryFree, setDeliveryFree] = useState(true); // livraison gratuite (physique) — vrai par défaut
+  const [deliveryFee, setDeliveryFee] = useState('');
   const [description, setDescription] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -59,6 +61,8 @@ export default function ProductNew() {
         if (p.kind === 'digital' && p.price_cfa === 0) setFree(true);
         setCategory(p.category ?? null);
         setTiers((p.quantity_tiers ?? []).map((t) => ({ qty: String(t.qty), price: String(t.price_cfa) })));
+        setDeliveryFree((p.delivery_fee_cfa ?? 0) === 0);
+        setDeliveryFee(p.delivery_fee_cfa ? String(p.delivery_fee_cfa) : '');
       })
       .catch(() => {});
   }, [editId]);
@@ -118,6 +122,7 @@ export default function ProductNew() {
         price_cfa: priceN,
         promo_cfa: promoN,
         stock: kind === 'digital' ? 999999 : parseInt(stock.replace(/\D/g, ''), 10) || 0,
+        delivery_fee_cfa: kind === 'digital' ? 0 : deliveryFree ? 0 : parseInt(deliveryFee.replace(/\D/g, ''), 10) || 0,
         commission_pct: commissionN,
         category: kind === 'digital' && !category ? 'digital' : category,
         description: finalDesc || undefined,
@@ -224,6 +229,22 @@ export default function ProductNew() {
             )}
             {kind === 'physical' && <Field label="Stock disponible" value={stock} onChange={setStock} placeholder="24" numeric />}
           </Card>
+
+          {/* Livraison (produit physique) — XaalisPay : livraison max 48h */}
+          {kind === 'physical' && (
+            <Card>
+              <Text style={styles.cardTitle}>Livraison</Text>
+              <View style={styles.switchRow}>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.switchTitle}>Livraison gratuite</Text>
+                  <Text style={styles.switchHint}>Aucun frais ajouté pour l'acheteur.</Text>
+                </View>
+                <Switch value={deliveryFree} onValueChange={setDeliveryFree} trackColor={{ true: Afylo.violet }} />
+              </View>
+              {!deliveryFree && <Field label="Frais de livraison (FCFA)" value={deliveryFee} onChange={setDeliveryFee} placeholder="1500" numeric />}
+              <Text style={styles.hint}>Livraison sous 48h max · paiement sécurisé XaalisPay (versé au vendeur après réception).</Text>
+            </Card>
+          )}
 
           {/* Physique : état + offres de quantité */}
           {kind === 'physical' && (

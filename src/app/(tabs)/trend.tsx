@@ -273,6 +273,8 @@ function Reel({ post, index, active, height, width, showBuzz, onNotInterested, a
   const sharePost = async () => { try { await Share.share({ message: `${post.name} sur Afylo : ${post.caption || ''}` }); } catch {} };
   const rate = () => { if (gate('noter')) setRateOpen(true); };
   const buy = () => { if (gate('acheter')) setPayOpen(true); };
+  // Ouvre la fiche produit (vraie page de vente). Repli : paiement direct si pas d'id (démo).
+  const openProduct = () => { if (post.product?.id) router.push({ pathname: '/product/[id]', params: { id: post.product.id } }); else buy(); };
   const openComments = () => router.push({ pathname: '/comments/[id]', params: { id: post.id, image: post.image, name: post.name } });
   const openMention = (h: string) => router.push({ pathname: '/creator/[id]', params: { id: h } });
   const openTag = (t: string) => router.push({ pathname: '/search', params: { q: t } });
@@ -333,7 +335,7 @@ function Reel({ post, index, active, height, width, showBuzz, onNotInterested, a
       <SafeAreaView edges={['bottom']} style={styles.bottom} pointerEvents="box-none">
         {/* Carte produit AVANT le nom (façon TikTok Shop) : achat immédiat, sans scroll */}
         {post.product && (
-          <Pressable style={styles.buyBar} onPress={buy}>
+          <Pressable style={styles.buyBar} onPress={openProduct}>
             <View style={styles.buyIcon}><Ionicons name="bag-handle" size={16} color="#fff" /></View>
             <View style={{ flex: 1 }}>
               <Text style={styles.buyTitle} numberOfLines={1}>{post.product.title}</Text>

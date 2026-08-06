@@ -53,6 +53,7 @@ export interface Product {
   quantity_tiers: { qty: number; price_cfa: number }[];
   commission_pct: number;
   category: string | null;
+  delivery_fee_cfa: number; // 0 = livraison gratuite
   is_active: boolean;
   sold_count: number;
   created_at: string;

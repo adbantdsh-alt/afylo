@@ -348,6 +348,8 @@ function PostCard({ post, isPro, myHandle, initialLiked, initialSaved, initialFo
   };
   const toggleLike = () => { if (gate('aimer')) { const nv = !liked; setLiked(nv); onLike?.(post.id, nv); } };
   const buy = () => { if (gate('acheter')) setPayOpen(true); };
+  // Ouvre la fiche produit (page de vente). Repli : paiement direct si pas d'id (démo) ou multi-produits.
+  const openProduct = () => { if (post.product?.id && !(post.products && post.products.length > 1)) router.push({ pathname: '/product/[id]', params: { id: post.product.id } }); else buy(); };
   const repost = () => { if (gate('republier')) setRepostOpen(true); };
   const owns = post.handle === `@${myHandle}` || post.handle === myHandle;
   const isBuzz = useIsBuzz(post.id);
@@ -432,9 +434,9 @@ function PostCard({ post, isPro, myHandle, initialLiked, initialSaved, initialFo
       {/* Publication texte (façon X) */}
       {post.textOnly && <RichText text={post.caption} style={styles.textPost} linkStyle={styles.link} onPressMention={openMention} onPressTag={openTag} />}
 
-      {/* Barre "Acheter" (live shopping) */}
+      {/* Barre "Acheter" (live shopping) — tap = fiche produit */}
       {post.product && (
-        <View style={styles.buyBar}>
+        <Pressable style={styles.buyBar} onPress={openProduct}>
           <View style={styles.buyIcon}>
             <Ionicons name="bag-handle" size={18} color={Afylo.ink} />
           </View>
@@ -447,10 +449,10 @@ function PostCard({ post, isPro, myHandle, initialLiked, initialSaved, initialFo
               {post.product.priceOld && <Text style={styles.buyPriceOld}>{post.product.priceOld}</Text>}
             </View>
           </View>
-          <Pressable onPress={buy} style={[styles.buyCta, bought && { backgroundColor: Afylo.green }]}>
+          <View style={[styles.buyCta, bought && { backgroundColor: Afylo.green }]}>
             <Text style={[styles.buyCtaText, bought && { color: '#fff' }]}>{bought ? 'Ajouté ✓' : 'Acheter'}</Text>
-          </Pressable>
-        </View>
+          </View>
+        </Pressable>
       )}
 
       {/* Stats */}

@@ -95,6 +95,7 @@ function PostView({ post, liked, onLike, onOpenComments }: { post: Post; liked: 
   useEffect(() => setIsLiked(liked), [liked]);
   const toggleLike = () => { const nv = !isLiked; setIsLiked(nv); onLike(post.id, nv); };
   const buyProducts: PayItem[] = post.product ? [{ title: post.product.title, price: post.product.price, priceCfa: post.product.priceCfa, tiers: post.product.tiers }] : [];
+  const openProduct = () => { if (post.product?.id) router.push({ pathname: '/product/[id]', params: { id: post.product.id } }); else setPayOpen(true); };
   const openLink = (url?: string) => url && Linking.openURL(url.startsWith('http') ? url : `https://${url}`).catch(() => {});
   const images = post.images && post.images.length > 1 ? post.images : post.image ? [post.image] : [];
   const mediaH = post.ratio ? Math.round(W / post.ratio) : W; // vraie proportion → pas de zoom abusif
@@ -161,7 +162,7 @@ function PostView({ post, liked, onLike, onOpenComments }: { post: Post; liked: 
               {post.product.priceOld && <Text style={styles.buyPriceOld}>{post.product.priceOld}</Text>}
             </View>
           </View>
-          <Pressable style={styles.buyBtn} onPress={() => setPayOpen(true)}><Text style={styles.buyBtnText}>Acheter</Text></Pressable>
+          <Pressable style={styles.buyBtn} onPress={openProduct}><Text style={styles.buyBtnText}>Acheter</Text></Pressable>
         </View>
       )}
       <PaymentSheet visible={payOpen} items={buyProducts} onClose={() => setPayOpen(false)} />

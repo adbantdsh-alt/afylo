@@ -575,6 +575,7 @@ export type ProductInput = {
   images?: string[];
   digital_file_url?: string | null;
   quantity_tiers?: { qty: number; price_cfa: number }[];
+  delivery_fee_cfa?: number; // 0 = gratuit
 };
 
 export async function listMyProducts(): Promise<Product[]> {
@@ -595,6 +596,55 @@ export async function listMyProducts(): Promise<Product[]> {
 export async function getProduct(id: string): Promise<Product | null> {
   const { data } = await supabase.from('products').select('*').eq('id', id).maybeSingle();
   return data;
+}
+
+/** Un produit + son vendeur (pour la fiche produit). */
+export type ProductWithOwner = Product & {
+  owner: { id: string; display_name: string | null; handle: string | null; avatar_url: string | null; is_verified: boolean; account_type: string } | null;
+};
+export async function getProductWithOwner(id: string): Promise<ProductWithOwner | null> {
+  const { data } = await supabase
+    .from('products')
+    .select('*, owner:profiles!products_owner_id_fkey(id,display_name,handle,avatar_url,is_verified,account_type)')
+    .eq('id', id)
+    .maybeSingle();
+  if (!data) return null;
+  const d = data as any;
+  return { ...d, owner: Array.isArray(d.owner) ? d.owner[0] ?? null : d.owner } as ProductWithOwner;
+}
+
+// ---- Avis produit (persistants) ----
+export type ProductReview = {
+  id: string; product_id: string; author_id: string; rating: number; body: string | null; created_at: string;
+  author?: { display_name: string | null; handle: string | null; avatar_url: string | null } | null;
+};
+export async function listProductReviews(productId: string): Promise<ProductReview[]> {
+  const { data, error } = await supabase
+    .from('product_reviews')
+    .select('id, product_id, author_id, rating, body, created_at, author:profiles!product_reviews_author_id_fkey(display_name,handle,avatar_url)')
+    .eq('product_id', productId)
+    .order('created_at', { ascending: false });
+  if (error) return [];
+  return ((data ?? []) as any[]).map((r) => ({ ...r, author: Array.isArray(r.author) ? r.author[0] : r.author })) as ProductReview[];
+}
+/** Publie/écrase mon avis (1 par produit). RLS : réservé aux acheteurs. */
+export async function upsertProductReview(productId: string, rating: number, body: string): Promise<void> {
+  const author_id = await requireUserId();
+  const { error } = await supabase
+    .from('product_reviews')
+    .upsert({ product_id: productId, author_id, rating, body: body.trim() || null }, { onConflict: 'product_id,author_id' });
+  if (error) throw error;
+}
+/** L'utilisateur a-t-il acheté ce produit ? (pour autoriser l'avis) */
+export async function hasPurchasedProduct(productId: string): Promise<boolean> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return false;
+  const { count } = await supabase
+    .from('orders')
+    .select('id', { count: 'exact', head: true })
+    .eq('product_id', productId)
+    .eq('buyer_id', user.id);
+  return (count ?? 0) > 0;
 }
 
 export type FeedProduct = Product & {
