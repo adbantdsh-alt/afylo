@@ -21,12 +21,17 @@ export type SavedAccount = {
 };
 
 const KEY = 'afylo-accounts';
+const LAST_KEY = 'afylo-last-active'; // dernier compte actif (pour détecter une NOUVELLE connexion)
 
 // Intention « ajouter un compte » : autorise un utilisateur connecté à atteindre /login
 // (sinon le garde de _layout le renvoie vers l'app). Réinitialisé en quittant /login.
 let _adding = false;
 export const setAddingAccount = (v: boolean) => { _adding = v; };
 export const isAddingAccount = () => _adding;
+
+// Bascule en cours (switchAccount) : supprime le message de confirmation (on change vers un compte déjà lié).
+let _switching = false;
+export const isSwitching = () => _switching;
 
 export async function listAccounts(): Promise<SavedAccount[]> {
   try {
@@ -78,13 +83,37 @@ export async function switchAccount(id: string): Promise<boolean> {
   const list = await listAccounts();
   const acc = list.find((a) => a.id === id);
   if (!acc) return false;
+  _switching = true;
   const { data, error } = await supabase.auth.setSession({ access_token: acc.access_token, refresh_token: acc.refresh_token });
-  if (error || !data.session) return false;
+  setTimeout(() => { _switching = false; }, 2500); // laisse passer l'évènement d'auth avant de réarmer le message
+  if (error || !data.session) { _switching = false; return false; }
   await upsertTokens(data.session); // jetons potentiellement rafraîchis
+  await AsyncStorage.setItem(LAST_KEY, id);
   return true;
 }
 
 export async function removeAccount(id: string) {
   const list = (await listAccounts()).filter((a) => a.id !== id);
   await saveAll(list);
+}
+
+/** Ne garder QUE ce compte dans l'espace (refus de lier les autres). */
+export async function keepOnlyAccount(id: string) {
+  const list = (await listAccounts()).filter((a) => a.id === id);
+  await saveAll(list);
+  await AsyncStorage.setItem(LAST_KEY, id);
+}
+
+/**
+ * Après une connexion, indique combien d'AUTRES comptes sont déjà dans l'espace,
+ * pour proposer de les garder liés — uniquement quand un compte DIFFÉRENT vient de se connecter
+ * (pas une simple réouverture de l'app, pas une bascule). Met à jour le « dernier compte actif ».
+ */
+export async function evaluateNewAccount(currentId: string): Promise<number> {
+  const last = await AsyncStorage.getItem(LAST_KEY);
+  await AsyncStorage.setItem(LAST_KEY, currentId);
+  if (isSwitching()) return 0; // bascule vers un compte déjà lié → pas de question
+  if (!last || last === currentId) return 0; // 1ʳᵉ connexion ou réouverture du même compte → rien
+  const others = (await listAccounts()).filter((a) => a.id !== currentId);
+  return others.length; // >0 → on propose de garder les autres comptes liés
 }

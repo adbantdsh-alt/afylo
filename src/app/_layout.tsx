@@ -24,6 +24,7 @@ import { MeProvider } from '@/lib/me';
 import { PendingUploadProvider } from '@/lib/pending-upload';
 import { LivePipProvider } from '@/lib/live-pip';
 import { LivePipOverlay } from '@/components/live-pip';
+import { AccountLinkPrompt } from '@/components/account-link-prompt';
 
 // Routes accessibles sans être connecté
 const PUBLIC = ['index', 'login'];
@@ -135,6 +136,7 @@ export default function RootLayout() {
                       <LivePipProvider>
                         <RootNavigator />
                         <LivePipOverlay />
+                        <AccountLinkPrompt />
                       </LivePipProvider>
                     </PendingUploadProvider>
                   </BuzzProvider>
