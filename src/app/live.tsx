@@ -1,6 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { Image } from 'expo-image';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useVideoPlayer, VideoView } from 'expo-video';
 import { useEffect, useRef, useState } from 'react';
@@ -21,7 +22,7 @@ import { avatar, photo, video } from '@/lib/mock';
 type SellProduct = { id: string; title: string; price: string; image: string; tag: string; priceCfa?: number; tiers?: { qty: number; price_cfa: number }[] };
 type Comment = { id: string; name: string; avatar: string; text: string; gift?: boolean; system?: 'join' | 'like' | 'share' | 'guest' | 'sale' | 'welcome'; product?: { title: string; price: string } };
 type GuestMode = 'audio' | 'video';
-type Guest = { id: string; name: string; avatar: string; mode: GuestMode; local?: boolean; muted?: boolean };
+type Guest = { id: string; name: string; avatar: string; mode: GuestMode; local?: boolean; muted?: boolean; mutedByHost?: boolean; camOffByHost?: boolean; pendingMic?: boolean; pendingCam?: boolean };
 type Heart = { id: number; x: number; y: number; color: string; size: number; emoji?: string };
 type Sale = { id: string; buyer: string; avatar: string; title: string; price: string; tag?: string };
 
@@ -68,6 +69,10 @@ export default function Live() {
   const [permission, requestPermission] = useCameraPermissions();
   const [facing, setFacing] = useState<'front' | 'back'>('front');
   const [phase, setPhase] = useState<'setup' | 'live'>(isHost ? 'setup' : 'live');
+  // Contrôles de l'hôte sur son propre live : type (vidéo/audio, modifiable en direct), micro coupé, live en pause.
+  const [liveKind, setLiveKind] = useState<'video' | 'audio'>('video');
+  const [hostMuted, setHostMuted] = useState(false);
+  const [livePaused, setLivePaused] = useState(false);
 
   const [sell, setSell] = useState<SellProduct[]>([]);
   const [available, setAvailable] = useState<SellProduct[]>([]); // VRAIS produits du vendeur
@@ -291,8 +296,33 @@ export default function Live() {
   const refuseGuest = (id: string) => setRequests((prev) => prev.filter((r) => r.id !== id));
   const removeGuest = (id: string) => { setGuests((prev) => prev.filter((g) => g.id !== id)); showToast('Intervenant retiré'); };
   // Droits de l'hôte sur un intervenant : couper/activer son micro, sa caméra, ou le faire descendre.
-  const hostToggleGuestMute = (id: string) => setGuests((prev) => prev.map((g) => (g.id === id ? { ...g, muted: !g.muted } : g)));
-  const hostToggleGuestCam = (id: string) => setGuests((prev) => prev.map((g) => (g.id === id ? { ...g, mode: g.mode === 'video' ? 'audio' : 'video' } : g)));
+  // Demande d'activation en attente pour L'utilisateur quand il intervient (il accepte/refuse).
+  const [activationReq, setActivationReq] = useState<null | { id: string; kind: 'mic' | 'cam'; name: string }>(null);
+  // COUPER micro/caméra d'un intervenant : immédiat, sans consentement.
+  const hostCutGuestMic = (id: string) => setGuests((prev) => prev.map((g) => (g.id === id ? { ...g, muted: true, mutedByHost: true, pendingMic: false } : g)));
+  const hostCutGuestCam = (id: string) => setGuests((prev) => prev.map((g) => (g.id === id ? { ...g, mode: 'audio', camOffByHost: true, pendingCam: false } : g)));
+  // ACTIVER micro/caméra : envoie une DEMANDE à l'intervenant (accepte/refuse). Simulé → auto-accepté ; toi (local) → pop-up.
+  const hostAskGuestMic = (id: string) => {
+    const g = guests.find((x) => x.id === id); if (!g) return;
+    if (g.local) { setActivationReq({ id, kind: 'mic', name: g.name }); return; }
+    setGuests((prev) => prev.map((x) => (x.id === id ? { ...x, pendingMic: true } : x)));
+    showToast(`Demande d'activation du micro envoyée à ${g.name}`);
+    setTimeout(() => setGuests((prev) => prev.map((x) => (x.id === id ? { ...x, muted: false, mutedByHost: false, pendingMic: false } : x))), 1600);
+  };
+  const hostAskGuestCam = (id: string) => {
+    const g = guests.find((x) => x.id === id); if (!g) return;
+    if (g.local) { setActivationReq({ id, kind: 'cam', name: g.name }); return; }
+    setGuests((prev) => prev.map((x) => (x.id === id ? { ...x, pendingCam: true } : x)));
+    showToast(`Demande d'activation de la caméra envoyée à ${g.name}`);
+    setTimeout(() => setGuests((prev) => prev.map((x) => (x.id === id ? { ...x, mode: 'video', camOffByHost: false, pendingCam: false } : x))), 1600);
+  };
+  // Réponse de l'utilisateur à une demande d'activation le concernant.
+  const acceptActivation = () => {
+    if (!activationReq) return; const { id, kind } = activationReq;
+    setGuests((prev) => prev.map((g) => (g.id === id ? (kind === 'mic' ? { ...g, muted: false, mutedByHost: false } : { ...g, mode: 'video', camOffByHost: false }) : g)));
+    setActivationReq(null); showToast(kind === 'mic' ? 'Micro activé' : 'Caméra activée');
+  };
+  const refuseActivation = () => { setActivationReq(null); showToast('Tu as refusé la demande'); };
 
   // Côté spectateur : demander à intervenir → accepté → choix audio/vidéo
   const requestJoin = () => {
@@ -320,6 +350,8 @@ export default function Live() {
   const toggleGuestCam = async () => {
     const cur = guests.find((g) => g.local);
     if (!cur) return;
+    // Si l'hôte a coupé ta caméra, tu ne peux pas la réactiver toi-même : seul l'hôte peut (via une demande).
+    if (cur.mode === 'audio' && cur.camOffByHost) { showToast("L'hôte a coupé ta caméra — attends sa réactivation"); return; }
     if (cur.mode === 'audio' && !permission?.granted) { const r = await requestPermission(); if (!r?.granted) { showToast('Caméra refusée'); return; } }
     setGuests((prev) => prev.map((g) => (g.local ? { ...g, mode: g.mode === 'video' ? 'audio' : 'video' } : g)));
   };
@@ -367,7 +399,9 @@ export default function Live() {
   if (isHost && phase === 'setup') {
     return (
       <View style={styles.root}>
-        {permission?.granted ? (
+        {liveKind === 'audio' ? (
+          <HostAudioBackdrop avatar={hostAvatar} name={name} />
+        ) : permission?.granted ? (
           <CameraView key={facing} style={StyleSheet.absoluteFill} facing={facing} />
         ) : (
           <View style={[StyleSheet.absoluteFill, styles.permWrap]}>
@@ -415,9 +449,23 @@ export default function Live() {
                 );
               })}
             </ScrollView>
+            {/* Type de live : vidéo ou audio (modifiable pendant le live) */}
+            <View style={[styles.panelHead, { marginTop: 14 }]}>
+              <Text style={styles.panelTitle}>Type de live</Text>
+            </View>
+            <View style={styles.kindRow}>
+              <Pressable onPress={() => setLiveKind('video')} style={[styles.kindBtn, liveKind === 'video' && styles.kindBtnOn]}>
+                <Ionicons name="videocam" size={17} color={liveKind === 'video' ? '#fff' : '#ffffff99'} />
+                <Text style={[styles.kindText, liveKind === 'video' && styles.kindTextOn]}>Vidéo</Text>
+              </Pressable>
+              <Pressable onPress={() => setLiveKind('audio')} style={[styles.kindBtn, liveKind === 'audio' && styles.kindBtnOn]}>
+                <Ionicons name="mic" size={17} color={liveKind === 'audio' ? '#fff' : '#ffffff99'} />
+                <Text style={[styles.kindText, liveKind === 'audio' && styles.kindTextOn]}>Audio</Text>
+              </Pressable>
+            </View>
             <Pressable onPress={() => setPhase('live')} style={styles.startBtn}>
               <View style={styles.startDot} />
-              <Text style={styles.startText}>Démarrer le live</Text>
+              <Text style={styles.startText}>Démarrer le live {liveKind === 'audio' ? 'audio' : 'vidéo'}</Text>
             </Pressable>
           </View>
         </SafeAreaView>
@@ -429,9 +477,28 @@ export default function Live() {
   return (
     <View style={styles.root}>
       {isHost ? (
-        <CameraView key={facing} style={StyleSheet.absoluteFill} facing={facing} />
+        liveKind === 'audio' ? (
+          <HostAudioBackdrop avatar={hostAvatar} name={name} />
+        ) : (
+          <CameraView key={facing} style={StyleSheet.absoluteFill} facing={facing} />
+        )
       ) : (
         <VideoView player={viewerPlayer} style={StyleSheet.absoluteFill} contentFit="cover" nativeControls={false} />
+      )}
+
+      {/* Live en pause : voile plein écran (hôte voit le bouton reprendre, spectateurs un message) */}
+      {livePaused && (
+        <View style={styles.pauseOverlay} pointerEvents={isHost ? 'auto' : 'none'}>
+          <Ionicons name="pause-circle" size={64} color="#fff" />
+          <Text style={styles.pauseTitle}>{isHost ? 'Live en pause' : 'Le live est en pause'}</Text>
+          <Text style={styles.pauseSub}>{isHost ? 'Tes spectateurs patientent — reprends quand tu veux.' : "L'hôte revient dans un instant…"}</Text>
+          {isHost && (
+            <Pressable onPress={() => setLivePaused(false)} style={styles.pauseResume}>
+              <Ionicons name="play" size={18} color="#0B0B0F" />
+              <Text style={styles.pauseResumeText}>Reprendre le live</Text>
+            </Pressable>
+          )}
+        </View>
       )}
 
       {/* Double-tap n'importe où = like (capteur derrière les contrôles) */}
@@ -456,9 +523,25 @@ export default function Live() {
           </View>
           {/* Cluster droit : toujours visible (partager + fermer) */}
           <View style={styles.topRight}>
+            {/* Contrôles de l'hôte sur son propre live : micro, caméra (vidéo/audio), pause */}
             {isHost && (
+              <Pressable onPress={() => setHostMuted((m) => { showToast(!m ? 'Ton micro est coupé' : 'Ton micro est activé'); return !m; })} style={[styles.close, hostMuted && styles.closeCut]}>
+                <Ionicons name={hostMuted ? 'mic-off' : 'mic'} size={19} color="#fff" />
+              </Pressable>
+            )}
+            {isHost && (
+              <Pressable onPress={() => setLiveKind((k) => { const next = k === 'video' ? 'audio' : 'video'; showToast(next === 'audio' ? 'Caméra coupée — live audio' : 'Caméra activée — live vidéo'); return next; })} style={[styles.close, liveKind === 'audio' && styles.closeCut]}>
+                <Ionicons name={liveKind === 'audio' ? 'videocam-off' : 'videocam'} size={19} color="#fff" />
+              </Pressable>
+            )}
+            {isHost && liveKind === 'video' && (
               <Pressable onPress={() => setFacing((f) => (f === 'front' ? 'back' : 'front'))} style={styles.close}>
                 <Ionicons name="camera-reverse-outline" size={20} color="#fff" />
+              </Pressable>
+            )}
+            {isHost && (
+              <Pressable onPress={() => setLivePaused((p) => !p)} style={[styles.close, livePaused && styles.closeCut]}>
+                <Ionicons name={livePaused ? 'play' : 'pause'} size={19} color="#fff" />
               </Pressable>
             )}
             {isHost && (
@@ -545,8 +628,8 @@ export default function Live() {
                   onLeave={g.local ? leaveStage : undefined}
                   followed={!isHost && !g.local ? followedGuests.includes(g.name) : undefined}
                   onFollow={!isHost && !g.local ? () => toggleFollowGuest(g.name) : undefined}
-                  onHostMute={isHost && !g.local ? () => hostToggleGuestMute(g.id) : undefined}
-                  onHostCam={isHost && !g.local ? () => hostToggleGuestCam(g.id) : undefined}
+                  onHostMute={isHost && !g.local ? () => (g.muted ? hostAskGuestMic(g.id) : hostCutGuestMic(g.id)) : undefined}
+                  onHostCam={isHost && !g.local ? () => (g.mode === 'video' ? hostCutGuestCam(g.id) : hostAskGuestCam(g.id)) : undefined}
                   onHostRemove={isHost && !g.local ? () => removeGuest(g.id) : undefined}
                 />
               ))}
@@ -902,6 +985,20 @@ export default function Live() {
       <PaymentSheet visible={payOpen} items={payProducts} onClose={() => setPayOpen(false)} />
       <GiftSheet visible={giftOpen} host={name} onClose={() => setGiftOpen(false)} onSent={onGiftSent} />
 
+      {/* Demande d'activation micro/caméra reçue par l'intervenant (toi) → accepter / refuser */}
+      <Modal visible={!!activationReq} transparent animationType="fade" onRequestClose={refuseActivation}>
+        <View style={styles.gateOverlay}>
+          <Pressable style={StyleSheet.absoluteFill} onPress={refuseActivation} />
+          <View style={styles.gateCard}>
+            <View style={styles.gateBadge}><Ionicons name={activationReq?.kind === 'cam' ? 'videocam' : 'mic'} size={26} color={Afylo.violet} /></View>
+            <Text style={styles.gateTitle}>L'hôte veut activer ton {activationReq?.kind === 'cam' ? 'image' : 'micro'}</Text>
+            <Text style={styles.gateBody}>{name} te demande d'activer {activationReq?.kind === 'cam' ? 'ta caméra' : 'ton micro'} pendant le live. Tu peux accepter ou refuser.</Text>
+            <Pressable onPress={acceptActivation} style={styles.gateConfirm}><Text style={styles.gateConfirmText}>Accepter</Text></Pressable>
+            <Pressable onPress={refuseActivation} style={styles.gateCancel}><Text style={styles.gateCancelText}>Refuser</Text></Pressable>
+          </View>
+        </View>
+      </Modal>
+
       {/* Leaderboard des top-supporters */}
       <Modal visible={boardOpen} transparent animationType="slide" onRequestClose={() => setBoardOpen(false)}>
         <View style={styles.boardOverlay}>
@@ -1015,9 +1112,32 @@ function GuestPip({ g, size = 86, facing, onFlip, onToggleCam, onLeave, followed
         </View>
       )}
 
+      {/* Demande d'activation envoyée par l'hôte, en attente de réponse de l'intervenant */}
+      {(g.pendingMic || g.pendingCam) && (
+        <View style={styles.guestPending} pointerEvents="none">
+          <Ionicons name="hourglass-outline" size={11} color="#fff" />
+          <Text style={styles.guestPendingText}>Demande…</Text>
+        </View>
+      )}
+
       <View style={styles.guestNameBar}>
         <Ionicons name={g.muted ? 'mic-off' : g.mode === 'video' ? 'videocam' : 'mic'} size={9} color={g.muted ? '#FF6B81' : '#fff'} />
         <Text style={styles.guestName} numberOfLines={1}>{g.name}{g.local ? ' (toi)' : ''}</Text>
+      </View>
+    </View>
+  );
+}
+
+/** Fond plein écran d'un live AUDIO (pas de caméra) : dégradé + avatar de l'hôte. */
+function HostAudioBackdrop({ avatar, name }: { avatar: string; name: string }) {
+  return (
+    <View style={[StyleSheet.absoluteFill, styles.audioBackdrop]}>
+      <LinearGradient colors={[Afylo.violet, '#0B0B0F']} start={{ x: 0.2, y: 0 }} end={{ x: 0.8, y: 1 }} style={StyleSheet.absoluteFill} />
+      <Avatar uri={avatar} size={132} />
+      <Text style={styles.audioName}>{name}</Text>
+      <View style={styles.audioTag}>
+        <Ionicons name="mic" size={13} color="#fff" />
+        <Text style={styles.audioTagText}>Live audio</Text>
       </View>
     </View>
   );
@@ -1208,6 +1328,27 @@ const styles = StyleSheet.create({
   guestPip: { borderRadius: 16, overflow: 'hidden', backgroundColor: '#111', borderWidth: 2, borderColor: Afylo.violet },
   guestFollow: { position: 'absolute', top: 4, right: 4, zIndex: 2, width: 22, height: 22, borderRadius: 11, backgroundColor: Afylo.violet, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#fff' },
   guestFollowOn: { backgroundColor: '#ffffff33' },
+  guestPending: { position: 'absolute', top: 6, left: 6, right: 6, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 3, backgroundColor: '#000000aa', paddingVertical: 3, borderRadius: 8 },
+  guestPendingText: { color: '#fff', fontFamily: Font.semibold, fontSize: 9 },
+  // Choix du type de live (setup)
+  kindRow: { flexDirection: 'row', gap: 10, marginTop: 8 },
+  kindBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7, paddingVertical: 12, borderRadius: 14, backgroundColor: '#ffffff14', borderWidth: 1, borderColor: '#ffffff22' },
+  kindBtnOn: { backgroundColor: Afylo.violet, borderColor: Afylo.violet },
+  kindText: { color: '#ffffff99', fontFamily: Font.semibold, fontSize: 14 },
+  kindTextOn: { color: '#fff' },
+  // Bouton de contrôle hôte en état « coupé »
+  closeCut: { backgroundColor: '#E11D48' },
+  // Voile « live en pause »
+  pauseOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 5, alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: '#0B0B0Fdd', paddingHorizontal: 40 },
+  pauseTitle: { color: '#fff', fontFamily: Font.bold, fontSize: 20 },
+  pauseSub: { color: '#ffffffaa', fontFamily: Font.regular, fontSize: 13, textAlign: 'center' },
+  pauseResume: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#fff', paddingHorizontal: 20, paddingVertical: 12, borderRadius: 24, marginTop: 10 },
+  pauseResumeText: { color: '#0B0B0F', fontFamily: Font.bold, fontSize: 15 },
+  // Fond d'un live audio
+  audioBackdrop: { alignItems: 'center', justifyContent: 'center', gap: 16 },
+  audioName: { color: '#fff', fontFamily: Font.bold, fontSize: 20 },
+  audioTag: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#00000055', paddingHorizontal: 14, paddingVertical: 7, borderRadius: 20 },
+  audioTagText: { color: '#fff', fontFamily: Font.semibold, fontSize: 13 },
   guestAudio: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#1a1a22' },
   audioRing: { position: 'absolute', width: 54, height: 54, borderRadius: 27, backgroundColor: Afylo.violet2 },
   buyOneBtn: { backgroundColor: Afylo.violet, borderRadius: 999, paddingHorizontal: 16, paddingVertical: 9 },
