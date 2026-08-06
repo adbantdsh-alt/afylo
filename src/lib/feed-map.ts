@@ -69,6 +69,7 @@ export function mapFeedPost(fp: FeedPost): Post {
     images: !isText && fp.media_urls && fp.media_urls.length > 1 ? fp.media_urls : undefined,
     ratio: fp.aspect_ratio ? clampRatio(fp.aspect_ratio) : undefined,
     video: fp.kind === 'video' && looksLikeVideo(fp.media_url) ? true : undefined,
+    videoUrl: fp.kind === 'video' && looksLikeVideo(fp.media_url) ? (fp.media_url ?? undefined) : undefined, // VRAIE URL vidéo (pas la miniature)
     overlays: fp.overlays && fp.overlays.length ? fp.overlays : undefined,
     muted: fp.muted ?? undefined,
     textOnly: isText || undefined,

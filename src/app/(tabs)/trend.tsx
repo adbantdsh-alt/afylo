@@ -131,6 +131,8 @@ export default function Trend() {
         pagingEnabled
         showsVerticalScrollIndicator={false}
         snapToInterval={height}
+        snapToAlignment="start"
+        disableIntervalMomentum
         decelerationRate="fast"
         onMomentumScrollEnd={(e) => setActive(Math.round(e.nativeEvent.contentOffset.y / height))}
         {...scroll}>
@@ -189,7 +191,7 @@ function Reel({ post, index, active, height, width, showBuzz, onNotInterested, a
 
   // Vraie vidéo publiée → on lit son URL réelle ; sinon (démo, ou vrai post image) on garde le mock/rien.
   const isReal = !!(post as any)._real;
-  const videoSrc = post.video ? post.image : isReal ? null : video(index);
+  const videoSrc = post.video ? (post.videoUrl || post.image) : isReal ? null : video(index);
   const endedRef = useRef(false);
   const autoScrollRef = useRef(autoScroll); autoScrollRef.current = autoScroll;
   const activeRef = useRef(active); activeRef.current = active;
@@ -247,6 +249,9 @@ function Reel({ post, index, active, height, width, showBuzz, onNotInterested, a
         const d = player.duration || 0;
         const ct = player.currentTime || 0;
         setPos(d > 0 ? Math.min(1, ct / d) : 0);
+        // Auto-réparation : si ce reel est actif mais que la lecture n'a pas démarré (remontage,
+        // changement de compte, autoplay bloqué), on relance. Garantit que la vidéo active tourne toujours.
+        if (activeRef.current && !player.playing) player.play();
         // Défilement auto : à la fin de la vidéo, on passe au reel suivant (une seule fois).
         if (autoScrollRef.current && activeRef.current && d > 0 && ct >= d - 0.4 && !endedRef.current) { endedRef.current = true; onEndedRef.current?.(); }
       } catch {}

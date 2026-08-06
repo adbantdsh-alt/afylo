@@ -79,9 +79,9 @@ export default function StoryViewer() {
       <Image source={{ uri: item.uri }} style={StyleSheet.absoluteFill} contentFit="cover" transition={150} />
       <LinearGradient colors={['#000000AA', '#00000000', '#00000000', '#000000AA']} style={StyleSheet.absoluteFill} />
 
-      {/* Zones de tap */}
-      <Pressable style={styles.tapLeft} onPress={prev} />
-      <Pressable style={styles.tapRight} onPress={next} />
+      {/* Zones de tap (pleine largeur, sans zone morte) : gauche = suivant, droite = précédent */}
+      <Pressable style={styles.tapLeft} onPress={next} />
+      <Pressable style={styles.tapRight} onPress={prev} />
 
       <SafeAreaView edges={['top']} pointerEvents="box-none">
         {/* Barres de progression */}
@@ -141,8 +141,8 @@ export default function StoryViewer() {
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: '#000' },
-  tapLeft: { position: 'absolute', left: 0, top: 80, bottom: 80, width: '35%', zIndex: 5 },
-  tapRight: { position: 'absolute', right: 0, top: 80, bottom: 80, width: '35%', zIndex: 5 },
+  tapLeft: { position: 'absolute', left: 0, top: 80, bottom: 80, width: '50%', zIndex: 5 },
+  tapRight: { position: 'absolute', right: 0, top: 80, bottom: 80, width: '50%', zIndex: 5 },
 
   bars: { flexDirection: 'row', gap: 4, paddingHorizontal: 10, paddingTop: 8 },
   barTrack: { flex: 1, height: 3, borderRadius: 2, backgroundColor: '#ffffff44', overflow: 'hidden' },

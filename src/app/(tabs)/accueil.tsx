@@ -408,7 +408,7 @@ function PostCard({ post, isPro, myHandle, initialLiked, initialSaved, initialFo
       {!post.textOnly && (
         <Pressable style={[styles.media, (videoAspect ?? post.ratio) ? { aspectRatio: videoAspect ?? post.ratio! } : null]} onPress={onMediaTap}>
           {post.video ? (
-            <FeedVideo uri={post.image} postId={post.id} onAspect={setVideoAspect} />
+            <FeedVideo uri={post.videoUrl || post.image} postId={post.id} onAspect={setVideoAspect} />
           ) : post.images && post.images.length > 1 ? (
             <PostCarousel images={post.images} blur={post.sensitive && !revealed ? 30 : 0} />
           ) : (

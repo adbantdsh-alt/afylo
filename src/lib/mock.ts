@@ -91,6 +91,7 @@ export type Post = {
   images?: string[]; // carrousel (plusieurs médias)
   ratio?: number; // proportion largeur/hauteur du média
   video?: boolean; // le média principal est une vidéo (lecture dans le feed)
+  videoUrl?: string; // VRAIE URL du fichier vidéo (media_url) — le lecteur doit l'utiliser, pas la miniature
   overlays?: { id: string; kind: 'text' | 'link'; text: string; x: number; y: number; color: string; url?: string }[]; // calques éditeur
   muted?: boolean;
   likes: string;

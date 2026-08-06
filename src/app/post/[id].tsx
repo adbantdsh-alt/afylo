@@ -117,7 +117,7 @@ function PostView({ post, liked, onLike, onOpenComments }: { post: Post; liked: 
       {/* Média à la bonne proportion */}
       {!post.textOnly && images.length > 0 && post.video ? (
         // Vidéo : se dimensionne à sa vraie proportion → plein cadre, ni rognage ni bandes noires.
-        <PostVideo uri={images[0]} width={W} initialRatio={post.ratio} />
+        <PostVideo uri={post.videoUrl || images[0]} width={W} initialRatio={post.ratio} />
       ) : !post.textOnly && images.length > 0 && (
         <View style={{ width: W, height: mediaH, backgroundColor: '#000' }}>
           {images.length > 1 ? (

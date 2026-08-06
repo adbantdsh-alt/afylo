@@ -169,7 +169,8 @@ export default function Profil() {
 
         {/* Avatar chevauchant + bouton Éditer (façon X) */}
         <View style={styles.identityRow}>
-          <Pressable onPress={openStory} style={styles.avatarOnBanner}>
+          {/* Appui long sur l'avatar = changer de compte (accès rapide à l'espace multi-comptes) */}
+          <Pressable onPress={openStory} onLongPress={() => setAccountsOpen(true)} delayLongPress={350} style={styles.avatarOnBanner}>
             <Avatar uri={avatarUri} size={82} ring={!!myStory} />
             {!myStory && (
               <View style={styles.addStoryBadge}>
