@@ -1,5 +1,4 @@
 import { Ionicons } from '@expo/vector-icons';
-import * as Clipboard from 'expo-clipboard';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
@@ -41,7 +40,6 @@ export default function Affiliation() {
   const [query, setQuery] = useState('');
   const [cat, setCat] = useState<string>(''); // catégorie filtrée ('' = toutes)
   const [sort, setSort] = useState<'top' | 'commission' | 'price' | 'recent'>('top');
-  const [copiedId, setCopiedId] = useState<string | null>(null);
   const [items, setItems] = useState<AffItem[]>([]);
   const [affiliatedIds, setAffiliatedIds] = useState<Set<string>>(new Set());
 
@@ -68,15 +66,6 @@ export default function Affiliation() {
         .sort(SORTS[sort]),
     [items, query, cat, sort],
   );
-
-  const copyLink = async (p: AffItem) => {
-    const link = `https://afylo.app/p/${p.id}?ref=me`;
-    try {
-      await Clipboard.setStringAsync(link);
-    } catch {}
-    setCopiedId(p.id);
-    setTimeout(() => setCopiedId((c) => (c === p.id ? null : c)), 1500);
-  };
 
   // Marketplace d'affiliation : réservé aux comptes PRO (vendeurs/affiliés).
   if (!me.isPro) {
@@ -176,11 +165,8 @@ export default function Affiliation() {
             <GridCard
               key={p.id}
               p={p}
-              copied={copiedId === p.id}
               resold={affiliatedIds.has(p.id)}
               onOpen={() => router.push({ pathname: '/product/[id]', params: { id: p.id } })}
-              onCopy={() => copyLink(p)}
-              onSellLive={() => sellLive(p)}
               onResell={() => toggleResell(p)}
             />
           ))}
@@ -199,12 +185,12 @@ function Chip({ label, active, onPress, subtle }: { label: string; active: boole
   );
 }
 
-/** Carte compacte (grille 2 colonnes). Tap sur l'image/titre → fiche produit. */
-function GridCard({ p, copied, resold, onOpen, onCopy, onSellLive, onResell }: { p: AffItem; copied: boolean; resold: boolean; onOpen: () => void; onCopy: () => void; onSellLive: () => void; onResell: () => void }) {
+/** Carte compacte (grille 2 colonnes). Tap → fiche produit (où se trouvent Revendre + lien + live). */
+function GridCard({ p, resold, onOpen, onResell }: { p: AffItem; resold: boolean; onOpen: () => void; onResell: () => void }) {
   const earn = Math.round(((p.promo ?? p.price) * p.commission) / 100);
   return (
     <View style={styles.gcard}>
-      {/* Zone cliquable → fiche produit (image + infos). Séparée des boutons pour éviter les doubles taps. */}
+      {/* Zone cliquable → fiche produit (image + infos). Séparée du bouton pour éviter les doubles taps. */}
       <Pressable onPress={onOpen}>
         <View style={styles.gImgWrap}>
           <Image source={{ uri: p.image }} style={styles.gImg} contentFit="cover" transition={200} />
@@ -226,17 +212,11 @@ function GridCard({ p, copied, resold, onOpen, onCopy, onSellLive, onResell }: {
         </View>
       </Pressable>
 
-      {/* Action principale + secondaires (icônes) */}
+      {/* Action unique : Revendre (les autres actions sont sur la fiche produit) */}
       <View style={styles.gActions}>
         <Pressable onPress={onResell} style={[styles.resellBtn, resold && { backgroundColor: Afylo.green }]}>
           <Ionicons name={resold ? 'checkmark' : 'repeat'} size={15} color="#fff" />
-          <Text style={styles.resellText}>{resold ? 'Ajouté' : 'Revendre'}</Text>
-        </Pressable>
-        <Pressable onPress={onCopy} style={[styles.iconBtn, copied && styles.iconBtnDone]} hitSlop={6}>
-          <Ionicons name={copied ? 'checkmark' : 'link'} size={16} color={copied ? '#fff' : Afylo.violet} />
-        </Pressable>
-        <Pressable onPress={onSellLive} style={styles.iconBtnLive} hitSlop={6}>
-          <Ionicons name="radio" size={16} color="#fff" />
+          <Text style={styles.resellText}>{resold ? 'Dans ta boutique' : 'Revendre'}</Text>
         </Pressable>
       </View>
     </View>

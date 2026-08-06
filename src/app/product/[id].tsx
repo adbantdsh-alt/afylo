@@ -1,4 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
+import * as Clipboard from 'expo-clipboard';
 import { Image } from 'expo-image';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
@@ -10,8 +11,9 @@ import { Avatar } from '@/components/ui-kit';
 import { VerifiedBadge, verifiedKind } from '@/components/verified';
 import { Afylo, Font, Radius, Type } from '@/constants/brand';
 import { useAuthGate } from '@/lib/auth-gate';
-import { getProductWithOwner, hasPurchasedProduct, listProductReviews, sendMessage, upsertProductReview, type ProductReview, type ProductWithOwner } from '@/lib/db';
+import { addAffiliation, getProductWithOwner, hasPurchasedProduct, listMyAffiliatedProductIds, listProductReviews, removeAffiliation, sendMessage, startLive, upsertProductReview, type ProductReview, type ProductWithOwner } from '@/lib/db';
 import { timeAgo } from '@/lib/feed-map';
+import { useMe } from '@/lib/me';
 import { photo } from '@/lib/mock';
 import { formatCfa } from '@/types/db';
 
@@ -35,11 +37,14 @@ function Stars({ value, size = 16, onRate }: { value: number; size?: number; onR
 export default function ProductPage() {
   const router = useRouter();
   const gate = useAuthGate();
+  const me = useMe();
   const { width } = useWindowDimensions();
   const { id } = useLocalSearchParams<{ id: string }>();
   const [product, setProduct] = useState<ProductWithOwner | null>(null);
   const [reviews, setReviews] = useState<ProductReview[]>([]);
   const [canReview, setCanReview] = useState(false);
+  const [resold, setResold] = useState(false);
+  const [copied, setCopied] = useState(false);
   const [loading, setLoading] = useState(true);
   const [payOpen, setPayOpen] = useState(false);
   const [imgIdx, setImgIdx] = useState(0);
@@ -51,8 +56,8 @@ export default function ProductPage() {
 
   const load = () => {
     if (!id) return;
-    Promise.all([getProductWithOwner(id), listProductReviews(id), hasPurchasedProduct(id)])
-      .then(([p, r, can]) => { setProduct(p); setReviews(r); setCanReview(can); })
+    Promise.all([getProductWithOwner(id), listProductReviews(id), hasPurchasedProduct(id), listMyAffiliatedProductIds()])
+      .then(([p, r, can, aff]) => { setProduct(p); setReviews(r); setCanReview(can); setResold(aff.has(id)); })
       .catch(() => {})
       .finally(() => setLoading(false));
   };
@@ -78,7 +83,26 @@ export default function ProductPage() {
     ...(fee > 0 ? [{ title: 'Livraison', price: formatCfa(fee), priceCfa: fee }] : []),
   ];
 
+  // Affilié : un compte Pro (autre que le vendeur) peut REVENDRE un produit en affiliation.
+  const canResell = me.isPro && (product.commission_pct ?? 0) > 0 && owner?.id !== me.id;
+  const earn = Math.round((price * (product.commission_pct ?? 0)) / 100);
+
   const openSeller = () => owner?.handle && router.push({ pathname: '/creator/[id]', params: { id: owner.handle } });
+
+  const toggleResell = () => {
+    if (!gate('revendre')) return;
+    setResold((v) => { const n = !v; (n ? addAffiliation(product.id) : removeAffiliation(product.id)).catch(() => {}); return n; });
+  };
+  const copyLink = async () => {
+    try { await Clipboard.setStringAsync(`https://afylo.app/p/${product.id}?ref=${me.handle || 'me'}`); } catch {}
+    setCopied(true); setTimeout(() => setCopied(false), 1500);
+  };
+  const sellLive = async () => {
+    if (!gate('vendre en live')) return;
+    const live = await startLive({ title: `Live · ${me.name}`, kind: 'sell', thumbnail_url: me.avatar }).catch(() => null);
+    const prod = JSON.stringify({ id: `aff-${product.id}`, title: product.title, price: formatCfa(price), image: images[0], tag: `Affiliation ${product.commission_pct}%` });
+    router.push({ pathname: '/live', params: { role: 'host', liveId: live?.id ?? '', name: me.name, avatar: me.avatar, product: prod } });
+  };
 
   // Contacter le vendeur : envoie la carte produit (→ conversation classée "boutique") puis ouvre la discussion.
   const messageSeller = async () => {
@@ -128,6 +152,27 @@ export default function ProductPage() {
             <View style={styles.avgRow}>
               <Stars value={avg} size={15} />
               <Text style={styles.avgText}>{avg.toFixed(1)} · {reviews.length} avis</Text>
+            </View>
+          )}
+
+          {/* Affilié Pro : revends ce produit (au lieu d'acheter) */}
+          {canResell && (
+            <View style={styles.affCard}>
+              <View style={styles.affTop}>
+                <Ionicons name="repeat" size={18} color={Afylo.violet} />
+                <Text style={styles.affTitle}>Revends ce produit</Text>
+              </View>
+              <Text style={styles.affEarn}>Commission {product.commission_pct}% · tu gagnes ≈ {formatCfa(earn)} / vente</Text>
+              <View style={styles.affActions}>
+                <Pressable onPress={copyLink} style={[styles.affSecondary, copied && styles.affSecondaryDone]}>
+                  <Ionicons name={copied ? 'checkmark' : 'link'} size={16} color={copied ? '#fff' : Afylo.violet} />
+                  <Text style={[styles.affSecondaryText, copied && { color: '#fff' }]}>{copied ? 'Lien copié' : 'Copier le lien'}</Text>
+                </Pressable>
+                <Pressable onPress={sellLive} style={styles.affLive}>
+                  <Ionicons name="radio" size={16} color="#fff" />
+                  <Text style={styles.affLiveText}>Vendre en live</Text>
+                </Pressable>
+              </View>
             </View>
           )}
 
@@ -227,17 +272,24 @@ export default function ProductPage() {
       <SafeAreaView edges={['bottom']} style={styles.buyBar}>
         <View style={{ flex: 1 }}>
           <Text style={styles.buyPrice}>{formatCfa(price)}</Text>
-          <Text style={styles.buyMeta}>{fee > 0 ? `+ ${formatCfa(fee)} livraison` : 'Livraison gratuite'}</Text>
+          <Text style={styles.buyMeta}>{canResell ? `Tu gagnes ≈ ${formatCfa(earn)}` : fee > 0 ? `+ ${formatCfa(fee)} livraison` : 'Livraison gratuite'}</Text>
         </View>
         {owner && (
           <Pressable onPress={messageSeller} style={styles.msgBtn}>
             <Ionicons name="chatbubble-ellipses-outline" size={22} color={Afylo.violet} />
           </Pressable>
         )}
-        <Pressable onPress={() => { if (gate('acheter')) setPayOpen(true); }} style={styles.buyBtn}>
-          <Ionicons name="bag-handle" size={18} color="#fff" />
-          <Text style={styles.buyBtnText}>Acheter</Text>
-        </Pressable>
+        {canResell ? (
+          <Pressable onPress={toggleResell} style={[styles.buyBtn, resold && { backgroundColor: Afylo.green }]}>
+            <Ionicons name={resold ? 'checkmark' : 'repeat'} size={18} color="#fff" />
+            <Text style={styles.buyBtnText}>{resold ? 'Ajouté' : 'Revendre'}</Text>
+          </Pressable>
+        ) : (
+          <Pressable onPress={() => { if (gate('acheter')) setPayOpen(true); }} style={styles.buyBtn}>
+            <Ionicons name="bag-handle" size={18} color="#fff" />
+            <Text style={styles.buyBtnText}>Acheter</Text>
+          </Pressable>
+        )}
       </SafeAreaView>
 
       <PaymentSheet visible={payOpen} items={buyItems} onClose={() => setPayOpen(false)} />
@@ -268,6 +320,17 @@ const styles = StyleSheet.create({
 
   avgRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 8 },
   avgText: { color: Afylo.textDim, ...Type.small },
+
+  affCard: { backgroundColor: Afylo.violet + '12', borderRadius: Radius.lg, borderWidth: 1, borderColor: Afylo.violet + '40', padding: 14, marginTop: 14, gap: 10 },
+  affTop: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  affTitle: { color: Afylo.text, fontFamily: Font.bold, fontSize: 15 },
+  affEarn: { color: Afylo.green, ...Type.small, fontFamily: Font.semibold },
+  affActions: { flexDirection: 'row', gap: 10 },
+  affSecondary: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, height: 40, borderRadius: Radius.pill, borderWidth: 1.5, borderColor: Afylo.violet },
+  affSecondaryDone: { backgroundColor: Afylo.violet, borderColor: Afylo.violet },
+  affSecondaryText: { color: Afylo.violet, fontFamily: Font.semibold, fontSize: 13 },
+  affLive: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, height: 40, borderRadius: Radius.pill, backgroundColor: Afylo.live },
+  affLiveText: { color: '#fff', fontFamily: Font.bold, fontSize: 13 },
 
   infoCard: { backgroundColor: Afylo.surface, borderRadius: Radius.lg, borderWidth: 1, borderColor: Afylo.border, padding: 14, marginTop: 14, gap: 10 },
   infoLine: { flexDirection: 'row', alignItems: 'center', gap: 10 },
