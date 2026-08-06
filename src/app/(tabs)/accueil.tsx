@@ -118,6 +118,28 @@ export default function Feed() {
     return unsub;
   }, [navigation, reload]);
 
+  // « Tes abonnements ont posté » (façon X) : on vérifie en fond s'il y a de nouvelles publications
+  // de créateurs que tu suis, pas encore affichées. Un tap sur le bandeau remonte + actualise.
+  const [newFromFollowing, setNewFromFollowing] = useState<Post[]>([]);
+  const feedRef = useRef(feed); feedRef.current = feed;
+  const followingRef = useRef(followingIds); followingRef.current = followingIds;
+  useEffect(() => {
+    let alive = true;
+    const check = async () => {
+      try {
+        const rows = await listFeed();
+        if (!alive) return;
+        const mapped = mapFeed(rows ?? []).filter((p) => !isSeedHandle(p.handle));
+        const currentIds = new Set(feedRef.current.map((p) => p.id));
+        const fresh = mapped.filter((p) => !currentIds.has(p.id) && p.authorId && followingRef.current.has(p.authorId));
+        setNewFromFollowing(fresh);
+      } catch {}
+    };
+    const t = setInterval(check, 40000);
+    return () => { alive = false; clearInterval(t); };
+  }, []);
+  const showNewPosts = () => { scrollRef.current?.scrollTo({ y: 0, animated: true }); reload(); setNewFromFollowing([]); };
+
   return (
     <View style={styles.root}>
       <SafeAreaView edges={['top']} style={{ backgroundColor: Afylo.bg }}>
@@ -139,6 +161,20 @@ export default function Feed() {
           </View>
         </View>
       </SafeAreaView>
+
+      {/* Bandeau « tes abonnements ont posté » (façon X) — apparaît SEULEMENT s'il y a de vrais nouveaux
+          posts d'abonnés ; un tap remonte en haut et recharge réellement le feed. */}
+      {newFromFollowing.length > 0 && (
+        <Pressable onPress={showNewPosts} style={styles.newPill}>
+          <Ionicons name="arrow-up" size={15} color="#fff" />
+          <View style={{ flexDirection: 'row', marginLeft: 7 }}>
+            {newFromFollowing.slice(0, 3).map((p, i) => (
+              <Image key={p.id} source={{ uri: p.avatar }} style={[styles.newPillAv, { marginLeft: i === 0 ? 0 : -8, zIndex: 3 - i }]} contentFit="cover" />
+            ))}
+          </View>
+          <Text style={styles.newPillText}>{newFromFollowing.length === 1 ? 'a posté' : 'ont posté'}</Text>
+        </Pressable>
+      )}
 
       <ScrollView
         ref={scrollRef}
@@ -607,6 +643,9 @@ const styles = StyleSheet.create({
   },
   brand: { color: Afylo.text, fontFamily: Font.bold, fontSize: 24, letterSpacing: -0.6 },
   bellBadge: { position: 'absolute', top: -4, right: -4, minWidth: 18, height: 18, paddingHorizontal: 4, borderRadius: 9, backgroundColor: Afylo.live, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: Afylo.bg },
+  newPill: { position: 'absolute', top: 92, alignSelf: 'center', zIndex: 30, flexDirection: 'row', alignItems: 'center', gap: 2, backgroundColor: Afylo.violet, paddingLeft: 12, paddingRight: 14, height: 38, borderRadius: 19, shadowColor: '#000', shadowOpacity: 0.25, shadowRadius: 8, shadowOffset: { width: 0, height: 3 }, elevation: 6 },
+  newPillAv: { width: 24, height: 24, borderRadius: 12, borderWidth: 1.5, borderColor: Afylo.violet, backgroundColor: Afylo.surfaceAlt },
+  newPillText: { color: '#fff', fontFamily: Font.bold, fontSize: 13, marginLeft: 7 },
   bellBadgeText: { color: '#fff', fontFamily: Font.bold, fontSize: 10 },
   feedState: { alignItems: 'center', justifyContent: 'center', paddingVertical: 80, paddingHorizontal: 40, gap: 12 },
   feedEmptyTitle: { color: Afylo.text, fontFamily: Font.bold, fontSize: 18 },
