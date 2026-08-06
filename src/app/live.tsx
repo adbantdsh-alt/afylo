@@ -44,7 +44,7 @@ const CHATTERS = ['Awa', 'Modou', 'Sokhna', 'Cheikh', 'Mariama', 'Ibou', 'Aïda'
 const MSGS = ['Trop belle 😍', 'Ça coûte combien ?', 'Livraison à Thiès ?', '🔥🔥🔥', "J'achète !", 'Bravo 👏', "Tu as d'autres couleurs ?", 'Première fois ici 🙌', 'Salut de Dakar', 'Le lien du produit ?', 'Magnifique'];
 const GIFTS = [500, 1000, 2000, 5000];
 const BUZZ_GOAL = 10000; // j'aime à atteindre pour que le live obtienne le Buzz
-const MAX_GUESTS = 6; // nombre maximum d'intervenants simultanés (comme TikTok/IG)
+const MAX_GUESTS = 5; // nombre maximum d'intervenants simultanés (comme TikTok/IG)
 const HEART_COLORS = ['#E11D48', '#FF4D8D', '#FF7AB8', '#B8791F', '#6E80FF', '#FF5A5F', '#FF2D55'];
 const SYS: Record<'join' | 'like' | 'share' | 'guest' | 'sale' | 'welcome', { icon: keyof typeof Ionicons.glyphMap; color: string }> = {
   join: { icon: 'enter-outline', color: '#7EC8FF' },
