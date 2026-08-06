@@ -205,7 +205,8 @@ export default function Chat() {
               <AttachOption icon="image" color="#8B5CF6" label="Photo" onPress={() => { setAttachOpen(false); attachImage(); }} />
               <AttachOption icon="videocam" color="#EF4444" label="Vidéo" onPress={attachVideo} />
               <AttachOption icon="document" color="#3B82F6" label="Fichier" onPress={attachFile} />
-              <AttachOption icon="pricetag" color={Afylo.violet} label="Produit" onPress={() => { setAttachOpen(false); setPickerOpen(true); }} />
+              {/* Envoi de lien produit : réservé aux comptes Pro (vendeurs) */}
+              {me.isPro && <AttachOption icon="pricetag" color={Afylo.violet} label="Produit" onPress={() => { setAttachOpen(false); setPickerOpen(true); }} />}
             </View>
           </View>
         </Pressable>
@@ -244,22 +245,24 @@ export default function Chat() {
 }
 
 function Bubble({ m, mine }: { m: Message; mine: boolean }) {
+  const router = useRouter();
   const align = mine ? styles.right : styles.left;
 
   if (m.kind === 'product' && m.product) {
+    const openProduct = () => m.product?.id && router.push({ pathname: '/product/[id]', params: { id: m.product.id } });
     return (
       <View style={[styles.bubbleWrap, align]}>
-        <View style={styles.productCard}>
+        <Pressable style={styles.productCard} onPress={openProduct}>
           <Image source={{ uri: m.product.image }} style={styles.productImg} contentFit="cover" />
           <View style={styles.productBody}>
             <Text style={styles.productTitle} numberOfLines={2}>{m.product.title}</Text>
             <Text style={styles.productPrice}>{m.product.price}</Text>
-            <Pressable style={styles.buyBtn}>
+            <Pressable style={styles.buyBtn} onPress={openProduct}>
               <Ionicons name="bag-handle" size={15} color="#fff" />
               <Text style={styles.buyText}>Acheter maintenant</Text>
             </Pressable>
           </View>
-        </View>
+        </Pressable>
       </View>
     );
   }
