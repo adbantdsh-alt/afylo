@@ -3,7 +3,7 @@
  * Les écritures passent par RLS : owner_id / author_id doivent = auth.uid().
  */
 import { supabase } from './supabase';
-import type { Order, Post, Product, Profile } from '@/types/db';
+import type { Order, OrderStatus, Post, Product, Profile } from '@/types/db';
 
 async function requireUserId(): Promise<string> {
   const {
@@ -419,6 +419,38 @@ export async function listMyFollowers(): Promise<Profile[]> {
   return ((data ?? []) as any[]).map((r) => r.profile).filter(Boolean) as Profile[];
 }
 
+/** Abonnés d'un compte donné (public — pour ouvrir la liste depuis n'importe quel profil). */
+export async function listFollowersOf(userId: string): Promise<Profile[]> {
+  const { data } = await supabase
+    .from('follows')
+    .select('profile:profiles!follows_follower_id_fkey(*)')
+    .eq('following_id', userId)
+    .limit(300);
+  return ((data ?? []) as any[]).map((r) => r.profile).filter(Boolean) as Profile[];
+}
+
+/** Abonnements d'un compte donné (public). */
+export async function listFollowingOf(userId: string): Promise<Profile[]> {
+  const { data } = await supabase
+    .from('follows')
+    .select('profile:profiles!follows_following_id_fkey(*)')
+    .eq('follower_id', userId)
+    .limit(300);
+  return ((data ?? []) as any[]).map((r) => r.profile).filter(Boolean) as Profile[];
+}
+
+/** Incrémente le compteur de vues d'un post (via RPC SECURITY DEFINER 0023). Silencieux. */
+export async function bumpPostView(postId: string): Promise<void> {
+  if (!postId) return;
+  await supabase.rpc('increment_post_view', { p_post_id: postId });
+}
+
+/** L'acheteur confirme la réception → libère le séquestre (status 'released'). RPC 0024. */
+export async function confirmOrder(orderId: string): Promise<void> {
+  const { error } = await supabase.rpc('confirm_order', { p_order_id: orderId });
+  if (error) throw error;
+}
+
 export type SearchPost = {
   id: string;
   thumbnail_url: string | null;
@@ -641,6 +673,28 @@ export async function listMyOrders(): Promise<Order[]> {
   return (data as Order[]) ?? [];
 }
 
+/** Mes ACHATS (côté acheteur) — commandes où buyer_id = moi, avec le produit. */
+export type Purchase = { id: string; title: string; image: string | null; amount_cfa: number; quantity: number; status: OrderStatus; created_at: string };
+export async function listMyPurchases(): Promise<Purchase[]> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return [];
+  const { data, error } = await supabase
+    .from('orders')
+    .select('id, quantity, amount_cfa, status, created_at, product:products(title, image_url)')
+    .eq('buyer_id', user.id)
+    .order('created_at', { ascending: false });
+  if (error) return [];
+  return ((data ?? []) as any[]).map((o) => ({
+    id: o.id,
+    title: o.product?.title ?? 'Article',
+    image: o.product?.image_url ?? null,
+    amount_cfa: o.amount_cfa ?? 0,
+    quantity: o.quantity ?? 1,
+    status: o.status as OrderStatus,
+    created_at: o.created_at,
+  }));
+}
+
 export type MyPost = {
   id: string;
   media_url: string | null;
@@ -806,7 +860,8 @@ export async function listComments(postId: string): Promise<CommentRow[]> {
     .eq('post_id', postId)
     .order('created_at', { ascending: true });
   if (error) return [];
-  return (data ?? []) as CommentRow[];
+  // Supabase type l'auteur embarqué comme un tableau ; on normalise en objet.
+  return ((data ?? []) as any[]).map((r) => ({ ...r, author: Array.isArray(r.author) ? r.author[0] : r.author })) as CommentRow[];
 }
 
 /** Publie un commentaire (ou une réponse si parentId) et renvoie la ligne créée. */
@@ -820,7 +875,8 @@ export async function createComment(postId: string, body: string, parentId?: str
     .select('id, post_id, author_id, body, parent_id, created_at, author:profiles!comments_author_id_fkey(id,display_name,handle,avatar_url,is_verified)')
     .single();
   if (error) throw error;
-  return data as CommentRow;
+  const r = data as any;
+  return { ...r, author: Array.isArray(r.author) ? r.author[0] : r.author } as CommentRow;
 }
 
 /** Supprime un commentaire (RLS : auteur du commentaire OU propriétaire du post). */

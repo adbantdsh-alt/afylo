@@ -3,7 +3,7 @@ import { Image } from 'expo-image';
 import { useVideoPlayer, VideoView } from 'expo-video';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Linking, Modal, Platform, Pressable, ScrollView, Share, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Linking, Modal, Platform, Pressable, ScrollView, Share, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AccountSwitcher } from '@/components/account-switcher';
@@ -14,15 +14,15 @@ import { VerifiedBadge, verifiedKind } from '@/components/verified';
 import { Afylo, Font, Radius, Type } from '@/constants/brand';
 import { useAuth } from '@/lib/auth';
 import { setProfileInfo } from '@/lib/accounts';
-import { deletePost, deleteProduct, getMyPosts, getMyProfile, isProAccount, listMyAffiliatedProducts, listMyProducts, updatePostCaption, type MyPost } from '@/lib/db';
+import { confirmOrder, deletePost, deleteProduct, getMyPosts, getMyProfile, isProAccount, listMyAffiliatedProducts, listMyProducts, listMyPurchases, updatePostCaption, type MyPost, type Purchase as DbPurchase } from '@/lib/db';
 import { timeAgo } from '@/lib/feed-map';
 import { useMe } from '@/lib/me';
 import { EMPTY_WALLET, getWalletSummary, type WalletSummary } from '@/lib/wallet';
 import { useReposts, type Repost } from '@/lib/reposts';
 import { useStories } from '@/lib/stories';
 import { useAlwaysShowTabBar } from '@/lib/tabbar';
-import { myLives, myProducts, myPurchases, photo, type MyLive, type Purchase } from '@/lib/mock';
-import type { Profile } from '@/types/db';
+import { myLives, myProducts, photo, type MyLive, type Purchase } from '@/lib/mock';
+import { formatCfa, type Profile } from '@/types/db';
 
 /** Bannière Afylo par défaut (nouveau compte). Remplaçable par assets/images/default-banner.png. */
 const DEFAULT_BANNER = require('@/assets/images/default-banner.png');
@@ -469,26 +469,41 @@ const PURCHASE_STATUS: Record<Purchase['status'], { label: string; color: string
   termine: { label: 'Terminé', color: Afylo.green, icon: 'checkmark-circle' },
 };
 
+// Statut de commande (base) → statut d'affichage acheteur.
+const mapPurchaseStatus = (s: DbPurchase['status']): Purchase['status'] =>
+  s === 'released' ? 'termine' : s === 'delivered' ? 'a_confirmer' : 'sequestre';
+
 function PurchasesList() {
+  const [items, setItems] = useState<DbPurchase[]>([]);
+  const [loading, setLoading] = useState(true);
+  const reload = () => listMyPurchases().then(setItems).catch(() => {}).finally(() => setLoading(false));
+  useEffect(() => { reload(); }, []);
+  // Confirmer la réception → libère le séquestre (optimiste, resync si échec).
+  const confirm = (id: string) => { setItems((prev) => prev.map((x) => (x.id === id ? { ...x, status: 'released' } : x))); confirmOrder(id).catch(() => reload()); };
+
+  if (loading) return <ActivityIndicator color={Afylo.violet} style={{ marginTop: 30 }} />;
+  if (items.length === 0) return <Text style={styles.purchaseNote}>Aucun achat pour le moment. Tes commandes apparaîtront ici.</Text>;
+
   return (
     <View style={{ paddingHorizontal: 16, paddingTop: 12, gap: 12 }}>
-      {myPurchases.map((p) => {
-        const st = PURCHASE_STATUS[p.status];
+      {items.map((p) => {
+        const key = mapPurchaseStatus(p.status);
+        const st = PURCHASE_STATUS[key];
         return (
           <View key={p.id} style={styles.purchaseRow}>
-            <Image source={{ uri: p.image }} style={styles.purchaseImg} contentFit="cover" />
+            {p.image ? <Image source={{ uri: p.image }} style={styles.purchaseImg} contentFit="cover" /> : <View style={styles.purchaseImg} />}
             <View style={{ flex: 1 }}>
               <Text style={styles.purchaseTitle} numberOfLines={1}>{p.title}</Text>
-              <Text style={styles.purchaseMeta}>{p.seller} · {p.date}</Text>
+              <Text style={styles.purchaseMeta}>{p.quantity > 1 ? `${p.quantity} × · ` : ''}{new Date(p.created_at).toLocaleDateString('fr-FR')}</Text>
               <View style={styles.purchaseStatus}>
                 <Ionicons name={st.icon} size={13} color={st.color} />
                 <Text style={[styles.purchaseStatusText, { color: st.color }]}>{st.label}</Text>
               </View>
             </View>
             <View style={{ alignItems: 'flex-end', gap: 6 }}>
-              <Text style={styles.purchasePrice}>{p.price}</Text>
-              {p.status === 'a_confirmer' && (
-                <Pressable style={styles.confirmBtn}><Text style={styles.confirmText}>Confirmer</Text></Pressable>
+              <Text style={styles.purchasePrice}>{formatCfa(p.amount_cfa)}</Text>
+              {key === 'a_confirmer' && (
+                <Pressable style={styles.confirmBtn} onPress={() => confirm(p.id)}><Text style={styles.confirmText}>Confirmer</Text></Pressable>
               )}
             </View>
           </View>

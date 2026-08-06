@@ -16,7 +16,7 @@ import { ReportSheet } from '@/components/report-sheet';
 import { RepostSheet } from '@/components/repost-sheet';
 import { Afylo, Font, Radius, Type } from '@/constants/brand';
 import { NICHES, rankPosts } from '@/lib/algo';
-import { listFeed, myFollowingIds } from '@/lib/db';
+import { bumpPostView, followUser, isFollowing, likePost, listFeed, myFollowingIds, savePost, unfollowUser, unlikePost, unsavePost } from '@/lib/db';
 import { mapFeed, isSeedHandle } from '@/lib/feed-map';
 import { useAuthGate } from '@/lib/auth-gate';
 import { useMe } from '@/lib/me';
@@ -179,6 +179,9 @@ export default function Trend() {
   );
 }
 
+// Vues déjà comptées cette session (dédup pour ne pas incrémenter à chaque passage).
+const countedReelViews = new Set<string>();
+
 function Reel({ post, index, active, height, width, showBuzz, onNotInterested, autoScroll, onToggleAutoScroll, onEnded }: { post: Post; index: number; active: boolean; height: number; width: number; showBuzz?: boolean; onNotInterested: () => void; autoScroll?: boolean; onToggleAutoScroll?: () => void; onEnded?: () => void }) {
   const router = useRouter();
   const gate = useAuthGate();
@@ -195,14 +198,17 @@ function Reel({ post, index, active, height, width, showBuzz, onNotInterested, a
     p.muted = true;
   });
   const boxRef = useRef<View>(null);
+  const authorId = (post as any).authorId as string | undefined;
   useEffect(() => {
     if (active && videoSrc) player.play();
     else player.pause();
+    // Compte une vue (une seule fois par session) quand le reel devient actif — uniquement les vrais posts.
+    if (active && isReal && post.id && !countedReelViews.has(post.id)) { countedReelViews.add(post.id); bumpPostView(post.id).catch(() => {}); }
   }, [active, player, videoSrc]);
   // Défilement auto : la vidéo ne boucle pas ; à la fin on passe au reel suivant.
   useEffect(() => { try { player.loop = !autoScroll; } catch {} endedRef.current = false; }, [autoScroll, player, active]);
-  // Web : la <video> de CE reel remplit sa zone en gardant sa proportion (contain → média entier,
-  // espace noir en haut/bas pour le texte, on ne recadre pas).
+  // Web : la <video> de CE reel remplit sa zone en plein écran (cover, façon TikTok) ; la bande
+  // noire du bas (reelMedia s'arrête à 96px) accueille le texte/hashtags/curseur.
   useEffect(() => {
     if (Platform.OS !== 'web' || !videoSrc) return;
     const apply = () => { const el = (boxRef.current as any)?.querySelector?.('video') as HTMLVideoElement | null; if (el) { el.style.width = '100%'; el.style.height = '100%'; el.style.objectFit = 'cover'; } };
@@ -212,9 +218,14 @@ function Reel({ post, index, active, height, width, showBuzz, onNotInterested, a
   const [muted, setMuted] = useState(true); // autoplay muet ; bouton pour réactiver le son
   const toggleMute = () => setMuted((m) => { const nm = !m; try { player.muted = nm; } catch {} return nm; });
   const [saved, setSaved] = useState(false);
+  const [followed, setFollowed] = useState(false);
   const [repostOpen, setRepostOpen] = useState(false);
   const { addRepost, hasReposted } = useReposts();
-  const { handle: myHandle, isPro } = useMe();
+  const { id: myId, handle: myHandle, isPro } = useMe();
+  // État initial suivre/aimé/enregistré des VRAIS posts (léger : par reel).
+  useEffect(() => {
+    if (isReal && authorId && authorId !== myId) isFollowing(authorId).then(setFollowed).catch(() => {});
+  }, [authorId, myId]);
   const reposted = hasReposted(post.id);
   const [rating, setRating] = useState(0);
   const [reaction, setReaction] = useState<string | null>(null);
@@ -250,10 +261,13 @@ function Reel({ post, index, active, height, width, showBuzz, onNotInterested, a
   })).current;
 
   const changeSpeed = (s: number) => { setSpeed(s); try { player.playbackRate = s; } catch {} };
-  const onTap = () => { const now = Date.now(); if (now - lastTap.current < 300 && gate('aimer')) setLiked(true); lastTap.current = now; };
+  // Persistance réelle (seulement les vrais posts ; ignorée pour les démos/mock). Fallback silencieux.
+  const persistLike = (next: boolean) => { if (isReal && post.id) (next ? likePost(post.id) : unlikePost(post.id)).catch(() => {}); };
+  const onTap = () => { const now = Date.now(); if (now - lastTap.current < 300 && gate('aimer')) setLiked((v) => { if (!v) persistLike(true); return true; }); lastTap.current = now; };
 
-  const like = () => { if (gate('aimer')) setLiked((v) => !v); };
-  const save = () => { if (gate('enregistrer')) setSaved((v) => !v); };
+  const like = () => { if (gate('aimer')) setLiked((v) => { const n = !v; persistLike(n); return n; }); };
+  const save = () => { if (gate('enregistrer')) setSaved((v) => { const n = !v; if (isReal && post.id) (n ? savePost(post.id) : unsavePost(post.id)).catch(() => {}); return n; }); };
+  const toggleFollow = () => { if (gate('suivre')) setFollowed((v) => { const n = !v; if (isReal && authorId) (n ? followUser(authorId) : unfollowUser(authorId)).catch(() => {}); return n; }); };
   const republish = () => { if (gate('republier')) setRepostOpen(true); };
   const sharePost = async () => { try { await Share.share({ message: `${post.name} sur Afylo : ${post.caption || ''}` }); } catch {} };
   const rate = () => { if (gate('noter')) setRateOpen(true); };
@@ -262,7 +276,7 @@ function Reel({ post, index, active, height, width, showBuzz, onNotInterested, a
 
   return (
     <View style={{ height, width, backgroundColor: '#000' }}>
-      {/* Zone média : s'arrête au-dessus d'une bande noire (texte + curseur) façon TikTok. Média entier, sans rognage. */}
+      {/* Zone média : s'arrête au-dessus d'une bande noire (texte + curseur) façon TikTok. Vidéo en plein écran (cover). */}
       <View style={styles.reelMedia}>
         {!post.video && <Image source={{ uri: post.image }} style={StyleSheet.absoluteFill} contentFit="cover" transition={200} />}
         {videoSrc && (
@@ -288,8 +302,14 @@ function Reel({ post, index, active, height, width, showBuzz, onNotInterested, a
 
       {/* Rail d'actions à droite */}
       <View style={styles.rail}>
-        <View style={{ marginBottom: 6 }}>
+        <View style={{ marginBottom: 12 }}>
           <Avatar uri={post.avatar} size={48} ring />
+          {/* Suivre l'auteur en 1 tap (pas sur mes propres posts) */}
+          {authorId && authorId !== myId && (
+            <Pressable onPress={toggleFollow} style={[styles.followDot, followed && styles.followDotOn]} hitSlop={8}>
+              <Ionicons name={followed ? 'checkmark' : 'add'} size={13} color="#fff" />
+            </Pressable>
+          )}
         </View>
         <Action
           node={reaction ? <Text style={{ fontSize: 30 }}>{reaction}</Text> : <RatingStar fill={rating > 0 ? rating / 10 : liked ? 1 : 0} size={32} color={Afylo.violet2} empty="#fff" />}
@@ -458,6 +478,8 @@ const styles = StyleSheet.create({
   optLineText: { ...Type.body, color: Afylo.text },
 
   rail: { position: 'absolute', right: 12, bottom: 160, alignItems: 'center', gap: 20 },
+  followDot: { position: 'absolute', bottom: -9, alignSelf: 'center', left: 14, width: 20, height: 20, borderRadius: 10, backgroundColor: Afylo.violet, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: '#000' },
+  followDotOn: { backgroundColor: Afylo.green },
   action: { alignItems: 'center', gap: 3 },
   actionLabel: { color: '#fff', fontSize: 12, fontWeight: '700' },
 

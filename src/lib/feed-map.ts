@@ -75,7 +75,7 @@ export function mapFeedPost(fp: FeedPost): Post {
     likes: fmtCount(fp.like_count),
     comments: fmtCount(fp.comment_count),
     views: fmtCount(fp.view_count),
-    shares: fmtCount(Math.round((fp.like_count ?? 0) / 12)),
+    shares: fmtCount((fp as any).repost_count ?? 0),
     caption: fp.caption || '',
     product: first
       ? {

@@ -11,7 +11,7 @@ import { PaymentSheet, type PayItem } from '@/components/payment-sheet';
 import { ReportSheet } from '@/components/report-sheet';
 import { VerifiedBadge, verifiedKind } from '@/components/verified';
 import { Afylo, Font, Radius, Type } from '@/constants/brand';
-import { followUser, getCreatorData, isFollowing, isProAccount, listProductsByOwner, listRepostsByOwner, unfollowUser, type CreatorData } from '@/lib/db';
+import { blockUser, followUser, getCreatorData, isFollowing, isProAccount, listProductsByOwner, listRepostsByOwner, unfollowUser, type CreatorData } from '@/lib/db';
 import { fmtCount, timeAgo } from '@/lib/feed-map';
 import { useMe } from '@/lib/me';
 import { rowToRepost, type Repost } from '@/lib/reposts';
@@ -115,7 +115,7 @@ export default function CreatorProfile() {
   const act = (fn: () => void) => { setMenuOpen(false); setTimeout(fn, 120); };
   const copyUrl = async () => { try { await Clipboard.setStringAsync(profileUrl); } catch {} showToast('Lien du profil copié'); };
   const shareProfile = () => { Share.share({ message: `Découvre ${name} sur Afylo — ${handle}\n${profileUrl}` }).catch(() => {}); };
-  const block = () => { showToast(`${handle} bloqué`); setTimeout(() => (router.canGoBack() ? router.back() : router.replace('/accueil')), 700); };
+  const block = () => { if (p?.id) blockUser(p.id).catch(() => {}); showToast(`${handle} bloqué`); setTimeout(() => (router.canGoBack() ? router.back() : router.replace('/accueil')), 700); };
 
   const menuRows: { icon: keyof typeof Ionicons.glyphMap; label: string; danger?: boolean; onPress: () => void }[] = [
     ...(isSelf ? [] : [

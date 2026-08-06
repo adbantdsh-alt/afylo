@@ -7,9 +7,10 @@ import { ActivityIndicator, Dimensions, Linking, PanResponder, Platform, Pressab
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Avatar } from '@/components/ui-kit';
+import { PaymentSheet, type PayItem } from '@/components/payment-sheet';
 import { VerifiedBadge } from '@/components/verified';
 import { Afylo, Font, Radius } from '@/constants/brand';
-import { getPost, likePost, listMyLikedPostIds, listPostsByAuthor, unlikePost } from '@/lib/db';
+import { bumpPostView, getPost, likePost, listMyLikedPostIds, listPostsByAuthor, unlikePost } from '@/lib/db';
 import { mapFeedPost } from '@/lib/feed-map';
 import type { Post } from '@/lib/mock';
 
@@ -39,7 +40,8 @@ export default function PostViewer() {
       const rows = authorId ? await listPostsByAuthor(authorId) : [];
       const liked = await listMyLikedPostIds();
       if (alive) { setPosts(rows.map(mapFeedPost)); setLikedIds(liked); setLoading(false); }
-    })();
+      if (id) bumpPostView(id).catch(() => {}); // compte la vue du post ouvert
+    })().catch(() => { if (alive) setLoading(false); });
     return () => { alive = false; };
   }, [id, author]);
 
@@ -85,8 +87,10 @@ export default function PostViewer() {
 function PostView({ post, liked, onLike, onOpenComments }: { post: Post; liked: boolean; onLike: (id: string, liked: boolean) => void; onOpenComments: () => void }) {
   const [idx, setIdx] = useState(0);
   const [isLiked, setIsLiked] = useState(liked);
+  const [payOpen, setPayOpen] = useState(false);
   useEffect(() => setIsLiked(liked), [liked]);
   const toggleLike = () => { const nv = !isLiked; setIsLiked(nv); onLike(post.id, nv); };
+  const buyProducts: PayItem[] = post.product ? [{ title: post.product.title, price: post.product.price, priceCfa: post.product.priceCfa, tiers: post.product.tiers }] : [];
   const openLink = (url?: string) => url && Linking.openURL(url.startsWith('http') ? url : `https://${url}`).catch(() => {});
   const images = post.images && post.images.length > 1 ? post.images : post.image ? [post.image] : [];
   const mediaH = post.ratio ? Math.round(W / post.ratio) : W; // vraie proportion → pas de zoom abusif
@@ -149,9 +153,10 @@ function PostView({ post, liked, onLike, onOpenComments }: { post: Post; liked: 
               {post.product.priceOld && <Text style={styles.buyPriceOld}>{post.product.priceOld}</Text>}
             </View>
           </View>
-          <Pressable style={styles.buyBtn}><Text style={styles.buyBtnText}>Acheter</Text></Pressable>
+          <Pressable style={styles.buyBtn} onPress={() => setPayOpen(true)}><Text style={styles.buyBtnText}>Acheter</Text></Pressable>
         </View>
       )}
+      <PaymentSheet visible={payOpen} items={buyProducts} onClose={() => setPayOpen(false)} />
 
       {/* Stats + commentaires */}
       <View style={styles.stats}>

@@ -19,7 +19,7 @@ import { useIsBuzz } from '@/lib/buzz';
 import { VerifiedBadge } from '@/components/verified';
 import { Afylo, Font, Radius, Type } from '@/constants/brand';
 import { useAuthGate } from '@/lib/auth-gate';
-import { blockUser, createTextPost, deletePost, followUser, likePost, listBlockedIds, listConversations, listFeed, listMyLikedPostIds, listSavedPostIds, myFollowingIds, savePost, unfollowUser, unlikePost, unsavePost, unreadNotifCount, updatePostCaption } from '@/lib/db';
+import { blockUser, bumpPostView, createTextPost, deletePost, followUser, likePost, listBlockedIds, listConversations, listFeed, listMyLikedPostIds, listSavedPostIds, myFollowingIds, savePost, unfollowUser, unlikePost, unsavePost, unreadNotifCount, updatePostCaption } from '@/lib/db';
 import { mapFeed, isSeedHandle } from '@/lib/feed-map';
 import { usePendingUpload } from '@/lib/pending-upload';
 import { useMe } from '@/lib/me';
@@ -403,7 +403,7 @@ function PostCard({ post, isPro, myHandle, initialLiked, initialSaved, initialFo
       {!post.textOnly && (
         <Pressable style={[styles.media, (videoAspect ?? post.ratio) ? { aspectRatio: videoAspect ?? post.ratio! } : null]} onPress={onMediaTap}>
           {post.video ? (
-            <FeedVideo uri={post.image} onAspect={setVideoAspect} />
+            <FeedVideo uri={post.image} postId={post.id} onAspect={setVideoAspect} />
           ) : post.images && post.images.length > 1 ? (
             <PostCarousel images={post.images} blur={post.sensitive && !revealed ? 30 : 0} />
           ) : (
@@ -558,21 +558,39 @@ function PostOverlays({ overlays }: { overlays: NonNullable<Post['overlays']> })
   );
 }
 
-/** Lecture vidéo dans le feed (muette, en boucle). */
-function FeedVideo({ uri, onAspect }: { uri: string; onAspect?: (r: number) => void }) {
+// Vues déjà comptées cette session (dédup, pour ne pas incrémenter en boucle au re-montage).
+const countedViews = new Set<string>();
+
+/** Lecture vidéo dans le feed : muette, en boucle, et UNIQUEMENT quand la vidéo est à l'écran. */
+function FeedVideo({ uri, postId, onAspect }: { uri: string; postId?: string; onAspect?: (r: number) => void }) {
   const boxRef = useRef<View>(null);
   const [pos, setPos] = useState(0); // progression 0..1 (curseur de temps)
-  const player = useVideoPlayer(uri, (p) => { p.loop = true; p.muted = true; p.play(); });
-  // Autoplay muet garanti + web: remplit l'élément + remonte la vraie proportion + suit le temps.
+  const [inView, setInView] = useState(Platform.OS !== 'web'); // natif : pas d'IntersectionObserver → considéré visible
+  const player = useVideoPlayer(uri, (p) => { p.loop = true; p.muted = true; });
+  // Joue seulement à l'écran, met en pause sinon (perf/batterie). Compte une vue au 1er affichage.
   useEffect(() => {
+    try { if (inView) player.play(); else player.pause(); } catch {}
+    if (inView && postId && !countedViews.has(postId)) { countedViews.add(postId); bumpPostView(postId).catch(() => {}); }
+  }, [inView, player, postId]);
+  // Visibilité (web via IntersectionObserver) + curseur de temps + ajustement objectFit.
+  useEffect(() => {
+    let io: IntersectionObserver | null = null;
+    const host = boxRef.current as any;
+    if (Platform.OS === 'web' && host && typeof IntersectionObserver !== 'undefined') {
+      io = new IntersectionObserver(
+        (entries) => { for (const e of entries) setInView(e.isIntersecting && e.intersectionRatio > 0.5); },
+        { threshold: [0, 0.5, 1] },
+      );
+      io.observe(host as Element);
+    }
     const t = setInterval(() => {
-      try { const d = player.duration || 0; setPos(d > 0 ? Math.min(1, (player.currentTime || 0) / d) : 0); if (!player.playing) player.play(); } catch {}
+      try { const d = player.duration || 0; setPos(d > 0 ? Math.min(1, (player.currentTime || 0) / d) : 0); } catch {}
       if (Platform.OS === 'web') {
-        const el = (boxRef.current as any)?.querySelector?.('video') as HTMLVideoElement | null;
+        const el = host?.querySelector?.('video') as HTMLVideoElement | null;
         if (el) { el.style.width = '100%'; el.style.height = '100%'; el.style.objectFit = 'cover'; if (el.videoWidth > 0 && el.videoHeight > 0) onAspect?.(el.videoWidth / el.videoHeight); }
       }
     }, 300);
-    return () => clearInterval(t);
+    return () => { clearInterval(t); io?.disconnect(); };
   }, [player, onAspect]);
   return (
     <View ref={boxRef} style={StyleSheet.absoluteFill} pointerEvents="none">
