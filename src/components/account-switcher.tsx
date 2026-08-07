@@ -29,8 +29,8 @@ export function AccountSwitcher({ visible, onClose }: { visible: boolean; onClos
     setSwitching(null);
     if (ok) { onClose(); router.replace('/accueil'); }
     else {
-      // Jeton expiré → il faut se reconnecter à ce compte.
-      await removeAccount(a.id);
+      // Jeton expiré → reconnexion (on NE supprime PAS le compte de la liste, il reste dans l'espace).
+      setAddingAccount(true);
       onClose();
       router.push('/login');
     }

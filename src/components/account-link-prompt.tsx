@@ -3,13 +3,14 @@ import { useEffect, useState } from 'react';
 import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { Afylo, Font, Radius } from '@/constants/brand';
-import { evaluateNewAccount, keepOnlyAccount } from '@/lib/accounts';
+import { evaluateNewAccount, removeAccount } from '@/lib/accounts';
 import { useAuth } from '@/lib/auth';
 
 /**
  * Message affiché quand un compte DIFFÉRENT vient de se connecter alors que d'autres
- * comptes sont déjà enregistrés sur l'appareil : propose de les garder liés dans le même
- * espace (pour basculer sans se reconnecter) ou de ne garder que le compte courant.
+ * comptes sont déjà enregistrés sur l'appareil : propose d'AJOUTER ce compte à l'espace
+ * (pour basculer sans se reconnecter). Non destructif : « Non » ne retire que CE compte
+ * de l'espace, jamais les autres.
  */
 export function AccountLinkPrompt() {
   const { session } = useAuth();
@@ -25,21 +26,21 @@ export function AccountLinkPrompt() {
 
   if (!ask) return null;
   const s = ask.count > 1 ? 's' : '';
-  const keepLinked = () => setAsk(null);
-  const keepOnly = async () => { await keepOnlyAccount(ask.uid); setAsk(null); };
+  const link = () => setAsk(null); // déjà enregistré → on garde
+  const dontLink = async () => { await removeAccount(ask.uid); setAsk(null); }; // ne retire QUE ce compte
 
   return (
-    <Modal visible transparent animationType="fade" onRequestClose={keepLinked}>
+    <Modal visible transparent animationType="fade" onRequestClose={link}>
       <View style={styles.overlay}>
         <View style={styles.card}>
           <View style={styles.icon}><Ionicons name="people" size={26} color={Afylo.violet} /></View>
-          <Text style={styles.title}>Lier tes comptes ?</Text>
+          <Text style={styles.title}>Ajouter ce compte à ton espace ?</Text>
           <Text style={styles.body}>
-            Tu as {ask.count} autre{s} compte{s} enregistré{s} sur cet appareil. Les garder dans ton
-            espace pour basculer de l'un à l'autre sans te reconnecter ?
+            Tu as déjà {ask.count} compte{s} enregistré{s} sur cet appareil. Lie ce compte pour
+            basculer de l'un à l'autre sans te reconnecter. (Tes autres comptes restent liés.)
           </Text>
-          <Pressable onPress={keepLinked} style={styles.primary}><Text style={styles.primaryText}>Garder mes comptes liés</Text></Pressable>
-          <Pressable onPress={keepOnly} style={styles.secondary}><Text style={styles.secondaryText}>Garder seulement ce compte</Text></Pressable>
+          <Pressable onPress={link} style={styles.primary}><Text style={styles.primaryText}>Oui, ajouter à mon espace</Text></Pressable>
+          <Pressable onPress={dontLink} style={styles.secondary}><Text style={styles.secondaryText}>Non, ne pas lier ce compte</Text></Pressable>
         </View>
       </View>
     </Modal>
