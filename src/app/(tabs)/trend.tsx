@@ -323,7 +323,7 @@ function Reel({ post, index, active, height, width, showBuzz, onNotInterested, a
           )}
         </View>
         <Action
-          node={reaction ? <Text style={{ fontSize: 24 }}>{reaction}</Text> : <RatingStar fill={rating > 0 ? rating / 10 : liked ? 1 : 0} size={26} color={Afylo.violet2} empty="#fff" />}
+          node={reaction ? <Text style={{ fontSize: 26 }}>{reaction}</Text> : <RatingStar fill={rating > 0 ? rating / 10 : liked ? 1 : 0} size={28} color={Afylo.violet2} empty="#fff" />}
           label={rating > 0 ? `${rating}/10` : liked ? 'Aimé' : 'Noter'}
           color={rating > 0 || liked ? Afylo.violet2 : '#fff'}
           onPress={like}
@@ -443,7 +443,7 @@ function OptItem({ icon, label, onPress }: { icon: keyof typeof Ionicons.glyphMa
 function Action({ icon, node, label, color = '#fff', onPress, onLongPress }: { icon?: keyof typeof Ionicons.glyphMap; node?: React.ReactNode; label: string; color?: string; onPress?: () => void; onLongPress?: () => void }) {
   return (
     <Pressable style={styles.action} onPress={onPress} onLongPress={onLongPress} delayLongPress={260} hitSlop={6}>
-      {node ?? <Ionicons name={icon!} size={26} color={color} />}
+      {node ?? <Ionicons name={icon!} size={28} color={color} />}
       <Text style={styles.actionLabel}>{label}</Text>
     </Pressable>
   );
@@ -491,11 +491,11 @@ const styles = StyleSheet.create({
   optLine: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 14, borderTopWidth: 1, borderTopColor: Afylo.border },
   optLineText: { ...Type.body, color: Afylo.text },
 
-  rail: { position: 'absolute', right: 10, bottom: 150, alignItems: 'center', gap: 14 },
+  rail: { position: 'absolute', right: 10, bottom: 150, alignItems: 'center', gap: 16 },
   followDot: { position: 'absolute', bottom: -8, alignSelf: 'center', left: 14, width: 18, height: 18, borderRadius: 9, backgroundColor: Afylo.violet, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: '#000' },
   followDotOn: { backgroundColor: Afylo.green },
-  action: { alignItems: 'center', gap: 2 },
-  actionLabel: { color: '#fff', fontSize: 10.5, fontWeight: '600' },
+  action: { alignItems: 'center', gap: 3 },
+  actionLabel: { color: '#fff', fontSize: 11, fontWeight: '600' },
 
   bottom: { position: 'absolute', left: 0, right: 0, bottom: 0, paddingHorizontal: 16, paddingBottom: 90 },
   infoRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 6 },
