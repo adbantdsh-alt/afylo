@@ -21,6 +21,16 @@ body,
   font-family: var(--font-display);
 }
 
+/* Trend : un seul reel par swipe (web). scroll-snap-stop:always force l'arrêt au
+   palier suivant même sur un scroll molette/trackpad rapide (fini les sauts de 2+ vidéos). */
+[data-reelscroll="1"] {
+  scroll-snap-type: y mandatory;
+}
+[data-reel="1"] {
+  scroll-snap-align: start;
+  scroll-snap-stop: always;
+}
+
 /* Pas de cadre orange/bleu au focus des champs (on gère nous-mêmes la bordure) */
 input:focus,
 textarea:focus,

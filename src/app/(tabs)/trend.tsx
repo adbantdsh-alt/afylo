@@ -134,6 +134,7 @@ export default function Trend() {
         snapToAlignment="start"
         disableIntervalMomentum
         decelerationRate="fast"
+        {...({ dataSet: { reelscroll: '1' } } as any)}
         onMomentumScrollEnd={(e) => setActive(Math.round(e.nativeEvent.contentOffset.y / height))}
         {...scroll}>
         {shown.map((r, i) => (
@@ -285,7 +286,7 @@ function Reel({ post, index, active, height, width, showBuzz, onNotInterested, a
   const openTag = (t: string) => router.push({ pathname: '/search', params: { q: t } });
 
   return (
-    <View style={{ height, width, backgroundColor: '#000' }}>
+    <View style={{ height, width, backgroundColor: '#000' }} {...({ dataSet: { reel: '1' } } as any)}>
       {/* Zone média : s'arrête au-dessus d'une bande noire (texte + curseur) façon TikTok. Vidéo en plein écran (cover). */}
       <View style={styles.reelMedia}>
         {!post.video && <Image source={{ uri: post.image }} style={StyleSheet.absoluteFill} contentFit="cover" transition={200} />}
