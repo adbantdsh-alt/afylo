@@ -451,6 +451,41 @@ export async function confirmOrder(orderId: string): Promise<void> {
   if (error) throw error;
 }
 
+// ---- Afylo Ads (Booster) ----
+export type BoostTarget = 'post' | 'product' | 'live';
+export type AdCampaign = {
+  id: string; advertiser_id: string; target_kind: BoostTarget; target_id: string;
+  budget_cfa: number; days: number; status: 'active' | 'ended'; impressions: number; clicks: number;
+  starts_at: string; ends_at: string; created_at: string;
+};
+
+/** Crée une promotion payante (paiement Mobile Money simulé côté client en MVP). */
+export async function createBoost(targetKind: BoostTarget, targetId: string, budget_cfa: number, days: number): Promise<void> {
+  const advertiser_id = await requireUserId();
+  const ends_at = new Date(Date.now() + days * 86400000).toISOString();
+  const { error } = await supabase.from('ad_campaigns').insert({ advertiser_id, target_kind: targetKind, target_id: targetId, budget_cfa, days, ends_at });
+  if (error) throw error;
+}
+
+/** Ids des posts actuellement sponsorisés (campagnes actives, non expirées). */
+export async function listActiveBoostedPostIds(): Promise<Set<string>> {
+  const { data } = await supabase
+    .from('ad_campaigns')
+    .select('target_id')
+    .eq('target_kind', 'post')
+    .eq('status', 'active')
+    .gt('ends_at', new Date().toISOString());
+  return new Set(((data ?? []) as any[]).map((r) => r.target_id as string));
+}
+
+/** Mes campagnes (pour un futur écran « Mes promotions »). */
+export async function listMyBoosts(): Promise<AdCampaign[]> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return [];
+  const { data } = await supabase.from('ad_campaigns').select('*').eq('advertiser_id', user.id).order('created_at', { ascending: false });
+  return (data ?? []) as AdCampaign[];
+}
+
 export type SearchPost = {
   id: string;
   thumbnail_url: string | null;

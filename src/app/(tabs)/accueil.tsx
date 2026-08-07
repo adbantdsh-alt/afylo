@@ -9,6 +9,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Avatar, IconButton } from '@/components/ui-kit';
 import { PaymentSheet } from '@/components/payment-sheet';
 import { PostOptionsSheet } from '@/components/post-options-sheet';
+import { BoostSheet } from '@/components/boost-sheet';
 import { RateSheet } from '@/components/rate-sheet';
 import { RatingStar } from '@/components/rating-star';
 import { RichText } from '@/components/rich-text';
@@ -20,7 +21,7 @@ import { useIsBuzz } from '@/lib/buzz';
 import { VerifiedBadge } from '@/components/verified';
 import { Afylo, Font, Radius, Type } from '@/constants/brand';
 import { useAuthGate } from '@/lib/auth-gate';
-import { blockUser, bumpPostView, createTextPost, deletePost, followUser, likePost, listBlockedIds, listConversations, listFeed, listMyLikedPostIds, listSavedPostIds, myFollowingIds, savePost, unfollowUser, unlikePost, unsavePost, unreadNotifCount, updatePostCaption } from '@/lib/db';
+import { blockUser, bumpPostView, createTextPost, deletePost, followUser, likePost, listActiveBoostedPostIds, listBlockedIds, listConversations, listFeed, listMyLikedPostIds, listSavedPostIds, myFollowingIds, savePost, unfollowUser, unlikePost, unsavePost, unreadNotifCount, updatePostCaption } from '@/lib/db';
 import { mapFeed, isSeedHandle } from '@/lib/feed-map';
 import { usePendingUpload } from '@/lib/pending-upload';
 import { useMe } from '@/lib/me';
@@ -103,7 +104,14 @@ export default function Feed() {
   const reload = useCallback((manual?: boolean) => {
     if (manual) setRefreshing(true);
     Promise.all([
-      listFeed().then((rows) => setFeed(mapFeed(rows ?? []).filter((p) => !isSeedHandle(p.handle)))).catch(() => {}),
+      Promise.all([listFeed(), listActiveBoostedPostIds()]).then(([rows, boosted]) => {
+        let mapped = mapFeed(rows ?? []).filter((p) => !isSeedHandle(p.handle));
+        if (boosted.size) {
+          mapped = mapped.map((p) => (boosted.has(p.id) ? { ...p, sponsored: true } : p));
+          mapped = [...mapped.filter((p) => p.sponsored), ...mapped.filter((p) => !p.sponsored)]; // sponsorisés en tête
+        }
+        setFeed(mapped);
+      }).catch(() => {}),
       listMyLikedPostIds().then(setLikedIds).catch(() => {}),
       listSavedPostIds().then(setSavedIds).catch(() => {}),
       myFollowingIds().then((ids) => setFollowingIds(new Set(ids))).catch(() => {}),
@@ -327,6 +335,7 @@ function PostCard({ post, isPro, myHandle, initialLiked, initialSaved, initialFo
   const [reportOpen, setReportOpen] = useState(false);
   const [repostOpen, setRepostOpen] = useState(false);
   const [optionsOpen, setOptionsOpen] = useState(false);
+  const [boostOpen, setBoostOpen] = useState(false);
   const [saved, setSaved] = useState(!!initialSaved);
   useEffect(() => { setSaved(!!initialSaved); }, [initialSaved]);
   const [hidden, setHidden] = useState(false);
@@ -392,7 +401,14 @@ function PostCard({ post, isPro, myHandle, initialLiked, initialSaved, initialFo
               <VerifiedBadge kind={post.verified} size={15} />
               {isBuzz && <BuzzBadge size="sm" />}
             </View>
-            <Text style={styles.time}>{post.time}</Text>
+            {post.sponsored ? (
+              <View style={styles.sponsoredRow}>
+                <Ionicons name="megaphone" size={11} color={Afylo.violet} />
+                <Text style={styles.sponsoredText}>Sponsorisé</Text>
+              </View>
+            ) : (
+              <Text style={styles.time}>{post.time}</Text>
+            )}
           </View>
         </Pressable>
         <Pressable onPress={toggleFollow} style={[styles.followBtn, followed && styles.followBtnOn]}>
@@ -505,6 +521,13 @@ function PostCard({ post, isPro, myHandle, initialLiked, initialSaved, initialFo
         onBlock={() => { setHidden(true); onBlock?.(post.authorId); }}
         onEdit={() => onEditPost(post)}
         onDelete={() => onDeletePost(post.id)}
+        onPromote={() => setBoostOpen(true)}
+      />
+
+      <BoostSheet
+        visible={boostOpen}
+        target={{ kind: 'post', id: post.id, title: post.caption || post.name, image: post.textOnly ? undefined : post.image }}
+        onClose={() => setBoostOpen(false)}
       />
 
       <RateSheet
@@ -712,6 +735,8 @@ const styles = StyleSheet.create({
   cardHeaderTap: { flexDirection: 'row', alignItems: 'center', flex: 1 },
   name: { color: Afylo.ink, fontFamily: Font.semibold, fontSize: 15, letterSpacing: -0.2 },
   time: { color: Afylo.textFaint, fontFamily: Font.regular, fontSize: 12, marginTop: 2 },
+  sponsoredRow: { flexDirection: 'row', alignItems: 'center', gap: 3, marginTop: 2 },
+  sponsoredText: { color: Afylo.violet, fontFamily: Font.semibold, fontSize: 11 },
   followBtn: { backgroundColor: Afylo.violet, paddingHorizontal: 18, paddingVertical: 8, borderRadius: Radius.pill },
   followBtnOn: { backgroundColor: 'transparent', borderWidth: 1.5, borderColor: Afylo.border, paddingHorizontal: 16 },
   followText: { color: '#fff', fontWeight: '700', fontSize: 13 },

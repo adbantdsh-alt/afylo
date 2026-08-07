@@ -20,6 +20,7 @@ export function PostOptionsSheet({
   onBlock,
   onEdit,
   onDelete,
+  onPromote,
 }: {
   visible: boolean;
   saved: boolean;
@@ -33,6 +34,7 @@ export function PostOptionsSheet({
   onBlock?: () => void;
   onEdit?: () => void;
   onDelete?: () => void;
+  onPromote?: () => void;
 }) {
   const act = (fn?: () => void) => { onClose(); if (fn) setTimeout(fn, 10); };
 
@@ -45,6 +47,7 @@ export function PostOptionsSheet({
           {isOwner ? (
             // ---- Accès PROPRIÉTAIRE (auteur du post) ----
             <View style={styles.list}>
+              <Row icon="rocket-outline" label="Promouvoir" promote onPress={() => act(onPromote)} />
               <Row icon="create-outline" label="Modifier" onPress={() => act(onEdit)} />
               <Row icon="share-social-outline" label="Partager" onPress={() => act(onShare)} />
               <Row icon={saved ? 'bookmark' : 'bookmark-outline'} label={saved ? 'Retirer des enregistrements' : 'Enregistrer'} onPress={() => act(onSave)} />
@@ -82,11 +85,12 @@ export function PostOptionsSheet({
   );
 }
 
-function Row({ icon, label, onPress, danger, last }: { icon: keyof typeof Ionicons.glyphMap; label: string; onPress: () => void; danger?: boolean; last?: boolean }) {
+function Row({ icon, label, onPress, danger, promote, last }: { icon: keyof typeof Ionicons.glyphMap; label: string; onPress: () => void; danger?: boolean; promote?: boolean; last?: boolean }) {
+  const color = danger ? Afylo.live : promote ? Afylo.violet : Afylo.text;
   return (
     <Pressable style={[styles.row, !last && styles.rowBorder]} onPress={onPress}>
-      <Ionicons name={icon} size={22} color={danger ? Afylo.live : Afylo.text} />
-      <Text style={[styles.rowText, danger && { color: Afylo.live }]}>{label}</Text>
+      <Ionicons name={icon} size={22} color={color} />
+      <Text style={[styles.rowText, { color }]}>{label}</Text>
     </Pressable>
   );
 }
